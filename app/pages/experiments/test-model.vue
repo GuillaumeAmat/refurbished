@@ -2,8 +2,8 @@
 import { onMounted, ref, onUnmounted, watch, nextTick } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
+import { createNeonWallPrefab } from '~/three/prefabs/NeonWallPrefab';
+import { createWorkbenchPrefab } from '~/three/prefabs/WorkbenchPrefab';
 
 import { definePageMeta, useSimpleHead } from '#imports';
 
@@ -33,21 +33,22 @@ const selectedObjectPosition = ref({ x: 0, y: 0, z: 0 });
 const selectedObjectRotation = ref({ x: 0, y: 0, z: 0 }); // Stored in degrees
 const selectedObjectScale = ref<number>(1); // Uniform scale
 const cameraPosition = ref({ x: 0, y: 0, z: 0 });
+const cameraRotation = ref({ x: 0, y: 0, z: 0 }); // Stored in degrees
 const lightInfo = ref({
   position: { x: 0, y: 0, z: 0 },
   direction: { x: 0, y: 0, z: 0 },
-  color: '',
+  color: '#fbff00',
   intensity: 0,
   angle: 0,
   penumbra: 0,
   distance: 0
 });
 const ambientLightInfo = ref({
-  color: '',
+  color: '#ffffff',
   intensity: 0
 });
 const floorMaterialInfo = ref({
-  color: '',
+  color: '#333333',
   roughness: 0,
   metalness: 0,
   noiseIntensity: 30
@@ -55,7 +56,7 @@ const floorMaterialInfo = ref({
 const copiedPanel = ref<string | null>(null);
 const isLoading = ref<boolean>(true);
 const loadedModelsCount = ref<number>(0);
-const totalModelsCount = 4; // WORKBENCH + NEON_WALL: 2 models × (MTL + OBJ) = 4 files
+const totalModelsCount = 2; // WORKBENCH + NEON_WALL prefabs
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
@@ -303,18 +304,21 @@ const updateObjectPositionX = (value: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.position.x = value;
   selectedObjectPosition.value.x = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateObjectPositionY = (value: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.position.y = value;
   selectedObjectPosition.value.y = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateObjectPositionZ = (value: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.position.z = value;
   selectedObjectPosition.value.z = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const degreesToRadians = (degrees: number) => (degrees * Math.PI) / 180;
@@ -323,24 +327,28 @@ const updateObjectRotationX = (degrees: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.rotation.x = degreesToRadians(degrees);
   selectedObjectRotation.value.x = degrees;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateObjectRotationY = (degrees: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.rotation.y = degreesToRadians(degrees);
   selectedObjectRotation.value.y = degrees;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateObjectRotationZ = (degrees: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.rotation.z = degreesToRadians(degrees);
   selectedObjectRotation.value.z = degrees;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateObjectScale = (value: number) => {
   if (!selectedObject.value) return;
   selectedObject.value.scale.setScalar(value);
   selectedObjectScale.value = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 // Copy panel content to clipboard
@@ -497,54 +505,11 @@ const setupScene = () => {
     intensity: ambientLight.intensity,
   };
 
-  sunLight = new THREE.SpotLight('#fbff00', 26); // Yellow light
-  // Position the light
-  sunLight.position.set(1.6, 9.21, -5.3);
-  // Calculate target position from direction
-  const lightDirection = new THREE.Vector3(0, -0.71, 0.75).normalize();
-  const targetDistance = 10; // Distance for target
-  sunLight.target.position.copy(sunLight.position).add(lightDirection.multiplyScalar(targetDistance));
-  sunLight.angle = 1.47; // Angle in radians (84.21 degrees)
-  sunLight.penumbra = 1.0; // Soft edge
-  sunLight.decay = 1; // Less aggressive light falloff
-  sunLight.distance = 69; // Distance limit
-  sunLight.castShadow = true;
-  sunLight.shadow.camera.near = 1;
-  sunLight.shadow.camera.far = 50;
-  sunLight.shadow.camera.fov = 60;
-  sunLight.shadow.mapSize.set(2048, 2048);
-  sunLight.shadow.bias = -0.0001;
-  scene.add(sunLight);
-  scene.add(sunLight.target); // Don't forget to add the target to the scene
+  // Note: SpotLight is now part of the NEON_WALL prefab
+  // The light will be found and controlled after the model loads
 
-  // Initialize light info
-  // Calculate direction (normalized vector pointing from light to target)
-  const direction = new THREE.Vector3().subVectors(sunLight.target.position, sunLight.position).normalize();
-
-  lightInfo.value = {
-    position: {
-      x: Math.round(sunLight.position.x * 100) / 100,
-      y: Math.round(sunLight.position.y * 100) / 100,
-      z: Math.round(sunLight.position.z * 100) / 100,
-    },
-    direction: {
-      x: Math.round(direction.x * 100) / 100,
-      y: Math.round(direction.y * 100) / 100,
-      z: Math.round(direction.z * 100) / 100,
-    },
-    color: '#' + sunLight.color.getHexString(),
-    intensity: sunLight.intensity,
-    angle: sunLight.angle,
-    penumbra: sunLight.penumbra,
-    distance: sunLight.distance,
-  };
-
-  // Add SpotLight helper to visualize the light
-  spotLightHelper = new THREE.SpotLightHelper(sunLight, 0xffff00);
-  scene.add(spotLightHelper);
-
-  // Create floor
-  const floorGeometry = new THREE.PlaneGeometry(50, 50);
+  // Create floor (39 x 27 units)
+  const floorGeometry = new THREE.PlaneGeometry(39, 27);
   const floorMaterial = new THREE.MeshStandardMaterial({
     map: createFloorTexture(30),
     roughness: 0.95,
@@ -563,156 +528,78 @@ const setupScene = () => {
     noiseIntensity: 30,
   };
 
-  // Axes helper (for reference)
-  const axesHelper = new THREE.AxesHelper(5);
+  // Axes helper (for reference, scaled down by 9)
+  const axesHelper = new THREE.AxesHelper(5 / 9);
   scene.add(axesHelper);
 
-  // Helper function to load and setup a model (simplified)
-  const loadModel = (
-    objPath: string,
-    mtlPath: string,
-    modelName: string,
-    finalPosition: { x: number, y: number, z: number },
-    finalRotation: { x: number, y: number, z: number }, // in degrees
-    finalScale: number
-  ) => {
-    const mtlLoader = new MTLLoader();
-    mtlLoader.load(
-      mtlPath,
-      (materials) => {
-        materials.preload();
+  // Load prefabs
+  // WORKBENCH prefab
+  createWorkbenchPrefab().then((workbenchGroup) => {
+    workbenchGroup.position.set(0, 0, 0);
+    scene.add(workbenchGroup);
+    console.log('WORKBENCH prefab loaded');
 
-        // Increment loaded models count after MTL loaded
-        loadedModelsCount.value++;
-        if (loadedModelsCount.value >= totalModelsCount) {
-          isLoading.value = false;
-        }
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  }).catch((error) => {
+    console.error('Error loading WORKBENCH prefab:', error);
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  });
 
-        const objLoader = new OBJLoader();
-        objLoader.setMaterials(materials);
-        objLoader.load(
-          objPath,
-          (model) => {
-            // Set the model name
-            model.name = modelName;
+  // NEON_WALL prefab (includes spotlight)
+  createNeonWallPrefab().then((neonWallGroup) => {
+    // Position the NEON_WALL prefab in the scene
+    neonWallGroup.position.set(0, 0, -1);
+    scene.add(neonWallGroup);
+    console.log('NEON_WALL prefab loaded');
 
-            // Apply scale
-            model.scale.setScalar(finalScale);
+    // Find the SpotLight in the prefab
+    neonWallGroup.traverse((child) => {
+      if (child instanceof THREE.SpotLight) {
+        sunLight = child;
 
-            // Apply rotations (convert degrees to radians)
-            model.rotation.order = 'XYZ';
-            model.rotation.x = (finalRotation.x * Math.PI) / 180;
-            model.rotation.y = (finalRotation.y * Math.PI) / 180;
-            model.rotation.z = (finalRotation.z * Math.PI) / 180;
+        // Create helper for the spotlight
+        spotLightHelper = new THREE.SpotLightHelper(sunLight, 0xffff00);
+        scene.add(spotLightHelper);
 
-            // Apply position
-            model.position.set(finalPosition.x, finalPosition.y, finalPosition.z);
-
-            // Enable shadows for all meshes and convert materials to MeshPhysicalMaterial
-            model.traverse((child) => {
-              if (child instanceof THREE.Mesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-
-                // Convert material to MeshPhysicalMaterial if it isn't already
-                if (!(child.material instanceof THREE.MeshPhysicalMaterial)) {
-                  const oldMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
-                  const newMaterial = new THREE.MeshPhysicalMaterial({
-                    color: oldMaterial.color,
-                    map: oldMaterial.map,
-                    roughness: 0.8,
-                    metalness: 0.2,
-                    transmission: 0,
-                    thickness: 0.5,
-                  });
-                  child.material = newMaterial;
-                  if (oldMaterial.map) newMaterial.needsUpdate = true;
-                }
-
-                // Apply specific material settings for NEON_WALL meshes
-                if (modelName === 'NEON_WALL' && child.material instanceof THREE.MeshPhysicalMaterial) {
-                  child.material.color.setHex(0xffdd1a);
-                  child.material.roughness = 0.8;
-                  child.material.metalness = 0.2;
-                  child.material.transparent = true;
-                  child.material.opacity = 1.0;
-                  child.material.transmission = 0.33;
-                  child.material.thickness = 0.5;
-                  child.material.needsUpdate = true;
-                  child.castShadow = false; // Disable shadows for transparent objects
-
-                  // Apply emissive to NEON_1 through NEON_5 meshes
-                  if (child.name.match(/^NEON_[1-5]$/)) {
-                    // Set emissive properties
-                    child.material.emissive.setHex(0xffdd1a); // Yellow neon color
-                    child.material.emissiveIntensity = 25;
-                  }
-
-                  // Apply specific settings to GLASS mesh
-                  if (child.name === 'GLASS') {
-                    child.material.color.setHex(0x8cff1a); // Green color
-                    child.material.opacity = 0.35;
-                    child.material.emissive.setHex(0x3be846); // Green emissive
-                    child.material.emissiveIntensity = 5.65;
-                  }
-                }
-              }
-            });
-
-            console.log(`${modelName} loaded at position (${finalPosition.x}, ${finalPosition.y}, ${finalPosition.z})`);
-
-            scene.add(model);
-
-
-            // Increment loaded models count
-            loadedModelsCount.value++;
-            if (loadedModelsCount.value >= totalModelsCount) {
-              isLoading.value = false;
-            }
+        // Initialize light info
+        const direction = new THREE.Vector3().subVectors(sunLight.target.position, sunLight.position).normalize();
+        lightInfo.value = {
+          position: {
+            x: Math.round(sunLight.position.x * 100) / 100,
+            y: Math.round(sunLight.position.y * 100) / 100,
+            z: Math.round(sunLight.position.z * 100) / 100,
           },
-          undefined,
-          (error) => {
-            console.error(`${modelName} Error loading OBJ:`, error);
-            // Even on error, increment to avoid infinite loading
-            loadedModelsCount.value++;
-            if (loadedModelsCount.value >= totalModelsCount) {
-              isLoading.value = false;
-            }
-          }
-        );
-      },
-      undefined,
-      (error) => {
-        console.error(`${modelName} Error loading MTL:`, error);
-        // Even on error, increment to avoid infinite loading
-        loadedModelsCount.value++;
-        if (loadedModelsCount.value >= totalModelsCount) {
-          isLoading.value = false;
-        }
+          direction: {
+            x: Math.round(direction.x * 100) / 100,
+            y: Math.round(direction.y * 100) / 100,
+            z: Math.round(direction.z * 100) / 100,
+          },
+          color: '#' + sunLight.color.getHexString(),
+          intensity: sunLight.intensity,
+          angle: sunLight.angle,
+          penumbra: sunLight.penumbra,
+          distance: sunLight.distance,
+        };
       }
-    );
-  };
+    });
 
-  // Load the OBJ models with multiple meshes
-  // WORKBENCH - plan de travail
-  loadModel(
-    '/experiments/plan-de-travail.obj',
-    '/experiments/plan-de-travail.mtl',
-    'WORKBENCH',
-    { x: 0, y: 0, z: 0 },          // Position
-    { x: 270, y: 360, z: 90 },     // Rotation (degrees)
-    0.1                             // Scale
-  );
-
-  // NEON_WALL - neon wall
-  loadModel(
-    '/experiments/neon-wall.obj',
-    '/experiments/neon-wall.mtl',
-    'NEON_WALL',
-    { x: -0.4, y: 0, z: -7.5 },    // Position
-    { x: -90, y: 0, z: 0 },        // Rotation (degrees)
-    0.1                             // Scale
-  );
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  }).catch((error) => {
+    console.error('Error loading NEON_WALL prefab:', error);
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  });
 
   // Animation loop
   const animate = () => {
@@ -724,6 +611,13 @@ const setupScene = () => {
       x: Math.round(camera.position.x * 100) / 100,
       y: Math.round(camera.position.y * 100) / 100,
       z: Math.round(camera.position.z * 100) / 100,
+    };
+
+    // Update camera rotation display (in degrees)
+    cameraRotation.value = {
+      x: Math.round((camera.rotation.x * 180 / Math.PI) * 100) / 100,
+      y: Math.round((camera.rotation.y * 180 / Math.PI) * 100) / 100,
+      z: Math.round((camera.rotation.z * 180 / Math.PI) * 100) / 100,
     };
 
     renderer.render(scene, camera);
@@ -762,7 +656,9 @@ const setupScene = () => {
 
     // Find parent model
     let parent = mesh.parent;
-    while (parent && parent.parent !== scene) parent = parent.parent;
+    while (parent && parent.parent !== scene) {
+      parent = parent.parent;
+    }
 
     if (parent && parent !== scene) {
       selectedObject.value = parent;
@@ -1128,9 +1024,15 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="text-sm font-mono space-y-1">
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Position</p>
         <p>X: {{ cameraPosition.x.toFixed(2) }}</p>
         <p>Y: {{ cameraPosition.y.toFixed(2) }}</p>
         <p>Z: {{ cameraPosition.z.toFixed(2) }}</p>
+
+        <p class="text-xs font-sans font-semibold mt-2 mb-1 text-center opacity-80">Rotation (deg)</p>
+        <p>X: {{ cameraRotation.x.toFixed(2) }}</p>
+        <p>Y: {{ cameraRotation.y.toFixed(2) }}</p>
+        <p>Z: {{ cameraRotation.z.toFixed(2) }}</p>
       </div>
       <div class="absolute bottom-1 right-1">
         <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
@@ -1504,8 +1406,8 @@ onUnmounted(() => {
           <input
             type="range"
             min="0"
-            max="100"
-            step="1"
+            max="11.11"
+            step="0.1"
             :value="lightInfo.distance"
             @input="updateSpotLightDistance(parseFloat(($event.target as HTMLInputElement).value))"
             class="w-full h-1 bg-yellow-700 rounded-lg appearance-none cursor-pointer"
