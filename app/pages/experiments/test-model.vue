@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, onUnmounted } from 'vue';
+import { onMounted, ref, onUnmounted, watch, nextTick } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
-import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import { definePageMeta, useSimpleHead } from '#imports';
 
@@ -20,14 +18,20 @@ useSimpleHead({
 });
 
 const canvas = ref<HTMLCanvasElement>();
+const floorMaterialPanel = ref<HTMLDivElement>();
+const selectedMeshPanel = ref<HTMLDivElement>();
+const cameraPositionPanel = ref<HTMLDivElement>();
+const objectTransformPanel = ref<HTMLDivElement>();
+const ambientLightPanel = ref<HTMLDivElement>();
+const spotLightPanel = ref<HTMLDivElement>();
+
 const selectedMeshName = ref<string>('');
-const selectedMeshMaterial = ref<{
-  type: string;
-  color: string;
-  roughness?: number;
-  metalness?: number;
-} | null>(null);
 const selectedMeshObject = ref<THREE.Mesh | null>(null);
+const selectedObjectName = ref<string>('');
+const selectedObject = ref<THREE.Object3D | null>(null);
+const selectedObjectPosition = ref({ x: 0, y: 0, z: 0 });
+const selectedObjectRotation = ref({ x: 0, y: 0, z: 0 }); // Stored in degrees
+const selectedObjectScale = ref<number>(1); // Uniform scale
 const cameraPosition = ref({ x: 0, y: 0, z: 0 });
 const lightInfo = ref({
   position: { x: 0, y: 0, z: 0 },
@@ -48,10 +52,13 @@ const floorMaterialInfo = ref({
   metalness: 0,
   noiseIntensity: 30
 });
+const copiedPanel = ref<string | null>(null);
+const isLoading = ref<boolean>(true);
+const loadedModelsCount = ref<number>(0);
+const totalModelsCount = 4; // WORKBENCH + NEON_WALL: 2 models × (MTL + OBJ) = 4 files
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
-let effect: OutlineEffect;
 let controls: OrbitControls;
 let animationId: number;
 let raycaster: THREE.Raycaster;
@@ -59,107 +66,387 @@ let pointer: THREE.Vector2;
 let sunLight: THREE.SpotLight;
 let ambientLight: THREE.AmbientLight;
 let floor: THREE.Mesh;
+let spotLightHelper: THREE.SpotLightHelper;
 
-// Function to update material properties
+// Material update functions
 const updateRoughness = (value: number) => {
-  if (selectedMeshObject.value && selectedMeshObject.value.material instanceof THREE.MeshStandardMaterial) {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
     selectedMeshObject.value.material.roughness = value;
-    if (selectedMeshMaterial.value) {
-      selectedMeshMaterial.value.roughness = value;
-    }
   }
 };
 
 const updateMetalness = (value: number) => {
-  if (selectedMeshObject.value && selectedMeshObject.value.material instanceof THREE.MeshStandardMaterial) {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
     selectedMeshObject.value.material.metalness = value;
-    if (selectedMeshMaterial.value) {
-      selectedMeshMaterial.value.metalness = value;
-    }
   }
+};
+
+const updateOpacity = (value: number) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
+    selectedMeshObject.value.material.opacity = value;
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+const updateTransparent = (value: boolean) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
+    selectedMeshObject.value.material.transparent = value;
+    selectedMeshObject.value.material.depthWrite = !value;
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+const updateTransmission = (value: number) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshPhysicalMaterial) {
+    selectedMeshObject.value.material.transmission = value;
+    if (selectedMeshObject.value) {
+      selectedMeshObject.value.castShadow = value === 0;
+    }
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+const updateThickness = (value: number) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshPhysicalMaterial) {
+    selectedMeshObject.value.material.thickness = value;
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+const updateMaterialColor = (hexColor: string) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
+    selectedMeshObject.value.material.color.setHex(parseInt(hexColor.replace('#', ''), 16));
+  }
+};
+
+const updateEmissiveColor = (hexColor: string) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
+    selectedMeshObject.value.material.emissive.setHex(parseInt(hexColor.replace('#', ''), 16));
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+const updateEmissiveIntensity = (value: number) => {
+  if (selectedMeshObject.value?.material instanceof THREE.MeshStandardMaterial) {
+    selectedMeshObject.value.material.emissiveIntensity = value;
+    selectedMeshObject.value.material.needsUpdate = true;
+  }
+};
+
+// Light update functions
+const updateAmbientLightColor = (hexColor: string) => {
+  if (!ambientLight) return;
+  ambientLight.color.setHex(parseInt(hexColor.replace('#', ''), 16));
+  ambientLightInfo.value.color = hexColor;
 };
 
 const updateAmbientLightIntensity = (value: number) => {
-  if (ambientLight) {
-    ambientLight.intensity = value;
-    ambientLightInfo.value.intensity = value;
-  }
+  if (!ambientLight) return;
+  ambientLight.intensity = value;
+  ambientLightInfo.value.intensity = value;
+};
+
+const updateSpotLightColor = (hexColor: string) => {
+  if (!sunLight) return;
+  sunLight.color.setHex(parseInt(hexColor.replace('#', ''), 16));
+  lightInfo.value.color = hexColor;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateDirectionalLightIntensity = (value: number) => {
-  if (sunLight) {
-    sunLight.intensity = value;
-    lightInfo.value.intensity = value;
-  }
+  if (!sunLight) return;
+  sunLight.intensity = value;
+  lightInfo.value.intensity = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateSpotLightAngle = (value: number) => {
-  if (sunLight) {
-    sunLight.angle = value;
-    lightInfo.value.angle = value;
-  }
+  if (!sunLight) return;
+  sunLight.angle = value;
+  lightInfo.value.angle = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateSpotLightPenumbra = (value: number) => {
-  if (sunLight) {
-    sunLight.penumbra = value;
-    lightInfo.value.penumbra = value;
-  }
+  if (!sunLight) return;
+  sunLight.penumbra = value;
+  lightInfo.value.penumbra = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
 const updateSpotLightDistance = (value: number) => {
-  if (sunLight) {
-    sunLight.distance = value;
-    lightInfo.value.distance = value;
-  }
+  if (!sunLight) return;
+  sunLight.distance = value;
+  lightInfo.value.distance = value;
+  if (spotLightHelper) spotLightHelper.update();
 };
 
+const updateSpotLightPositionX = (value: number) => {
+  if (!sunLight) return;
+  sunLight.position.x = value;
+  lightInfo.value.position.x = value;
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+const updateSpotLightPositionY = (value: number) => {
+  if (!sunLight) return;
+  sunLight.position.y = value;
+  lightInfo.value.position.y = value;
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+const updateSpotLightPositionZ = (value: number) => {
+  if (!sunLight) return;
+  sunLight.position.z = value;
+  lightInfo.value.position.z = value;
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+const updateSpotLightDirectionX = (value: number) => {
+  if (!sunLight) return;
+  // Update the stored direction value first
+  lightInfo.value.direction.x = value;
+
+  // Calculate current distance from light to target
+  const currentDir = new THREE.Vector3().subVectors(sunLight.target.position, sunLight.position);
+  const distance = currentDir.length();
+
+  // Create new direction with updated X component and normalize
+  const newDir = new THREE.Vector3(value, lightInfo.value.direction.y, lightInfo.value.direction.z).normalize();
+
+  // Set new target position
+  sunLight.target.position.copy(sunLight.position).add(newDir.multiplyScalar(distance));
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+const updateSpotLightDirectionY = (value: number) => {
+  if (!sunLight) return;
+  // Update the stored direction value first
+  lightInfo.value.direction.y = value;
+
+  // Calculate current distance from light to target
+  const currentDir = new THREE.Vector3().subVectors(sunLight.target.position, sunLight.position);
+  const distance = currentDir.length();
+
+  // Create new direction with updated Y component and normalize
+  const newDir = new THREE.Vector3(lightInfo.value.direction.x, value, lightInfo.value.direction.z).normalize();
+
+  // Set new target position
+  sunLight.target.position.copy(sunLight.position).add(newDir.multiplyScalar(distance));
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+const updateSpotLightDirectionZ = (value: number) => {
+  if (!sunLight) return;
+  // Update the stored direction value first
+  lightInfo.value.direction.z = value;
+
+  // Calculate current distance from light to target
+  const currentDir = new THREE.Vector3().subVectors(sunLight.target.position, sunLight.position);
+  const distance = currentDir.length();
+
+  // Create new direction with updated Z component and normalize
+  const newDir = new THREE.Vector3(lightInfo.value.direction.x, lightInfo.value.direction.y, value).normalize();
+
+  // Set new target position
+  sunLight.target.position.copy(sunLight.position).add(newDir.multiplyScalar(distance));
+  if (spotLightHelper) spotLightHelper.update();
+};
+
+// Floor material update functions
 const updateFloorRoughness = (value: number) => {
-  if (floor && floor.material instanceof THREE.MeshStandardMaterial) {
-    floor.material.roughness = value;
-    floorMaterialInfo.value.roughness = value;
-  }
+  if (!(floor?.material instanceof THREE.MeshStandardMaterial)) return;
+  floor.material.roughness = value;
+  floorMaterialInfo.value.roughness = value;
 };
 
 const updateFloorMetalness = (value: number) => {
-  if (floor && floor.material instanceof THREE.MeshStandardMaterial) {
-    floor.material.metalness = value;
-    floorMaterialInfo.value.metalness = value;
+  if (!(floor?.material instanceof THREE.MeshStandardMaterial)) return;
+  floor.material.metalness = value;
+  floorMaterialInfo.value.metalness = value;
+};
+
+const createFloorTexture = (noiseIntensity: number): THREE.CanvasTexture => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#a0a0a0';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const imageData = ctx.getImageData(0, 0, 512, 512);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * noiseIntensity;
+    data[i] = Math.max(0, Math.min(255, (data[i] || 0) + noise));
+    data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] || 0) + noise));
+    data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] || 0) + noise));
   }
+  ctx.putImageData(imageData, 0, 0);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 4);
+  return texture;
 };
 
 const updateFloorNoiseIntensity = (value: number) => {
-  if (floor && floor.material instanceof THREE.MeshStandardMaterial) {
-    floorMaterialInfo.value.noiseIntensity = value;
+  if (!(floor?.material instanceof THREE.MeshStandardMaterial)) return;
+  floorMaterialInfo.value.noiseIntensity = value;
+  floor.material.map = createFloorTexture(value);
+  floor.material.needsUpdate = true;
+};
 
-    // Regenerate texture with new noise intensity
-    const textureCanvas = document.createElement('canvas');
-    textureCanvas.width = 512;
-    textureCanvas.height = 512;
-    const ctx = textureCanvas.getContext('2d');
-    if (!ctx) return;
+// Object transform update functions
+const updateObjectPositionX = (value: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.position.x = value;
+  selectedObjectPosition.value.x = value;
+};
 
-    ctx.fillStyle = '#a0a0a0';
-    ctx.fillRect(0, 0, 512, 512);
+const updateObjectPositionY = (value: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.position.y = value;
+  selectedObjectPosition.value.y = value;
+};
 
-    const imageData = ctx.getImageData(0, 0, 512, 512);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const noise = (Math.random() - 0.5) * value;
-      data[i] = Math.max(0, Math.min(255, (data[i] || 0) + noise));
-      data[i + 1] = Math.max(0, Math.min(255, (data[i + 1] || 0) + noise));
-      data[i + 2] = Math.max(0, Math.min(255, (data[i + 2] || 0) + noise));
-    }
-    ctx.putImageData(imageData, 0, 0);
+const updateObjectPositionZ = (value: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.position.z = value;
+  selectedObjectPosition.value.z = value;
+};
 
-    const concreteTexture = new THREE.CanvasTexture(textureCanvas);
-    concreteTexture.wrapS = THREE.RepeatWrapping;
-    concreteTexture.wrapT = THREE.RepeatWrapping;
-    concreteTexture.repeat.set(4, 4);
+const degreesToRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
-    floor.material.map = concreteTexture;
-    floor.material.needsUpdate = true;
+const updateObjectRotationX = (degrees: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.rotation.x = degreesToRadians(degrees);
+  selectedObjectRotation.value.x = degrees;
+};
+
+const updateObjectRotationY = (degrees: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.rotation.y = degreesToRadians(degrees);
+  selectedObjectRotation.value.y = degrees;
+};
+
+const updateObjectRotationZ = (degrees: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.rotation.z = degreesToRadians(degrees);
+  selectedObjectRotation.value.z = degrees;
+};
+
+const updateObjectScale = (value: number) => {
+  if (!selectedObject.value) return;
+  selectedObject.value.scale.setScalar(value);
+  selectedObjectScale.value = value;
+};
+
+// Copy panel content to clipboard
+const copyPanelContent = (panelRef: HTMLElement | undefined, panelName: string) => {
+  if (!panelRef) return;
+
+  // Clone the panel to manipulate it
+  const clone = panelRef.cloneNode(true) as HTMLElement;
+
+  // Replace all input elements with span elements containing their values
+  const inputs = clone.querySelectorAll('input');
+  inputs.forEach(input => {
+    const span = document.createElement('span');
+    span.textContent = input.value;
+    input.parentNode?.replaceChild(span, input);
+  });
+
+  // Get all text content from the cloned panel with preserved line breaks
+  let textContent = clone.innerText;
+
+  // Remove empty lines (lines with only whitespace)
+  textContent = textContent.split('\n')
+    .filter(line => line.trim() !== '')
+    .join('\n');
+
+  // Trim leading and trailing whitespace
+  textContent = textContent.trim();
+
+  navigator.clipboard.writeText(textContent).then(() => {
+    console.log('Panel content copied to clipboard');
+
+    // Show notification
+    copiedPanel.value = panelName;
+
+    // Hide notification after 2 seconds
+    setTimeout(() => {
+      copiedPanel.value = null;
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+};
+
+// Draggable panel functionality with localStorage persistence
+const makeDraggable = (element: HTMLElement, panelId: string) => {
+  let isDragging = false;
+  let currentX = 0;
+  let currentY = 0;
+  let initialX = 0;
+  let initialY = 0;
+  let dragHandle: HTMLElement | null = null;
+
+  // Restore position from localStorage
+  const savedPosition = localStorage.getItem(`panel-position-${panelId}`);
+  if (savedPosition) {
+    const { x, y } = JSON.parse(savedPosition);
+    currentX = x;
+    currentY = y;
+    element.style.transform = `translate(${currentX}px, ${currentY}px)`;
   }
+
+  const dragStart = (e: MouseEvent) => {
+    // Only allow dragging from the title/header area
+    const target = e.target as HTMLElement;
+    if (!target.classList.contains('drag-handle')) return;
+
+    dragHandle = target;
+    initialX = e.clientX - currentX;
+    initialY = e.clientY - currentY;
+    isDragging = true;
+    dragHandle.style.cursor = 'grabbing';
+    element.style.border = '3px solid white';
+  };
+
+  const drag = (e: MouseEvent) => {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    currentX = e.clientX - initialX;
+    currentY = e.clientY - initialY;
+
+    element.style.transform = `translate(${currentX}px, ${currentY}px)`;
+  };
+
+  const dragEnd = () => {
+    isDragging = false;
+    if (dragHandle) {
+      dragHandle.style.cursor = 'grab';
+      dragHandle = null;
+    }
+    element.style.border = '';
+
+    // Save position to localStorage
+    localStorage.setItem(`panel-position-${panelId}`, JSON.stringify({ x: currentX, y: currentY }));
+  };
+
+  element.addEventListener('mousedown', dragStart);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', dragEnd);
+
+  // Cleanup function
+  return () => {
+    element.removeEventListener('mousedown', dragStart);
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mouseup', dragEnd);
+  };
 };
 
 const setupScene = () => {
@@ -190,14 +477,6 @@ const setupScene = () => {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  // Outline Effect for cel-shading outlines
-  effect = new OutlineEffect(renderer, {
-    defaultThickness: 0.005,
-    defaultColor: [0, 0, 0],
-    defaultAlpha: 1,
-    defaultKeepAlive: true,
-  });
-
   // Controls
   controls = new OrbitControls(camera, canvas.value);
   controls.enableDamping = true;
@@ -218,17 +497,17 @@ const setupScene = () => {
     intensity: ambientLight.intensity,
   };
 
-  sunLight = new THREE.SpotLight('#ffff00', 50); // Yellow light with higher intensity
-  // Position the light above and slightly in front
-  const lightAngle = Math.PI / 4; // 45 degrees
-  const lightY = 15 * Math.cos(lightAngle); // Increased from 10 to 15 (50% higher)
-  const lightZ = -15 * Math.sin(lightAngle); // Increased from -10 to -15 (50% higher)
-  sunLight.position.set(0, lightY, lightZ);
-  sunLight.target.position.set(0, 0, 0); // Point at the center
-  sunLight.angle = Math.PI / 6; // 30 degrees cone angle
-  sunLight.penumbra = 0.2; // Soft edge
-  sunLight.decay = 1; // Less aggressive light falloff (1 = linear, 2 = physically realistic)
-  sunLight.distance = 0; // No distance limit (0 = infinite)
+  sunLight = new THREE.SpotLight('#fbff00', 26); // Yellow light
+  // Position the light
+  sunLight.position.set(1.6, 9.21, -5.3);
+  // Calculate target position from direction
+  const lightDirection = new THREE.Vector3(0, -0.71, 0.75).normalize();
+  const targetDistance = 10; // Distance for target
+  sunLight.target.position.copy(sunLight.position).add(lightDirection.multiplyScalar(targetDistance));
+  sunLight.angle = 1.47; // Angle in radians (84.21 degrees)
+  sunLight.penumbra = 1.0; // Soft edge
+  sunLight.decay = 1; // Less aggressive light falloff
+  sunLight.distance = 69; // Distance limit
   sunLight.castShadow = true;
   sunLight.shadow.camera.near = 1;
   sunLight.shadow.camera.far = 50;
@@ -261,55 +540,26 @@ const setupScene = () => {
   };
 
   // Add SpotLight helper to visualize the light
-  const spotLightHelper = new THREE.SpotLightHelper(sunLight, 0xffff00);
+  spotLightHelper = new THREE.SpotLightHelper(sunLight, 0xffff00);
   scene.add(spotLightHelper);
 
-  // Add a concrete floor with grain texture
+  // Create floor
   const floorGeometry = new THREE.PlaneGeometry(50, 50);
-
-  // Create a simple noise texture for concrete grain
-  const textureCanvas = document.createElement('canvas');
-  textureCanvas.width = 512;
-  textureCanvas.height = 512;
-  const ctx = textureCanvas.getContext('2d')!;
-
-  // Fill with base gray
-  ctx.fillStyle = '#a0a0a0';
-  ctx.fillRect(0, 0, 512, 512);
-
-  // Add noise/grain
-  const imageData = ctx.getImageData(0, 0, 512, 512);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * 30; // Random variation
-    data[i] += noise;     // R
-    data[i + 1] += noise; // G
-    data[i + 2] += noise; // B
-  }
-  ctx.putImageData(imageData, 0, 0);
-
-  // Create texture from canvas
-  const concreteTexture = new THREE.CanvasTexture(textureCanvas);
-  concreteTexture.wrapS = THREE.RepeatWrapping;
-  concreteTexture.wrapT = THREE.RepeatWrapping;
-  concreteTexture.repeat.set(4, 4); // Repeat the texture 4x4 times
-
   const floorMaterial = new THREE.MeshStandardMaterial({
-    map: concreteTexture, // Use the grain texture
-    roughness: 0.95, // Very rough surface for concrete
-    metalness: 0.0, // No metallic reflection
+    map: createFloorTexture(30),
+    roughness: 0.95,
+    metalness: 0.0,
   });
+
   floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-  floor.position.y = 0;
+  floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Initialize floor material info
   floorMaterialInfo.value = {
     color: '#' + floorMaterial.color.getHexString(),
-    roughness: floorMaterial.roughness,
-    metalness: floorMaterial.metalness,
+    roughness: 0.95,
+    metalness: 0.0,
     noiseIntensity: 30,
   };
 
@@ -317,172 +567,152 @@ const setupScene = () => {
   const axesHelper = new THREE.AxesHelper(5);
   scene.add(axesHelper);
 
-  // Helper function to load and setup a model
-  const loadModel = (objPath: string, mtlPath: string, offsetX: number, logPrefix: string) => {
+  // Helper function to load and setup a model (simplified)
+  const loadModel = (
+    objPath: string,
+    mtlPath: string,
+    modelName: string,
+    finalPosition: { x: number, y: number, z: number },
+    finalRotation: { x: number, y: number, z: number }, // in degrees
+    finalScale: number
+  ) => {
     const mtlLoader = new MTLLoader();
     mtlLoader.load(
       mtlPath,
       (materials) => {
         materials.preload();
 
+        // Increment loaded models count after MTL loaded
+        loadedModelsCount.value++;
+        if (loadedModelsCount.value >= totalModelsCount) {
+          isLoading.value = false;
+        }
+
         const objLoader = new OBJLoader();
         objLoader.setMaterials(materials);
         objLoader.load(
           objPath,
           (model) => {
-            const meshes: THREE.Mesh[] = [];
-            const meshInfo: Array<{ name: string, geometry: string, material: string, vertices: number }> = [];
+            // Set the model name
+            model.name = modelName;
 
-            // Mesh names are now defined directly in the OBJ file (no mapping needed)
+            // Apply scale
+            model.scale.setScalar(finalScale);
 
-            // Color mapping: all meshes are #C2AC97 by default
-            // Specify which mesh name should have a different color (to be customized)
-            const colorMapping: Record<string, THREE.Color> = {
-              'TOP': new THREE.Color(0xffffff), // White
-            };
+            // Apply rotations (convert degrees to radians)
+            model.rotation.order = 'XYZ';
+            model.rotation.x = (finalRotation.x * Math.PI) / 180;
+            model.rotation.y = (finalRotation.y * Math.PI) / 180;
+            model.rotation.z = (finalRotation.z * Math.PI) / 180;
 
-            // Default color for all meshes (white)
-            const defaultColor = new THREE.Color(0xffffff); // White
+            // Apply position
+            model.position.set(finalPosition.x, finalPosition.y, finalPosition.z);
 
-            // Group meshes by name prefix to merge similar parts
-            const meshGroups = new Map<string, THREE.Mesh[]>();
-
+            // Enable shadows for all meshes and convert materials to MeshPhysicalMaterial
             model.traverse((child) => {
               if (child instanceof THREE.Mesh) {
-                meshes.push(child);
+                child.castShadow = true;
+                child.receiveShadow = true;
 
-                // Mesh names come directly from the OBJ file
-                const meshName = child.name || 'Unnamed';
-
-                const info = {
-                  name: meshName,
-                  geometry: child.geometry.type,
-                  material: child.material instanceof THREE.Material ? child.material.type : 'Unknown',
-                  vertices: child.geometry.attributes.position?.count || 0,
-                };
-                meshInfo.push(info);
-
-                // Group meshes by name for merging
-                if (!meshGroups.has(meshName)) {
-                  meshGroups.set(meshName, []);
-                }
-                meshGroups.get(meshName)!.push(child);
-              }
-            });
-
-            // Now merge geometries within each group and apply single color
-            let groupIndex = 0;
-            meshGroups.forEach((groupMeshes, groupName) => {
-              // Check if this mesh name has a specific color mapping
-              let materialColor: THREE.Color;
-              if (colorMapping[groupName]) {
-                // Use the specific color from the mapping
-                materialColor = colorMapping[groupName].clone();
-              } else {
-                // Use default white color for all other meshes
-                materialColor = defaultColor.clone();
-              }
-
-              // Merge all meshes in this group into one
-              const geometries: THREE.BufferGeometry[] = [];
-
-              groupMeshes.forEach((mesh) => {
-                // Clone and apply world transform
-                const geo = mesh.geometry.clone();
-                mesh.updateMatrixWorld();
-                geo.applyMatrix4(mesh.matrixWorld);
-
-                // Remove vertex colors
-                if (geo.attributes.color) {
-                  geo.deleteAttribute('color');
+                // Convert material to MeshPhysicalMaterial if it isn't already
+                if (!(child.material instanceof THREE.MeshPhysicalMaterial)) {
+                  const oldMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
+                  const newMaterial = new THREE.MeshPhysicalMaterial({
+                    color: oldMaterial.color,
+                    map: oldMaterial.map,
+                    roughness: 0.8,
+                    metalness: 0.2,
+                    transmission: 0,
+                    thickness: 0.5,
+                  });
+                  child.material = newMaterial;
+                  if (oldMaterial.map) newMaterial.needsUpdate = true;
                 }
 
-                geometries.push(geo);
+                // Apply specific material settings for NEON_WALL meshes
+                if (modelName === 'NEON_WALL' && child.material instanceof THREE.MeshPhysicalMaterial) {
+                  child.material.color.setHex(0xffdd1a);
+                  child.material.roughness = 0.8;
+                  child.material.metalness = 0.2;
+                  child.material.transparent = true;
+                  child.material.opacity = 1.0;
+                  child.material.transmission = 0.33;
+                  child.material.thickness = 0.5;
+                  child.material.needsUpdate = true;
+                  child.castShadow = false; // Disable shadows for transparent objects
 
-                // Hide original mesh
-                mesh.visible = false;
-              });
-
-              // Merge geometries using BufferGeometryUtils
-              if (geometries.length > 0) {
-                const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, false);
-
-                if (mergedGeometry) {
-                  // Compute smooth normals
-                  mergedGeometry.computeVertexNormals();
-
-                  // Create material based on mesh name
-                  let material: THREE.Material;
-                  if (groupName === 'TOP') {
-                    // Use MeshStandardMaterial for TOP with plastic properties
-                    material = new THREE.MeshStandardMaterial({
-                      color: materialColor,
-                      roughness: 0.3, // Slightly rough for plastic sheen (0.0 to 1.0)
-                      metalness: 0.0, // No metalness = dielectric/plastic (0.0 to 1.0)
-                      flatShading: false,
-                      vertexColors: false,
-                    });
-                  } else {
-                    // Use MeshStandardMaterial for other meshes with varnished metal properties
-                    material = new THREE.MeshStandardMaterial({
-                      color: materialColor,
-                      roughness: 0.25, // Low roughness for varnished/polished metal
-                      metalness: 0.9, // High metalness for metal appearance
-                      flatShading: false,
-                      vertexColors: false,
-                    });
+                  // Apply emissive to NEON_1 through NEON_5 meshes
+                  if (child.name.match(/^NEON_[1-5]$/)) {
+                    // Set emissive properties
+                    child.material.emissive.setHex(0xffdd1a); // Yellow neon color
+                    child.material.emissiveIntensity = 25;
                   }
 
-                  // Create the merged mesh
-                  const mergedMesh = new THREE.Mesh(mergedGeometry, material);
-                  mergedMesh.castShadow = true;
-                  mergedMesh.receiveShadow = true;
-                  mergedMesh.name = `Merged_${groupName}`;
-
-                  model.add(mergedMesh);
+                  // Apply specific settings to GLASS mesh
+                  if (child.name === 'GLASS') {
+                    child.material.color.setHex(0x8cff1a); // Green color
+                    child.material.opacity = 0.35;
+                    child.material.emissive.setHex(0x3be846); // Green emissive
+                    child.material.emissiveIntensity = 5.65;
+                  }
                 }
               }
-
-              groupIndex++;
             });
 
-            // Scale the model down by 10x
-            model.scale.set(0.1, 0.1, 0.1);
-
-            // Apply rotations using rotation order to ensure correct transformation
-            model.rotation.order = 'XYZ';
-            model.rotation.x = Math.PI / 2 + Math.PI;  // 270 degrees around X
-            model.rotation.y = 2 * Math.PI;             // 90 degrees around Y
-            model.rotation.z = Math.PI / 2;            // -90 degrees around Z
-
-            // Center the model
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.sub(center);
-
-            // Position the model on the ground plane (y=0) - bottom touching the grid
-            model.position.y = -box.min.y;
-
-            // Position the model with offset
-            model.position.x += offsetX;
+            console.log(`${modelName} loaded at position (${finalPosition.x}, ${finalPosition.y}, ${finalPosition.z})`);
 
             scene.add(model);
+
+
+            // Increment loaded models count
+            loadedModelsCount.value++;
+            if (loadedModelsCount.value >= totalModelsCount) {
+              isLoading.value = false;
+            }
           },
           undefined,
           (error) => {
-            console.error(`${logPrefix} Error loading OBJ:`, error);
+            console.error(`${modelName} Error loading OBJ:`, error);
+            // Even on error, increment to avoid infinite loading
+            loadedModelsCount.value++;
+            if (loadedModelsCount.value >= totalModelsCount) {
+              isLoading.value = false;
+            }
           }
         );
       },
       undefined,
       (error) => {
-        console.error(`${logPrefix} Error loading MTL:`, error);
+        console.error(`${modelName} Error loading MTL:`, error);
+        // Even on error, increment to avoid infinite loading
+        loadedModelsCount.value++;
+        if (loadedModelsCount.value >= totalModelsCount) {
+          isLoading.value = false;
+        }
       }
     );
   };
 
   // Load the OBJ models with multiple meshes
-  loadModel('/experiments/plan-de-travail.obj', '/experiments/plan-de-travail.mtl', 0, 'MODEL_1');
+  // WORKBENCH - plan de travail
+  loadModel(
+    '/experiments/plan-de-travail.obj',
+    '/experiments/plan-de-travail.mtl',
+    'WORKBENCH',
+    { x: 0, y: 0, z: 0 },          // Position
+    { x: 270, y: 360, z: 90 },     // Rotation (degrees)
+    0.1                             // Scale
+  );
+
+  // NEON_WALL - neon wall
+  loadModel(
+    '/experiments/neon-wall.obj',
+    '/experiments/neon-wall.mtl',
+    'NEON_WALL',
+    { x: -0.4, y: 0, z: -7.5 },    // Position
+    { x: -90, y: 0, z: 0 },        // Rotation (degrees)
+    0.1                             // Scale
+  );
 
   // Animation loop
   const animate = () => {
@@ -496,7 +726,7 @@ const setupScene = () => {
       z: Math.round(camera.position.z * 100) / 100,
     };
 
-    effect.render(scene, camera); // Use effect instead of renderer for outlines
+    renderer.render(scene, camera);
   };
   animate();
 
@@ -505,69 +735,79 @@ const setupScene = () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    effect.setSize(window.innerWidth, window.innerHeight);
   };
   window.addEventListener('resize', handleResize);
 
-  // Handle click events for mesh selection
+  // Handle click events for object selection
   const handleClick = (event: MouseEvent) => {
-    // Calculate pointer position in normalized device coordinates (-1 to +1)
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    // Update the raycaster with the camera and pointer position
     raycaster.setFromCamera(pointer, camera);
-
-    // Calculate objects intersecting the ray
     const intersects = raycaster.intersectObjects(scene.children, true);
 
-    if (intersects.length > 0) {
-      // Find the first mesh that is not a helper
-      const clickedMesh = intersects.find(intersect =>
-        intersect.object instanceof THREE.Mesh &&
-        intersect.object.name.startsWith('Merged_')
-      );
+    const clicked = intersects.find(i => i.object instanceof THREE.Mesh);
+    if (!clicked) return;
 
-      if (clickedMesh) {
-        // Extract the original mesh name (remove 'Merged_' prefix)
-        const meshName = clickedMesh.object.name.replace('Merged_', '');
-        selectedMeshName.value = meshName;
+    const mesh = clicked.object as THREE.Mesh;
 
-        // Store reference to the mesh object
-        selectedMeshObject.value = clickedMesh.object as THREE.Mesh;
+    // Ignorer le clic si c'est le sol (floor) - garder la sélection précédente
+    if (mesh === floor) return;
 
-        // Extract material information
-        const mesh = clickedMesh.object as THREE.Mesh;
-        const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    // Ne mettre à jour que si c'est un mesh avec un nom valide
+    if (!mesh.name) return;
 
-        if (material instanceof THREE.MeshStandardMaterial) {
-          selectedMeshMaterial.value = {
-            type: 'MeshStandardMaterial',
-            color: '#' + material.color.getHexString(),
-            roughness: material.roughness,
-            metalness: material.metalness,
-          };
-        } else if (material instanceof THREE.MeshToonMaterial) {
-          selectedMeshMaterial.value = {
-            type: 'MeshToonMaterial',
-            color: '#' + material.color.getHexString(),
-          };
-        } else {
-          selectedMeshMaterial.value = {
-            type: material?.type || 'Unknown',
-            color: 'N/A',
-          };
-        }
+    selectedMeshName.value = mesh.name;
+    selectedMeshObject.value = mesh;
 
-        console.log('Clicked on mesh:', meshName, 'Material:', selectedMeshMaterial.value);
-      }
+    // Find parent model
+    let parent = mesh.parent;
+    while (parent && parent.parent !== scene) parent = parent.parent;
+
+    if (parent && parent !== scene) {
+      selectedObject.value = parent;
+      selectedObjectName.value = parent.name || 'Unknown';
+      selectedObjectPosition.value = {
+        x: Math.round(parent.position.x * 100) / 100,
+        y: Math.round(parent.position.y * 100) / 100,
+        z: Math.round(parent.position.z * 100) / 100,
+      };
+      selectedObjectRotation.value = {
+        x: Math.round((parent.rotation.x * 180 / Math.PI) * 100) / 100,
+        y: Math.round((parent.rotation.y * 180 / Math.PI) * 100) / 100,
+        z: Math.round((parent.rotation.z * 180 / Math.PI) * 100) / 100,
+      };
+      selectedObjectScale.value = Math.round(parent.scale.x * 1000) / 1000;
     }
   };
+
   window.addEventListener('click', handleClick);
+};
+
+// Cleanup functions for draggable panels
+const dragCleanupFunctions: (() => void)[] = [];
+
+// Function to setup draggable panels
+const setupDraggablePanels = () => {
+  nextTick(() => {
+    if (floorMaterialPanel.value) dragCleanupFunctions.push(makeDraggable(floorMaterialPanel.value, 'floorMaterial'));
+    if (selectedMeshPanel.value) dragCleanupFunctions.push(makeDraggable(selectedMeshPanel.value, 'selectedMesh'));
+    if (cameraPositionPanel.value) dragCleanupFunctions.push(makeDraggable(cameraPositionPanel.value, 'cameraPosition'));
+    if (objectTransformPanel.value) dragCleanupFunctions.push(makeDraggable(objectTransformPanel.value, 'objectTransform'));
+    if (ambientLightPanel.value) dragCleanupFunctions.push(makeDraggable(ambientLightPanel.value, 'ambientLight'));
+    if (spotLightPanel.value) dragCleanupFunctions.push(makeDraggable(spotLightPanel.value, 'spotLight'));
+  });
 };
 
 onMounted(() => {
   setupScene();
+});
+
+// Watch for when loading is complete, then setup draggable panels
+watch(isLoading, (newValue) => {
+  if (!newValue) {
+    setupDraggablePanels();
+  }
 });
 
 onUnmounted(() => {
@@ -580,40 +820,50 @@ onUnmounted(() => {
   if (controls) {
     controls.dispose();
   }
+  // Cleanup all draggable event listeners
+  dragCleanupFunctions.forEach(cleanup => cleanup());
 });
 </script>
 
 <template>
   <div class="fixed inset-0 bg-gray-900">
+    <!-- Loading screen -->
+    <div v-if="isLoading" class="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+      <p class="text-white text-2xl font-mono">Loading...</p>
+    </div>
+
     <canvas
       ref="canvas"
       class="w-full h-full outline-0"
     ></canvas>
 
-    <!-- Instructions overlay -->
-    <div class="absolute top-4 left-4 bg-black/70 text-white p-4 rounded-lg max-w-md">
-      <h1 class="text-xl font-bold mb-2">Model Viewer Test</h1>
-      <p class="text-sm mb-2">File: <code class="bg-gray-700 px-1 rounded text-xs">plan-de-travail.obj</code></p>
-      <p class="text-xs text-gray-400 mb-3">Game lighting & camera settings applied</p>
-      <div class="text-xs space-y-1">
-        <p><strong>Controls:</strong></p>
-        <ul class="list-disc list-inside">
-          <li>Left click + drag: Rotate</li>
-          <li>Right click + drag: Pan</li>
-          <li>Scroll: Zoom</li>
-        </ul>
-        <p class="text-yellow-300 mt-2">Click on a mesh to see its name</p>
-      </div>
-    </div>
-
     <!-- Floor material controls -->
-    <div class="absolute top-64 left-4 bg-gray-700/90 text-white px-4 py-3 rounded-lg shadow-lg max-w-md">
-      <p class="text-xs font-semibold mb-2">Floor Material:</p>
+    <div v-if="!isLoading">
+    <div ref="floorMaterialPanel" class="absolute top-64 left-4 bg-gray-700/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]">
+      <div class="flex items-center gap-2 mb-2">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Floor</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(floorMaterialPanel, 'floor')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'floor'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
+        </div>
+      </div>
       <div class="text-sm font-mono space-y-2">
-        <p class="text-xs opacity-80">Color: {{ floorMaterialInfo.color }}</p>
+        <p class="text-xs font-mono opacity-80">Color: {{ floorMaterialInfo.color }}</p>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Roughness:</span>
             <span>{{ floorMaterialInfo.roughness.toFixed(2) }}</span>
           </label>
@@ -624,12 +874,12 @@ onUnmounted(() => {
             step="0.01"
             :value="floorMaterialInfo.roughness"
             @input="updateFloorRoughness(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Metalness:</span>
             <span>{{ floorMaterialInfo.metalness.toFixed(2) }}</span>
           </label>
@@ -640,12 +890,12 @@ onUnmounted(() => {
             step="0.01"
             :value="floorMaterialInfo.metalness"
             @input="updateFloorMetalness(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Noise:</span>
             <span>{{ floorMaterialInfo.noiseIntensity.toFixed(0) }}</span>
           </label>
@@ -656,86 +906,419 @@ onUnmounted(() => {
             step="1"
             :value="floorMaterialInfo.noiseIntensity"
             @input="updateFloorNoiseIntensity(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
           />
         </div>
+      </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
       </div>
     </div>
 
     <!-- Selected mesh display -->
     <div
-      v-if="selectedMeshName"
-      class="absolute top-4 right-4 bg-green-600/90 text-white px-4 py-3 rounded-lg shadow-lg"
+      ref="selectedMeshPanel"
+      class="absolute top-4 right-4 bg-green-600/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]"
     >
-      <p class="text-xs font-semibold mb-1">Selected Mesh:</p>
-      <p class="text-lg font-mono mb-3">{{ selectedMeshName }}</p>
-
-      <div
-        v-if="selectedMeshMaterial"
-        class="text-sm font-mono space-y-2"
-      >
-        <p class="text-xs font-semibold opacity-80">Material:</p>
-        <p class="text-xs">Type: {{ selectedMeshMaterial.type }}</p>
-        <p class="text-xs">Color: {{ selectedMeshMaterial.color }}</p>
-
-        <div
-          v-if="selectedMeshMaterial.roughness !== undefined"
-          class="space-y-1"
-        >
-          <label class="text-xs flex items-center justify-between">
-            <span>Roughness:</span>
-            <span>{{ selectedMeshMaterial.roughness.toFixed(2) }}</span>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            :value="selectedMeshMaterial.roughness"
-            @input="updateRoughness(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
-          />
+      <div class="flex items-center gap-2 mb-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Mesh</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(selectedMeshPanel, 'mesh')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'mesh'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
         </div>
+      </div>
 
-        <div
-          v-if="selectedMeshMaterial.metalness !== undefined"
-          class="space-y-1"
-        >
-          <label class="text-xs flex items-center justify-between">
-            <span>Metalness:</span>
-            <span>{{ selectedMeshMaterial.metalness.toFixed(2) }}</span>
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            :value="selectedMeshMaterial.metalness"
-            @input="updateMetalness(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
-          />
+      <div v-if="!selectedMeshName" class="text-sm italic opacity-70">
+        Aucun mesh sélectionné
+      </div>
+
+      <div v-else>
+        <p class="text-base font-mono mb-3 text-center overflow-hidden text-ellipsis whitespace-nowrap">{{ selectedMeshName }}</p>
+
+        <div v-if="selectedMeshObject && (selectedMeshObject.material instanceof THREE.MeshPhysicalMaterial || selectedMeshObject.material instanceof THREE.MeshStandardMaterial)" class="text-sm font-mono space-y-2">
+          <p class="text-xs font-mono opacity-80">Material: {{ selectedMeshObject.material.type }}</p>
+
+          <div>
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Color:</span>
+              <span>#{{ selectedMeshObject.material.color.getHexString() }}</span>
+              <input
+                type="color"
+                :value="'#' + selectedMeshObject.material.color.getHexString()"
+                @input="updateMaterialColor(($event.target as HTMLInputElement).value)"
+                class="w-6 h-6 rounded cursor-pointer border-0"
+              />
+            </label>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Roughness:</span>
+              <span>{{ selectedMeshObject.material.roughness.toFixed(2) }}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              :value="selectedMeshObject.material.roughness"
+              @input="updateRoughness(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Metalness:</span>
+              <span>{{ selectedMeshObject.material.metalness.toFixed(2) }}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              :value="selectedMeshObject.material.metalness"
+              @input="updateMetalness(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Emissive:</span>
+              <span>#{{ selectedMeshObject.material.emissive.getHexString() }}</span>
+              <input
+                type="color"
+                :value="'#' + selectedMeshObject.material.emissive.getHexString()"
+                @input="updateEmissiveColor(($event.target as HTMLInputElement).value)"
+                class="w-6 h-6 rounded cursor-pointer border-0"
+              />
+            </label>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Emissive Int:</span>
+              <span>{{ selectedMeshObject.material.emissiveIntensity.toFixed(2) }}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="25"
+              step="0.01"
+              :value="selectedMeshObject.material.emissiveIntensity"
+              @input="updateEmissiveIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-mono flex items-center justify-between cursor-pointer">
+              <span>Transparent:</span>
+              <input
+                type="checkbox"
+                :checked="selectedMeshObject.material.transparent"
+                @change="updateTransparent(($event.target as HTMLInputElement).checked)"
+                class="w-4 h-4 cursor-pointer"
+              />
+            </label>
+          </div>
+
+          <div v-if="selectedMeshObject.material.transparent" class="space-y-1">
+            <label class="text-xs font-mono flex items-center justify-between">
+              <span>Opacity:</span>
+              <span>{{ selectedMeshObject.material.opacity.toFixed(2) }}</span>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              :value="selectedMeshObject.material.opacity"
+              @input="updateOpacity(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+
+          <template v-if="selectedMeshObject.material instanceof THREE.MeshPhysicalMaterial">
+            <div v-if="selectedMeshObject.material.transparent" class="space-y-1">
+              <label class="text-xs font-mono flex items-center justify-between">
+                <span>Transmission:</span>
+                <span>{{ selectedMeshObject.material.transmission.toFixed(2) }}</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                :value="selectedMeshObject.material.transmission"
+                @input="updateTransmission(parseFloat(($event.target as HTMLInputElement).value))"
+                class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+
+            <div v-if="selectedMeshObject.material.transparent" class="space-y-1">
+              <label class="text-xs font-mono flex items-center justify-between">
+                <span>Thickness:</span>
+                <span>{{ selectedMeshObject.material.thickness.toFixed(2) }}</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="5"
+                step="0.1"
+                :value="selectedMeshObject.material.thickness"
+                @input="updateThickness(parseFloat(($event.target as HTMLInputElement).value))"
+                class="w-full h-1 bg-green-700 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </template>
         </div>
+      </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
       </div>
     </div>
 
     <!-- Camera position display -->
-    <div class="absolute bottom-4 left-4 bg-blue-600/90 text-white px-4 py-3 rounded-lg shadow-lg">
-      <p class="text-xs font-semibold mb-1">Camera Position:</p>
+    <div ref="cameraPositionPanel" class="absolute bottom-4 left-4 bg-blue-600/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]">
+      <div class="flex items-center gap-2 mb-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Camera</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(cameraPositionPanel, 'camera')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'camera'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
+        </div>
+      </div>
       <div class="text-sm font-mono space-y-1">
         <p>X: {{ cameraPosition.x.toFixed(2) }}</p>
         <p>Y: {{ cameraPosition.y.toFixed(2) }}</p>
         <p>Z: {{ cameraPosition.z.toFixed(2) }}</p>
       </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Object position controls -->
+    <div
+      ref="objectTransformPanel"
+      class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]"
+    >
+      <div class="flex items-center gap-2 mb-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Object</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(objectTransformPanel, 'transform')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'transform'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!selectedObject" class="text-sm italic opacity-70 text-center">
+        Aucun objet sélectionné
+      </div>
+
+      <div v-else>
+        <p class="text-base font-mono mb-3 text-center overflow-hidden text-ellipsis whitespace-nowrap">{{ selectedObjectName }}</p>
+
+        <!-- Position controls -->
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Position</p>
+        <div class="grid grid-cols-3 gap-1 mb-2">
+          <!-- X Position -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">X</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="selectedObjectPosition.x"
+              @input="updateObjectPositionX(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+
+          <!-- Y Position -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Y</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="selectedObjectPosition.y"
+              @input="updateObjectPositionY(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+
+          <!-- Z Position -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Z</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="selectedObjectPosition.z"
+              @input="updateObjectPositionZ(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+        </div>
+
+        <!-- Rotation controls -->
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Rotation (degrees)</p>
+        <div class="grid grid-cols-3 gap-1 mb-2">
+          <!-- X Rotation -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">X</label>
+            <input
+              type="number"
+              step="1"
+              :value="selectedObjectRotation.x"
+              @input="updateObjectRotationX(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+
+          <!-- Y Rotation -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Y</label>
+            <input
+              type="number"
+              step="1"
+              :value="selectedObjectRotation.y"
+              @input="updateObjectRotationY(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+
+          <!-- Z Rotation -->
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Z</label>
+            <input
+              type="number"
+              step="1"
+              :value="selectedObjectRotation.z"
+              @input="updateObjectRotationZ(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+        </div>
+
+        <!-- Scale control -->
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Scale</p>
+        <div class="flex justify-center">
+          <div class="space-y-1 w-16">
+            <input
+              type="number"
+              step="0.01"
+              :value="selectedObjectScale"
+              @input="updateObjectScale(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300 text-center"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+      </div>
     </div>
 
     <!-- Ambient light info display -->
-    <div class="absolute bottom-[32rem] right-4 bg-cyan-600/90 text-white px-4 py-3 rounded-lg shadow-lg">
-      <p class="text-xs font-semibold mb-2">Ambient Light:</p>
+    <div ref="ambientLightPanel" class="absolute bottom-[32rem] right-4 bg-cyan-600/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]">
+      <div class="flex items-center gap-2 mb-2">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Ambiant light</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(ambientLightPanel, 'ambient')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'ambient'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
+        </div>
+      </div>
       <div class="text-sm font-mono space-y-2">
-        <p class="text-xs opacity-80">Color: {{ ambientLightInfo.color }}</p>
+        <div>
+          <label class="text-xs font-mono flex items-center justify-between">
+            <span>Color:</span>
+            <span>{{ ambientLightInfo.color }}</span>
+            <input
+              type="color"
+              :value="ambientLightInfo.color"
+              @input="updateAmbientLightColor(($event.target as HTMLInputElement).value)"
+              class="w-6 h-6 rounded cursor-pointer border-0"
+            />
+          </label>
+        </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Intensity:</span>
             <span>{{ ambientLightInfo.intensity.toFixed(2) }}</span>
           </label>
@@ -746,28 +1329,127 @@ onUnmounted(() => {
             step="0.1"
             :value="ambientLightInfo.intensity"
             @input="updateAmbientLightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-cyan-700 rounded-lg appearance-none cursor-pointer"
           />
         </div>
+      </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
       </div>
     </div>
 
     <!-- Spot light info display -->
-    <div class="absolute bottom-4 right-4 bg-yellow-600/90 text-white px-4 py-3 rounded-lg shadow-lg">
-      <p class="text-xs font-semibold mb-2">Spot Light:</p>
-      <div class="text-sm font-mono space-y-2">
-        <p class="text-xs opacity-80">Position:</p>
-        <p>X: {{ lightInfo.position.x.toFixed(2) }}</p>
-        <p>Y: {{ lightInfo.position.y.toFixed(2) }}</p>
-        <p>Z: {{ lightInfo.position.z.toFixed(2) }}</p>
-        <p class="text-xs opacity-80 mt-2">Direction:</p>
-        <p>X: {{ lightInfo.direction.x.toFixed(2) }}</p>
-        <p>Y: {{ lightInfo.direction.y.toFixed(2) }}</p>
-        <p>Z: {{ lightInfo.direction.z.toFixed(2) }}</p>
-        <p class="text-xs opacity-80 mt-2">Color: {{ lightInfo.color }}</p>
+    <div ref="spotLightPanel" class="absolute bottom-4 right-4 bg-yellow-600/90 text-white px-2 py-2 rounded-lg shadow-lg w-[200px]">
+      <div class="flex items-center gap-2 mb-2">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+        <p class="text-xs font-sans font-semibold flex-1 text-center">Directionnal light</p>
+        <div class="relative">
+          <svg @click="copyPanelContent(spotLightPanel, 'spot')" class="w-4 h-4 flex-shrink-0 cursor-pointer hover:opacity-70" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          <div v-if="copiedPanel === 'spot'" class="absolute top-6 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-fade-in">
+            Copié!
+          </div>
+        </div>
+      </div>
+      <div class="text-xs font-mono space-y-1">
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Position</p>
+        <div class="grid grid-cols-3 gap-1 mb-2">
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">X</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="lightInfo.position.x"
+              @input="updateSpotLightPositionX(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Y</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="lightInfo.position.y"
+              @input="updateSpotLightPositionY(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Z</label>
+            <input
+              type="number"
+              step="0.1"
+              :value="lightInfo.position.z"
+              @input="updateSpotLightPositionZ(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+        </div>
+
+        <p class="text-xs font-sans font-semibold mb-1 text-center opacity-80">Direction</p>
+        <div class="grid grid-cols-3 gap-1 mb-2">
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">X</label>
+            <input
+              type="number"
+              step="0.01"
+              :value="lightInfo.direction.x"
+              @input="updateSpotLightDirectionX(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Y</label>
+            <input
+              type="number"
+              step="0.01"
+              :value="lightInfo.direction.y"
+              @input="updateSpotLightDirectionY(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-sans font-semibold block text-center">Z</label>
+            <input
+              type="number"
+              step="0.01"
+              :value="lightInfo.direction.z"
+              @input="updateSpotLightDirectionZ(parseFloat(($event.target as HTMLInputElement).value))"
+              class="w-full px-1 py-1 text-[0.625rem] font-mono text-white bg-black/30 rounded border-2 border-white focus:outline-none focus:border-yellow-300"
+            />
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <label class="text-xs font-mono flex items-center justify-between">
+            <span>Color:</span>
+            <span>{{ lightInfo.color }}</span>
+            <input
+              type="color"
+              :value="lightInfo.color"
+              @input="updateSpotLightColor(($event.target as HTMLInputElement).value)"
+              class="w-6 h-6 rounded cursor-pointer border-0"
+            />
+          </label>
+        </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Intensity:</span>
             <span>{{ lightInfo.intensity.toFixed(2) }}</span>
           </label>
@@ -778,12 +1460,12 @@ onUnmounted(() => {
             step="1"
             :value="lightInfo.intensity"
             @input="updateDirectionalLightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-yellow-700 rounded-lg appearance-none cursor-pointer"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Angle (deg):</span>
             <span>{{ (lightInfo.angle * 180 / Math.PI).toFixed(1) }}</span>
           </label>
@@ -794,12 +1476,12 @@ onUnmounted(() => {
             step="0.01"
             :value="lightInfo.angle"
             @input="updateSpotLightAngle(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-yellow-700 rounded-lg appearance-none cursor-pointer"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Penumbra:</span>
             <span>{{ lightInfo.penumbra.toFixed(2) }}</span>
           </label>
@@ -810,12 +1492,12 @@ onUnmounted(() => {
             step="0.01"
             :value="lightInfo.penumbra"
             @input="updateSpotLightPenumbra(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-yellow-700 rounded-lg appearance-none cursor-pointer"
           />
         </div>
 
         <div class="space-y-1">
-          <label class="text-xs flex items-center justify-between">
+          <label class="text-xs font-mono flex items-center justify-between">
             <span>Distance:</span>
             <span>{{ lightInfo.distance.toFixed(1) }}</span>
           </label>
@@ -826,10 +1508,114 @@ onUnmounted(() => {
             step="1"
             :value="lightInfo.distance"
             @input="updateSpotLightDistance(parseFloat(($event.target as HTMLInputElement).value))"
-            class="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+            class="w-full h-1 bg-yellow-700 rounded-lg appearance-none cursor-pointer"
           />
         </div>
       </div>
+      <div class="absolute bottom-1 right-1">
+        <svg class="drag-handle w-3 h-3 opacity-30 hover:opacity-70 cursor-grab" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="5" r="2"/>
+          <circle cx="15" cy="5" r="2"/>
+          <circle cx="9" cy="12" r="2"/>
+          <circle cx="15" cy="12" r="2"/>
+          <circle cx="9" cy="19" r="2"/>
+          <circle cx="15" cy="19" r="2"/>
+        </svg>
+      </div>
+    </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Floor panel sliders - lighter gray thumb */
+input[type="range"].bg-gray-800::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #d1d5db;
+  cursor: pointer;
+}
+
+input[type="range"].bg-gray-800::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #d1d5db;
+  cursor: pointer;
+  border: none;
+}
+
+/* Mesh panel sliders - lighter green thumb */
+input[type="range"].bg-green-700::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #86efac;
+  cursor: pointer;
+}
+
+input[type="range"].bg-green-700::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #86efac;
+  cursor: pointer;
+  border: none;
+}
+
+/* Ambient light panel sliders - lighter cyan thumb */
+input[type="range"].bg-cyan-700::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #67e8f9;
+  cursor: pointer;
+}
+
+input[type="range"].bg-cyan-700::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #67e8f9;
+  cursor: pointer;
+  border: none;
+}
+
+/* Directional light panel sliders - lighter yellow thumb */
+input[type="range"].bg-yellow-700::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fde047;
+  cursor: pointer;
+}
+
+input[type="range"].bg-yellow-700::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fde047;
+  cursor: pointer;
+  border: none;
+}
+</style>
