@@ -29,8 +29,8 @@ function getSharedMaterial(
         metalness: 0.64,
         transparent: true,
         opacity: 0.47,
-        emissive: color === 'yellow' ? 0x3be846 : 0x00aaff,
-        emissiveIntensity: 5.03,
+        emissive: color === 'yellow' ? 0xffff00 : 0x00ffff,
+        emissiveIntensity: 7,
       });
     } else if (type === 'neon') {
       // Neon meshes have emissive glow
@@ -38,8 +38,8 @@ function getSharedMaterial(
         color: color === 'yellow' ? 0xffdd1a : 0x1ae4ff,
         roughness: 0.8,
         metalness: 0.2,
-        emissive: color === 'yellow' ? 0xffdd1a : 0x52d4ff,
-        emissiveIntensity: 25,
+        emissive: color === 'yellow' ? 0xffff00 : 0x00ffff,
+        emissiveIntensity: 35,
       });
     } else {
       // Default material
@@ -94,8 +94,8 @@ export async function createNeonWallPrefab(color: 'yellow' | 'blue' = 'yellow'):
  * Position and direction are relative to the model origin
  */
 function createNeonSpotlight(color: 'yellow' | 'blue'): THREE.SpotLight {
-  const lightColor = color === 'yellow' ? '#fbff00' : '#00e4ff';
-  const intensity = color === 'yellow' ? 3.0 : 4.5;
+  const lightColor = color === 'yellow' ? '#ffff00' : '#00ffff';
+  const intensity = 9.0;
   const spotlight = new THREE.SpotLight(lightColor, intensity);
 
   // Position relative to model center (scaled uniformly by 3)
@@ -109,7 +109,7 @@ function createNeonSpotlight(color: 'yellow' | 'blue'): THREE.SpotLight {
   spotlight.angle = (53.3 * Math.PI) / 180; // Angle in radians (53.3 degrees)
   spotlight.penumbra = 0.26;
   spotlight.decay = 1; // Less aggressive light falloff
-  spotlight.distance = 10.0; // Distance limit
+  spotlight.distance = 20.0; // Distance limit (increased for more reach)
 
   // Disable shadows to avoid GPU texture unit overflow
   spotlight.castShadow = false;

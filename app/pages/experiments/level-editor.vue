@@ -7,13 +7,23 @@
 
     <canvas ref="canvasRef" />
 
+    <!-- Test Mode Button -->
+    <button
+      v-if="!isLoading"
+      class="test-mode-btn"
+      @click="toggleTestMode"
+      :class="{ active: isTestMode }"
+    >
+      {{ isTestMode ? 'Exit Test Mode' : 'Test Mode' }}
+    </button>
+
     <!-- Toggle Prefab Panel Button -->
-    <button v-if="!isLoading" class="toggle-prefab-panel-btn" @click="showPrefabPanel = !showPrefabPanel">
+    <button v-if="!isLoading && !isTestMode" class="toggle-prefab-panel-btn" @click="showPrefabPanel = !showPrefabPanel">
       {{ showPrefabPanel ? '✕' : '☰' }}
     </button>
 
     <!-- Prefab Selection Panel -->
-    <div v-if="!isLoading && showPrefabPanel" class="prefab-panel" @click.stop>
+    <div v-if="!isLoading && !isTestMode && showPrefabPanel" class="prefab-panel" @click.stop>
       <h3>Prefabs</h3>
       <button @click="addPrefab('workbench')">Workbench</button>
       <button @click="addPrefab('neonwall-yellow')">Neon Wall Yellow</button>
@@ -34,7 +44,7 @@
     </div>
 
     <!-- Ambient Light Panel -->
-    <div v-if="!isLoading" class="ambient-light-panel" @click.stop>
+    <div v-if="!isLoading && !isTestMode" class="ambient-light-panel" @click.stop>
       <h3>Ambient Light</h3>
       <div class="control-group">
         <label>Color: {{ ambientLightInfo.color }}</label>
@@ -71,7 +81,7 @@
     </div>
 
     <!-- Transform Panel (shown when objects selected) -->
-    <div v-if="selectedObjects.length > 0" class="transform-panel" @click.stop>
+    <div v-if="selectedObjects.length > 0 && !isTestMode" class="transform-panel" @click.stop>
       <h3>Transform</h3>
       <p class="prefab-name" v-if="selectedObjects.length === 1">{{ selectedObjects[0].userData.prefabType }}</p>
       <p class="prefab-name" v-else>{{ selectedObjects.length }} objects selected</p>
@@ -115,6 +125,10 @@ import { createWorkbenchPrefab } from '~/three/prefabs/WorkbenchPrefab';
 import { createNeonWallPrefab } from '~/three/prefabs/NeonWallPrefab';
 import { createBlueWorkZonePrefab } from '~/three/prefabs/BlueWorkZonePrefab';
 import { createWoodWallPrefab } from '~/three/prefabs/WoodWallPrefab';
+import { PhysicsManager } from '~/three/utils/PhysicsManager';
+import { CowController } from '~/three/controllers/CowController';
+import { PrefabColliderManager } from '~/three/utils/PrefabColliderManager';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
@@ -145,6 +159,15 @@ const ambientLightInfo = ref({
 const isLoading = ref(true);
 const showGrid = ref(true);
 const showPrefabPanel = ref(true);
+const isTestMode = ref(false);
+
+// Test mode variables (outside reactive state)
+let physicsManager: PhysicsManager | null = null;
+let cowController: CowController | null = null;
+let prefabColliderManager: PrefabColliderManager | null = null;
+let storedCameraPosition: THREE.Vector3 | null = null;
+let storedCameraTarget: THREE.Vector3 | null = null;
+let preloadedCowModel: THREE.Group | null = null;
 
 interface LevelData {
   prefabs: Array<{
@@ -195,8 +218,8 @@ const setupScene = () => {
   scene.background = new THREE.Color(0x1a1a1a);
 
   const aspect = window.innerWidth / window.innerHeight;
-  camera = new THREE.PerspectiveCamera(35, aspect, 0.1, 100);
-  camera.position.set(0, 14, 11);
+  camera = new THREE.PerspectiveCamera(35, aspect, 0.1, 200);
+  camera.position.set(0, 50, 40);
   camera.lookAt(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({
@@ -256,13 +279,36 @@ const setupScene = () => {
   renderer.domElement.addEventListener('mouseup', onMouseUp);
   window.addEventListener('keydown', onKeyDown);
 
+  // Preload cow model
+  preloadCowModel();
+
   loadLevel();
   animate();
 };
 
+const preloadCowModel = async () => {
+  try {
+    const loader = new GLTFLoader();
+    const gltf = await loader.loadAsync('/models/cow.glb');
+    preloadedCowModel = gltf.scene;
+    console.log('Cow model preloaded successfully');
+  } catch (error) {
+    console.error('Failed to preload cow model:', error);
+  }
+};
+
 const animate = () => {
   requestAnimationFrame(animate);
-  controls.update();
+
+  if (isTestMode.value) {
+    // Test mode: update physics and cow
+    physicsManager?.update();
+    cowController?.update();
+  } else {
+    // Edit mode: update orbit controls
+    controls.update();
+  }
+
   selectionHelpers.forEach((helper) => helper.update());
   renderer.render(scene, camera);
 };
@@ -309,6 +355,7 @@ const updateSelectionHelpers = () => {
 };
 
 const onMouseDown = (event: MouseEvent) => {
+  if (isTestMode.value) return;
   updateMousePosition(event);
   const isShiftPressed = event.shiftKey;
 
@@ -367,6 +414,7 @@ const onMouseDown = (event: MouseEvent) => {
 };
 
 const onMouseMove = (event: MouseEvent) => {
+  if (isTestMode.value) return;
   if (!isDragging || selectedObjects.value.length === 0) {
     updateHoverCursor(event);
     return;
@@ -408,6 +456,7 @@ const updateHoverCursor = (event: MouseEvent) => {
 };
 
 const onMouseUp = () => {
+  if (isTestMode.value) return;
   if (isDragging) {
     isDragging = false;
     controls.enabled = true;
@@ -417,6 +466,8 @@ const onMouseUp = () => {
 };
 
 const onKeyDown = (event: KeyboardEvent) => {
+  if (isTestMode.value) return;
+
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const isCtrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
 
@@ -626,11 +677,11 @@ const saveLevel = () => {
 };
 
 const loadLevel = async () => {
-  const savedData = localStorage.getItem('backtrack-level');
+  let savedData = localStorage.getItem('backtrack-level');
 
+  // Load default level if no saved data exists
   if (!savedData) {
-    isLoading.value = false;
-    return;
+    savedData = `{"prefabs":[{"type":"workbench","position":{"x":-14,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-5,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-20,"y":0,"z":-10},"rotation":{"y":0}},{"type":"neonwall","position":{"x":-14,"y":0,"z":-10},"rotation":{"y":-1.5707963267948966}},{"type":"neonwall","position":{"x":-11,"y":0,"z":-10},"rotation":{"y":10.995574287564276}},{"type":"workbench","position":{"x":-5,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":1,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-11,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":13,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":7,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":10,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-2,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":16,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-23,"y":0,"z":-4},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":-23,"y":0,"z":-7},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":-23.000000029802322,"y":0,"z":17.000000029802322},"rotation":{"y":15.707963267948966}},{"type":"workbench","position":{"x":-23,"y":0,"z":2},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":-20,"y":0,"z":-1},"rotation":{"y":0}},{"type":"workbench","position":{"x":-23.000000029802322,"y":0,"z":4.999999970197677},"rotation":{"y":1.5707963267948966}},{"type":"workbench","position":{"x":16,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":13,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":7,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-17,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-14,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-5,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-11,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-11,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":-2,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":1,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":4,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":10,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":13,"y":0,"z":11},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":13,"y":0,"z":8},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":12.999999970197678,"y":0,"z":4.999999970197677},"rotation":{"y":1.5707963267948966}},{"type":"workbench","position":{"x":13,"y":0,"z":2},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":13,"y":0,"z":-4},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":13,"y":0,"z":-7},"rotation":{"y":14.137166941154069}},{"type":"workbench","position":{"x":-17,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":-14,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":-8,"y":0,"z":14},"rotation":{"y":0}},{"type":"workbench","position":{"x":-8,"y":0,"z":-10},"rotation":{"y":0}},{"type":"workbench","position":{"x":-8,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":-2,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":1,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":4,"y":0,"z":2},"rotation":{"y":0}},{"type":"workbench","position":{"x":7,"y":0,"z":2},"rotation":{"y":0}},{"type":"neonwall","position":{"x":10,"y":0,"z":-10},"rotation":{"y":4.71238898038469}},{"type":"neonwall","position":{"x":7,"y":0,"z":-10},"rotation":{"y":-1.5707963267948966}},{"type":"woodwall","position":{"x":-2,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-blue","position":{"x":-23.00000001490116,"y":0,"z":4.9999998807907104},"rotation":{"y":0}},{"type":"neonwall-blue","position":{"x":-23.00000001490116,"y":0,"z":1.9999998807907078},"rotation":{"y":0}},{"type":"woodwall","position":{"x":-23,"y":0,"z":-10},"rotation":{"y":0}},{"type":"woodwall","position":{"x":-23,"y":0,"z":14},"rotation":{"y":0}},{"type":"woodwall","position":{"x":17,"y":0,"z":14},"rotation":{"y":0}},{"type":"neonwall-blue","position":{"x":16,"y":0,"z":14},"rotation":{"y":3.141592653589793}},{"type":"neonwall-blue","position":{"x":16,"y":0,"z":11},"rotation":{"y":3.141592653589793}},{"type":"woodwall","position":{"x":17,"y":0,"z":5},"rotation":{"y":0}},{"type":"woodwall","position":{"x":17,"y":0,"z":2},"rotation":{"y":0}},{"type":"woodwall","position":{"x":17,"y":0,"z":-1},"rotation":{"y":0}},{"type":"neonwall-blue","position":{"x":16,"y":0,"z":-1},"rotation":{"y":3.141592653589793}},{"type":"neonwall-blue","position":{"x":16,"y":0,"z":-4},"rotation":{"y":3.141592653589793}},{"type":"woodwall","position":{"x":17,"y":0,"z":-10},"rotation":{"y":0}},{"type":"woodwall","position":{"x":-11,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":-23,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":-20,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":13,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":10,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-yellow","position":{"x":-2,"y":0,"z":-10},"rotation":{"y":-1.5707963267948966}},{"type":"woodwall","position":{"x":-8,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":1,"y":0,"z":-11},"rotation":{"y":1.5707963267948966}},{"type":"blueworkzone","position":{"x":13,"y":0,"z":2},"rotation":{"y":9.42477796076938}},{"type":"neonwall-blue","position":{"x":-23,"y":0,"z":-1},"rotation":{"y":6.283185307179586}},{"type":"woodwall","position":{"x":-23,"y":0,"z":-7},"rotation":{"y":0}},{"type":"woodwall","position":{"x":-23,"y":0,"z":-4},"rotation":{"y":0}},{"type":"woodwall","position":{"x":-23,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":-20,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":1,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":-8,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-yellow","position":{"x":-5,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":-2,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":1,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":10,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"woodwall","position":{"x":13,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-yellow","position":{"x":7,"y":0,"z":17},"rotation":{"y":7.853981633974483}},{"type":"neonwall-yellow","position":{"x":4,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-yellow","position":{"x":-17,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"neonwall-yellow","position":{"x":-14,"y":0,"z":17},"rotation":{"y":1.5707963267948966}},{"type":"blueworkzone","position":{"x":4,"y":0,"z":-7},"rotation":{"y":4.71238898038469}},{"type":"blueworkzone","position":{"x":-17,"y":0,"z":-7},"rotation":{"y":4.71238898038469}},{"type":"woodwall","position":{"x":-11,"y":0,"z":17},"rotation":{"y":1.5707963267948966}}],"settings":{"ambientLight":{"color":"#ffffff","intensity":1},"showGrid":false}}`;
   }
 
   try {
@@ -684,11 +735,85 @@ const loadLevel = async () => {
   }
 };
 
+// Test Mode Functions
+const toggleTestMode = async () => {
+  if (isTestMode.value) {
+    exitTestMode();
+  } else {
+    await enterTestMode();
+  }
+};
+
+const enterTestMode = async () => {
+  isTestMode.value = true;
+
+  // Clear selection
+  selectedObjects.value = [];
+  updateSelectionHelpers();
+
+  // Store current camera state
+  storedCameraPosition = camera.position.clone();
+  storedCameraTarget = controls.target.clone();
+
+  // Keep current camera position/target (don't change it)
+  // Just disable orbit controls so camera stays fixed
+  controls.enabled = false;
+
+  // Initialize physics manager
+  physicsManager = new PhysicsManager();
+  await physicsManager.init();
+
+  // Create prefab colliders
+  prefabColliderManager = new PrefabColliderManager(physicsManager);
+  prefabColliderManager.createCollidersForPrefabs(placedObjects.value);
+  prefabColliderManager.createFloorCollider();
+
+  // Create cow controller with preloaded model
+  cowController = new CowController(scene, physicsManager, preloadedCowModel);
+};
+
+const exitTestMode = () => {
+  // Dispose cow controller
+  if (cowController) {
+    cowController.dispose();
+    cowController = null;
+  }
+
+  // Dispose prefab collider manager
+  if (prefabColliderManager) {
+    prefabColliderManager.dispose();
+    prefabColliderManager = null;
+  }
+
+  // Dispose physics manager
+  if (physicsManager) {
+    physicsManager.dispose();
+    physicsManager = null;
+  }
+
+  // Restore camera position
+  if (storedCameraPosition && storedCameraTarget) {
+    camera.position.copy(storedCameraPosition);
+    controls.target.copy(storedCameraTarget);
+    camera.updateProjectionMatrix();
+  }
+
+  // Re-enable orbit controls
+  controls.enabled = true;
+
+  isTestMode.value = false;
+};
+
 onMounted(() => {
   setupScene();
 });
 
 onUnmounted(() => {
+  // Exit test mode if active
+  if (isTestMode.value) {
+    exitTestMode();
+  }
+
   window.removeEventListener('resize', onWindowResize);
   renderer.domElement.removeEventListener('mousedown', onMouseDown);
   renderer.domElement.removeEventListener('mousemove', onMouseMove);
@@ -769,6 +894,35 @@ canvas {
 
 .prefab-panel button:last-child:hover {
   background: #0b7dda;
+}
+
+.test-mode-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 12px 24px;
+  background: rgba(255, 152, 0, 0.9);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 100;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.test-mode-btn:hover {
+  background: rgba(255, 152, 0, 1);
+}
+
+.test-mode-btn.active {
+  background: rgba(244, 67, 54, 0.9);
+}
+
+.test-mode-btn.active:hover {
+  background: rgba(244, 67, 54, 1);
 }
 
 .toggle-prefab-panel-btn {
