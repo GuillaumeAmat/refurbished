@@ -1,6 +1,38 @@
 import * as THREE from 'three';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
+import { loadPrefabModel } from '~/three/utils/prefabLoader';
+
+// Shared materials cache - one material per unique color
+const sharedMaterials = new Map<number, THREE.MeshStandardMaterial>();
+
+// Special material for TOP mesh (white color with specific properties)
+let topMaterial: THREE.MeshStandardMaterial | null = null;
+
+function getOrCreateSharedMaterial(sourceColor: THREE.Color): THREE.MeshStandardMaterial {
+  const colorKey = sourceColor.getHex();
+
+  if (!sharedMaterials.has(colorKey)) {
+    // Create material with original color from MTL file
+    sharedMaterials.set(colorKey, new THREE.MeshStandardMaterial({
+      color: sourceColor.clone(),
+      roughness: 0.8,
+      metalness: 0.2,
+    }));
+  }
+
+  return sharedMaterials.get(colorKey)!;
+}
+
+function getOrCreateTopMaterial(): THREE.MeshStandardMaterial {
+  if (!topMaterial) {
+    // TOP mesh gets specific white color and material properties
+    topMaterial = new THREE.MeshStandardMaterial({
+      color: 0xfafafa,
+      roughness: 1.0,
+      metalness: 0.08,
+    });
+  }
+  return topMaterial;
+}
 
 /**
  * Creates a WORKBENCH prefab
@@ -10,102 +42,24 @@ export async function createWorkbenchPrefab(): Promise<THREE.Group> {
   const group = new THREE.Group();
   group.name = 'WORKBENCH_PREFAB';
 
-  // Load the model
-  const model = await loadWorkbenchModel();
-  group.add(model);
-
-  return group;
-}
-
-/**
- * Loads the WORKBENCH OBJ model with materials
- */
-async function loadWorkbenchModel(): Promise<THREE.Group> {
-  return new Promise((resolve, reject) => {
-    const mtlLoader = new MTLLoader();
-
-    mtlLoader.load(
-      '/experiments/plan-de-travail.mtl',
-      (materials) => {
-        materials.preload();
-
-        const objLoader = new OBJLoader();
-        objLoader.setMaterials(materials);
-
-        objLoader.load(
-          '/experiments/plan-de-travail.obj',
-          (model) => {
-            // Set the model name
-            model.name = 'WORKBENCH';
-
-            // Apply scale (already scaled in OBJ file)
-            model.scale.setScalar(1.0);
-
-            // Apply rotations (convert degrees to radians) FIRST
-            model.rotation.order = 'XYZ';
-            model.rotation.x = (270 * Math.PI) / 180;
-            model.rotation.y = (360 * Math.PI) / 180;
-            model.rotation.z = (90 * Math.PI) / 180;
-
-            // Calculate bounding box AFTER rotations
-            model.updateMatrixWorld(true);
-            const bbox = new THREE.Box3().setFromObject(model);
-
-            // Calculate bottom-right corner (maxX, minY, minZ) after rotation
-            const bottomRightCorner = new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z);
-
-            // Position model so bottom-right corner is at origin (0, 0, 0)
-            model.position.set(-bottomRightCorner.x, -bottomRightCorner.y, -bottomRightCorner.z);
-
-            // Configure materials for all meshes
-            model.traverse((child) => {
-              if (child instanceof THREE.Mesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-
-                // Convert material to MeshPhysicalMaterial if it isn't already
-                if (!(child.material instanceof THREE.MeshPhysicalMaterial)) {
-                  const oldMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
-                  const newMaterial = new THREE.MeshPhysicalMaterial({
-                    color: oldMaterial.color,
-                    map: oldMaterial.map,
-                    roughness: 0.8,
-                    metalness: 0.2,
-                    transmission: 0,
-                    thickness: 0.5,
-                  });
-                  child.material = newMaterial;
-                  if (oldMaterial.map) newMaterial.needsUpdate = true;
-                }
-
-                // Apply specific settings to TOP mesh
-                if (child.name === 'TOP' && child.material instanceof THREE.MeshPhysicalMaterial) {
-                  child.material.color.setHex(0xfafafa); // White color
-                  child.material.roughness = 1.0;
-                  child.material.metalness = 0.08;
-                  child.material.transparent = false;
-                  child.material.opacity = 1.0;
-                  child.material.emissive.setHex(0x000000); // No emissive
-                  child.material.emissiveIntensity = 0;
-                  child.material.needsUpdate = true;
-                }
-              }
-            });
-
-            resolve(model);
-          },
-          undefined,
-          (error) => {
-            console.error('Error loading WORKBENCH OBJ:', error);
-            reject(error);
-          }
-        );
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading WORKBENCH MTL:', error);
-        reject(error);
+  // Load the model using shared loader
+  const model = await loadPrefabModel({
+    objPath: '/experiments/plan-de-travail.obj',
+    mtlPath: '/experiments/plan-de-travail.mtl',
+    modelName: 'WORKBENCH',
+    onMaterialSetup: (child) => {
+      // Capture original color from MTL and create/reuse shared materials
+      const oldMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
+      if (child.name === 'TOP') {
+        // TOP mesh gets special white material
+        child.material = getOrCreateTopMaterial();
+      } else {
+        // All other meshes get material based on their original color
+        child.material = getOrCreateSharedMaterial(oldMaterial.color);
       }
-    );
+    },
   });
+
+  group.add(model);
+  return group;
 }

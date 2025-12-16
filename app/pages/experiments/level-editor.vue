@@ -7,11 +7,19 @@
 
     <canvas ref="canvasRef" />
 
+    <!-- Toggle Prefab Panel Button -->
+    <button v-if="!isLoading" class="toggle-prefab-panel-btn" @click="showPrefabPanel = !showPrefabPanel">
+      {{ showPrefabPanel ? '✕' : '☰' }}
+    </button>
+
     <!-- Prefab Selection Panel -->
-    <div v-if="!isLoading" class="prefab-panel" @click.stop>
+    <div v-if="!isLoading && showPrefabPanel" class="prefab-panel" @click.stop>
       <h3>Prefabs</h3>
       <button @click="addPrefab('workbench')">Workbench</button>
-      <button @click="addPrefab('neonwall')">Neon Wall</button>
+      <button @click="addPrefab('neonwall-yellow')">Neon Wall Yellow</button>
+      <button @click="addPrefab('neonwall-blue')">Neon Wall Blue</button>
+      <button @click="addPrefab('blueworkzone')">Blue Work Zone</button>
+      <button @click="addPrefab('woodwall')">Wood Wall</button>
       <button @click="saveLevel">Save Level</button>
     </div>
 
@@ -105,6 +113,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { createWorkbenchPrefab } from '~/three/prefabs/WorkbenchPrefab';
 import { createNeonWallPrefab } from '~/three/prefabs/NeonWallPrefab';
+import { createBlueWorkZonePrefab } from '~/three/prefabs/BlueWorkZonePrefab';
+import { createWoodWallPrefab } from '~/three/prefabs/WoodWallPrefab';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
@@ -127,17 +137,18 @@ const placedObjects = ref<THREE.Group[]>([]);
 const showSaveToast = ref(false);
 const showCopyToast = ref(false);
 const copyToastMessage = ref('');
-const copiedData = ref<Array<{ type: 'workbench' | 'neonwall'; position: { x: number; y: number; z: number }; rotation: { y: number } }>>([]);
+const copiedData = ref<Array<{ type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'blueworkzone' | 'woodwall'; position: { x: number; y: number; z: number }; rotation: { y: number } }>>([]);
 const ambientLightInfo = ref({
   color: '#ffffff',
   intensity: 2
 });
 const isLoading = ref(true);
 const showGrid = ref(true);
+const showPrefabPanel = ref(true);
 
 interface LevelData {
   prefabs: Array<{
-    type: 'workbench' | 'neonwall';
+    type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'neonwall' | 'blueworkzone' | 'woodwall';
     position: { x: number; y: number; z: number };
     rotation: { y: number };
   }>;
@@ -157,7 +168,7 @@ const createFloorTexture = (noiseIntensity: number): THREE.CanvasTexture => {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not get canvas context');
 
-  ctx.fillStyle = '#333333';
+  ctx.fillStyle = '#666666';
   ctx.fillRect(0, 0, 512, 512);
 
   const imageData = ctx.getImageData(0, 0, 512, 512);
@@ -212,7 +223,7 @@ const setupScene = () => {
     intensity: ambientLight.intensity,
   };
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
   directionalLight.position.set(0, 20, 0);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 2048;
@@ -433,10 +444,20 @@ const autoSaveLevel = () => {
   }, 1500);
 };
 
-const addPrefab = async (type: 'workbench' | 'neonwall') => {
-  const prefabGroup = type === 'workbench'
-    ? await createWorkbenchPrefab()
-    : await createNeonWallPrefab();
+const addPrefab = async (type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'blueworkzone' | 'woodwall') => {
+  let prefabGroup: THREE.Group;
+
+  if (type === 'workbench') {
+    prefabGroup = await createWorkbenchPrefab();
+  } else if (type === 'neonwall-yellow') {
+    prefabGroup = await createNeonWallPrefab('yellow');
+  } else if (type === 'neonwall-blue') {
+    prefabGroup = await createNeonWallPrefab('blue');
+  } else if (type === 'blueworkzone') {
+    prefabGroup = await createBlueWorkZonePrefab();
+  } else {
+    prefabGroup = await createWoodWallPrefab();
+  }
 
   prefabGroup.position.set(0, 0, 0);
   prefabGroup.userData.prefabType = type;
@@ -542,9 +563,19 @@ const pasteSelected = async () => {
   const newObjects: THREE.Group[] = [];
 
   for (const data of copiedData.value) {
-    const prefabGroup = data.type === 'workbench'
-      ? await createWorkbenchPrefab()
-      : await createNeonWallPrefab();
+    let prefabGroup: THREE.Group;
+
+    if (data.type === 'workbench') {
+      prefabGroup = await createWorkbenchPrefab();
+    } else if (data.type === 'neonwall-yellow') {
+      prefabGroup = await createNeonWallPrefab('yellow');
+    } else if (data.type === 'neonwall-blue') {
+      prefabGroup = await createNeonWallPrefab('blue');
+    } else if (data.type === 'blueworkzone') {
+      prefabGroup = await createBlueWorkZonePrefab();
+    } else {
+      prefabGroup = await createWoodWallPrefab();
+    }
 
     prefabGroup.position.set(
       data.position.x + 1,
@@ -606,9 +637,20 @@ const loadLevel = async () => {
     const levelData: LevelData = JSON.parse(savedData);
 
     for (const prefabData of levelData.prefabs) {
-      const prefabGroup = prefabData.type === 'workbench'
-        ? await createWorkbenchPrefab()
-        : await createNeonWallPrefab();
+      let prefabGroup: THREE.Group;
+
+      if (prefabData.type === 'workbench') {
+        prefabGroup = await createWorkbenchPrefab();
+      } else if (prefabData.type === 'neonwall-yellow' || prefabData.type === 'neonwall') {
+        // Support legacy 'neonwall' type as yellow
+        prefabGroup = await createNeonWallPrefab('yellow');
+      } else if (prefabData.type === 'neonwall-blue') {
+        prefabGroup = await createNeonWallPrefab('blue');
+      } else if (prefabData.type === 'blueworkzone') {
+        prefabGroup = await createBlueWorkZonePrefab();
+      } else {
+        prefabGroup = await createWoodWallPrefab();
+      }
 
       prefabGroup.position.set(
         prefabData.position.x,
@@ -689,7 +731,7 @@ canvas {
 
 .prefab-panel {
   position: absolute;
-  top: 20px;
+  top: 80px;
   left: 20px;
   background: rgba(0, 0, 0, 0.8);
   padding: 20px;
@@ -727,6 +769,29 @@ canvas {
 
 .prefab-panel button:last-child:hover {
   background: #0b7dda;
+}
+
+.toggle-prefab-panel-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  user-select: none;
+}
+
+.toggle-prefab-panel-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
 }
 
 .transform-panel {

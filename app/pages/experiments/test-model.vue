@@ -56,7 +56,7 @@ const floorMaterialInfo = ref({
 const copiedPanel = ref<string | null>(null);
 const isLoading = ref<boolean>(true);
 const loadedModelsCount = ref<number>(0);
-const totalModelsCount = 2; // WORKBENCH + NEON_WALL prefabs
+const totalModelsCount = 3; // WORKBENCH + NEON_WALL (yellow) + NEON_WALL (blue) prefabs
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
@@ -551,12 +551,12 @@ const setupScene = () => {
     }
   });
 
-  // NEON_WALL prefab (includes spotlight)
-  createNeonWallPrefab().then((neonWallGroup) => {
+  // NEON_WALL prefab yellow (includes spotlight)
+  createNeonWallPrefab('yellow').then((neonWallGroup) => {
     // Position the NEON_WALL prefab in the scene
     neonWallGroup.position.set(0, 0, -1);
     scene.add(neonWallGroup);
-    console.log('NEON_WALL prefab loaded');
+    console.log('NEON_WALL (yellow) prefab loaded');
 
     // Find the SpotLight in the prefab
     neonWallGroup.traverse((child) => {
@@ -594,7 +594,26 @@ const setupScene = () => {
       isLoading.value = false;
     }
   }).catch((error) => {
-    console.error('Error loading NEON_WALL prefab:', error);
+    console.error('Error loading NEON_WALL (yellow) prefab:', error);
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  });
+
+  // NEON_WALL prefab blue (includes spotlight)
+  createNeonWallPrefab('blue').then((neonWallGroup) => {
+    // Position the NEON_WALL prefab in the scene (to the right of the yellow one)
+    neonWallGroup.position.set(6, 0, -1);
+    scene.add(neonWallGroup);
+    console.log('NEON_WALL (blue) prefab loaded');
+
+    loadedModelsCount.value++;
+    if (loadedModelsCount.value >= totalModelsCount) {
+      isLoading.value = false;
+    }
+  }).catch((error) => {
+    console.error('Error loading NEON_WALL (blue) prefab:', error);
     loadedModelsCount.value++;
     if (loadedModelsCount.value >= totalModelsCount) {
       isLoading.value = false;
