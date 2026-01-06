@@ -9,7 +9,7 @@ interface UseSimpleHeadOptions {
 
   /**
    * The title of the page, used for SEO and social media sharing
-   * @default 'BackTrack'
+   * @default 'Refurbished!'
    */
   title?: string;
 
@@ -19,7 +19,7 @@ interface UseSimpleHeadOptions {
   description?: string;
 
   /**
-   * If true, the title will be suffixed with " - BackTrack"
+   * If true, the title will be suffixed with " - Refurbished!"
    * @default true
    */
   suffixedTitle?: boolean;
@@ -37,7 +37,7 @@ interface UseSimpleHeadOptions {
 
 export function useSimpleHead({
   lang = 'en',
-  title = 'BackTrack',
+  title = 'Refurbished!',
   description,
   suffixedTitle = true,
   htmlAttrs = {},
@@ -49,7 +49,7 @@ export function useSimpleHead({
 
     link: [{ rel: 'icon', type: 'image/png', href: '/favicon.png' }],
 
-    title: suffixedTitle ? `${title} - BackTrack` : title,
+    title: suffixedTitle ? `${title} - Refurbished!` : title,
 
     meta: [
       { property: 'og:title', content: title },

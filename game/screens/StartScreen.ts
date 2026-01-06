@@ -50,7 +50,7 @@ export class StartScreen {
       return;
     }
 
-    this.#titleMesh = createTextMesh('BackTrack', font, {
+    this.#titleMesh = createTextMesh('Refurbished!', font, {
       extrusionDepth: 0.1,
       size: 2,
       material: this.#material,

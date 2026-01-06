@@ -1,4 +1,6 @@
-This project is a web 3D game, called BackTrack, which is designed to primarily be played during conferences.
+# Refurbished!
+
+This project is a web 3D game, called Refurbished!, which is designed to primarily be played during conferences.
 
 It's a 2 players, cooperative game.
 

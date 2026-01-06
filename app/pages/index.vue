@@ -10,7 +10,7 @@ definePageMeta({
 });
 
 useSimpleHead({
-  title: 'BackTrack',
+  title: 'Refurbished!',
   description: 'Unofficial Back Market themed web video game',
   suffixedTitle: false,
   htmlAttrs: {
