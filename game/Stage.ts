@@ -15,6 +15,7 @@ import { SavingScoreScreen } from './screens/SavingScoreScreen';
 import { ScoreScreen } from './screens/ScoreScreen';
 import { StartScreen } from './screens/StartScreen';
 import { TutorialScreen } from './screens/TutorialScreen';
+import { WaitingScreen } from './screens/WaitingScreen';
 import { stageMachine } from './Stage.machine';
 import { Debug } from './utils/Debug';
 import { Renderer } from './utils/Renderer';
@@ -184,6 +185,7 @@ export class Stage {
     const levelScreen = new LevelScreen(this.#actor, this.#scene);
     const menuScreen = new MenuScreen(this.#actor, this.#scene);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
+    const waitingScreen = new WaitingScreen(this.#actor, this.#scene);
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#scene);
     const pauseScreen = new PauseScreen(this.#actor, this.#scene);
     const scoreScreen = new ScoreScreen(this.#actor, this.#scene);
@@ -201,6 +203,7 @@ export class Stage {
       levelScreen.update();
       menuScreen.update();
       tutorialScreen.update();
+      waitingScreen.update();
       leaderboardScreen.update();
       pauseScreen.update();
       scoreScreen.update();

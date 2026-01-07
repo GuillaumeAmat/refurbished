@@ -68,7 +68,7 @@ export class StartScreen {
   }
 
   private show() {
-    this.#inputController.onKeyUp(() => this.onKeyUp());
+    this.#inputController.onButtonUp(() => this.onButtonUp());
     this.#group.visible = true;
   }
 
@@ -77,7 +77,7 @@ export class StartScreen {
     this.#group.visible = false;
   }
 
-  private onKeyUp() {
+  private onButtonUp() {
     this.#stageActor.send({ type: 'start' });
   }
 

@@ -1,6 +1,7 @@
 import { Group, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
+import { GamepadManager } from '../utils/input/GamepadManager';
 import { Physics } from '../utils/Physics';
 import { Level } from '../world/Level';
 import { Player } from '../world/Player';
@@ -9,9 +10,11 @@ export class LevelScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #physics: Physics;
+  #gamepadManager: GamepadManager;
 
   #group: Group;
-  #player: Player | null = null;
+  #player1: Player | null = null;
+  #player2: Player | null = null;
   #level: Level | null = null;
   #physicsInitialized = false;
 
@@ -19,8 +22,8 @@ export class LevelScreen {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#physics = Physics.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    // TODO Improve this naive implementation
     this.#stageActor.subscribe((state) => {
       if (state.matches('Level')) {
         this.show();
@@ -29,23 +32,34 @@ export class LevelScreen {
       }
     });
 
-    this.#group = new Group();
-
-    this.initPhysics().then(() => {
-      this.#player = new Player(this.#group, this.#scene);
-      this.#level = new Level(this.#group, this.#scene);
-
-      this.#scene.add(this.#group);
+    this.#gamepadManager.addEventListener('gamepadDisconnected', () => {
+      if (this.#group.visible) {
+        this.#stageActor.send({ type: 'controllerDisconnected' });
+      }
     });
+
+    this.#group = new Group();
+    this.#scene.add(this.#group);
   }
 
-  private async initPhysics() {
+  #levelInitialized = false;
+
+  private async initLevel() {
+    if (this.#levelInitialized) return;
+    this.#levelInitialized = true;
+
     await this.#physics.init(this.#scene);
     this.#physicsInitialized = true;
+
+    this.#player1 = new Player(this.#group, this.#scene, 1);
+    this.#player2 = new Player(this.#group, this.#scene, 2);
+
+    this.#level = new Level(this.#group, this.#scene);
   }
 
   private show() {
     this.#group.visible = true;
+    this.initLevel();
   }
 
   private hide() {
@@ -53,13 +67,13 @@ export class LevelScreen {
   }
 
   public update() {
-    // TODO Improve this naive implementation
     if (!this.#group.visible) return;
-
     if (!this.#physicsInitialized) return;
 
+    this.#gamepadManager.update();
     this.#physics.update();
-    this.#player?.update();
+    this.#player1?.update();
+    this.#player2?.update();
     this.#level?.update();
   }
 }

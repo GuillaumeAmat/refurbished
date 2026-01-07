@@ -17,7 +17,9 @@ export const stageMachine = setup({
       | { type: 'save'; name: string }
       | { type: 'pause' }
       | { type: 'resume' }
-      | { type: 'leaderboard' },
+      | { type: 'leaderboard' }
+      | { type: 'controllersReady' }
+      | { type: 'controllerDisconnected' },
   },
   actions: {
     hideLoadingOverlay: () => {},
@@ -85,10 +87,22 @@ export const stageMachine = setup({
           target: 'Menu',
         },
         play: {
-          target: 'Level',
+          target: 'WaitingForControllers',
         },
       },
       description: 'Display the commands',
+    },
+
+    WaitingForControllers: {
+      on: {
+        controllersReady: {
+          target: 'Level',
+        },
+        back: {
+          target: 'Tutorial',
+        },
+      },
+      description: 'Wait for 2 controllers to be connected',
     },
 
     Leaderboard: {
@@ -106,6 +120,9 @@ export const stageMachine = setup({
         },
         end: {
           target: 'Score',
+        },
+        controllerDisconnected: {
+          target: 'Pause',
         },
       },
     },
