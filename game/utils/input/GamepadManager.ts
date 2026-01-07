@@ -12,7 +12,6 @@ export type PlayerId = 1 | 2;
 
 interface PlayerAssignment {
   playerId: PlayerId;
-  gamepadId: string;
   controller: GamepadController;
 }
 
@@ -22,7 +21,6 @@ export class GamepadManager extends EventTarget {
   #profiles: ControllerProfile[] = [LogitechProfile, XboxProfile, PS4Profile];
   #assignments = new Map<PlayerId, PlayerAssignment>();
   #keyboardFallback: InputController | null = null;
-  #knownGamepadIds = new Map<string, PlayerId>();
 
   private constructor() {
     super();
@@ -54,13 +52,12 @@ export class GamepadManager extends EventTarget {
     const gamepads = navigator.getGamepads();
     for (const gamepad of gamepads) {
       if (gamepad) {
-        const gamepadId = this.#generateGamepadId(gamepad);
-        // Skip if already assigned
-        const existingPlayerId = this.#knownGamepadIds.get(gamepadId);
-        if (existingPlayerId !== undefined) {
-          const assignment = this.#assignments.get(existingPlayerId);
-          if (assignment?.controller.connected) continue;
-        }
+        // Skip if this gamepad index is already assigned
+        const alreadyAssigned = Array.from(this.#assignments.values()).some(
+          (assignment) => assignment.controller.getGamepadIndex() === gamepad.index,
+        );
+        if (alreadyAssigned) continue;
+
         this.#assignGamepad(gamepad);
       }
     }
@@ -75,54 +72,21 @@ export class GamepadManager extends EventTarget {
     return LogitechProfile;
   }
 
-  #generateGamepadId(gamepad: Gamepad): string {
-    return gamepad.id;
-  }
-
   #assignGamepad(gamepad: Gamepad): void {
-    const gamepadId = this.#generateGamepadId(gamepad);
     const profile = this.#detectProfile(gamepad);
-    const previousPlayerId = this.#knownGamepadIds.get(gamepadId);
+    const availableSlot = this.#getFirstAvailableSlot();
 
-    if (previousPlayerId !== undefined) {
-      const existing = this.#assignments.get(previousPlayerId);
-      if (existing) {
-        existing.controller.setConnected(true);
-        existing.controller.updateIndex(gamepad.index);
-        this.dispatchEvent(
-          new CustomEvent('gamepadReconnected', {
-            detail: { playerId: previousPlayerId, gamepad },
-          }),
-        );
-      } else {
-        const controller = new GamepadController(gamepad.index, profile);
-        this.#assignments.set(previousPlayerId, {
-          playerId: previousPlayerId,
-          gamepadId,
-          controller,
-        });
-        this.dispatchEvent(
-          new CustomEvent('gamepadReconnected', {
-            detail: { playerId: previousPlayerId, gamepad },
-          }),
-        );
-      }
-    } else {
-      const availableSlot = this.#getFirstAvailableSlot();
-      if (availableSlot) {
-        const controller = new GamepadController(gamepad.index, profile);
-        this.#assignments.set(availableSlot, {
-          playerId: availableSlot,
-          gamepadId,
-          controller,
-        });
-        this.#knownGamepadIds.set(gamepadId, availableSlot);
-        this.dispatchEvent(
-          new CustomEvent('gamepadAssigned', {
-            detail: { playerId: availableSlot, gamepad },
-          }),
-        );
-      }
+    if (availableSlot) {
+      const controller = new GamepadController(gamepad.index, profile);
+      this.#assignments.set(availableSlot, {
+        playerId: availableSlot,
+        controller,
+      });
+      this.dispatchEvent(
+        new CustomEvent('gamepadAssigned', {
+          detail: { playerId: availableSlot, gamepad },
+        }),
+      );
     }
 
     this.#checkControllersReady();
@@ -134,10 +98,9 @@ export class GamepadManager extends EventTarget {
 
   #onGamepadDisconnected(event: GamepadEvent): void {
     const gamepad = event.gamepad;
-    const gamepadId = this.#generateGamepadId(gamepad);
 
     for (const [playerId, assignment] of this.#assignments) {
-      if (assignment.gamepadId === gamepadId) {
+      if (assignment.controller.getGamepadIndex() === gamepad.index) {
         assignment.controller.setConnected(false);
         this.dispatchEvent(
           new CustomEvent('gamepadDisconnected', {

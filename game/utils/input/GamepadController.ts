@@ -25,6 +25,10 @@ export class GamepadController implements InputSource {
     this.#gamepadIndex = newIndex;
   }
 
+  getGamepadIndex(): number {
+    return this.#gamepadIndex;
+  }
+
   getMovement(): InputVector {
     const gamepad = navigator.getGamepads()[this.#gamepadIndex];
     if (!gamepad) return { x: 0, z: 0 };
