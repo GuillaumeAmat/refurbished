@@ -4026,43 +4026,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"refurbished@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "refurbished@workspace:."
-  dependencies:
-    "@dimforge/rapier3d-compat": "npm:^0.19.3"
-    "@iconify-json/simple-icons": "npm:^1.2.45"
-    "@nuxt/eslint": "npm:^1.9.0"
-    "@nuxt/image": "npm:^1.11.0"
-    "@nuxt/scripts": "npm:^0.11.13"
-    "@nuxt/test-utils": "npm:^3.19.2"
-    "@nuxt/ui": "npm:^3.3.3"
-    "@nuxtjs/html-validator": "npm:2.1.0"
-    "@nuxtjs/robots": "npm:^5.5.1"
-    "@nuxtjs/sitemap": "npm:^7.4.3"
-    "@paralleldrive/cuid2": "npm:^2.2.2"
-    "@tailwindcss/typography": "npm:^0.5.16"
-    "@types/qrcode": "npm:^1"
-    "@types/three": "npm:^0.178.1"
-    "@unhead/vue": "npm:^2.0.14"
-    "@vercel/speed-insights": "npm:^1.2.0"
-    eslint: "npm:^9.34.0"
-    eslint-config-prettier: "npm:^10.1.8"
-    eslint-plugin-simple-import-sort: "npm:^12.1.1"
-    gsap: "npm:^3.13.0"
-    lil-gui: "npm:^0.20.0"
-    nuxt: "npm:^4.1.0"
-    qrcode: "npm:^1.5.4"
-    tailwindcss: "npm:^4.1.11"
-    three: "npm:^0.179.0"
-    typescript: "npm:^5.9.2"
-    vite-plugin-glsl: "npm:^1.5.1"
-    vue: "npm:^3.5.20"
-    vue-router: "npm:^4.5.1"
-    xstate: "npm:^5.22.0"
-  languageName: unknown
-  linkType: soft
-
 "balanced-match@npm:^1.0.0":
   version: 1.0.2
   resolution: "balanced-match@npm:1.0.2"
@@ -9286,6 +9249,43 @@ __metadata:
   checksum: 10/b89411434e31637a519c065acd8fd1ec9eabc1dec38eec58dbc69a386ec21d88f97fa175e56fb3133e21c090ddb68fe7b5653ffc4bbcc9f069abc0e88c0d290c
   languageName: node
   linkType: hard
+
+"refurbished@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "refurbished@workspace:."
+  dependencies:
+    "@dimforge/rapier3d-compat": "npm:^0.19.3"
+    "@iconify-json/simple-icons": "npm:^1.2.45"
+    "@nuxt/eslint": "npm:^1.9.0"
+    "@nuxt/image": "npm:^1.11.0"
+    "@nuxt/scripts": "npm:^0.11.13"
+    "@nuxt/test-utils": "npm:^3.19.2"
+    "@nuxt/ui": "npm:^3.3.3"
+    "@nuxtjs/html-validator": "npm:2.1.0"
+    "@nuxtjs/robots": "npm:^5.5.1"
+    "@nuxtjs/sitemap": "npm:^7.4.3"
+    "@paralleldrive/cuid2": "npm:^2.2.2"
+    "@tailwindcss/typography": "npm:^0.5.16"
+    "@types/qrcode": "npm:^1"
+    "@types/three": "npm:^0.178.1"
+    "@unhead/vue": "npm:^2.0.14"
+    "@vercel/speed-insights": "npm:^1.2.0"
+    eslint: "npm:^9.34.0"
+    eslint-config-prettier: "npm:^10.1.8"
+    eslint-plugin-simple-import-sort: "npm:^12.1.1"
+    gsap: "npm:^3.13.0"
+    lil-gui: "npm:^0.20.0"
+    nuxt: "npm:^4.1.0"
+    qrcode: "npm:^1.5.4"
+    tailwindcss: "npm:^4.1.11"
+    three: "npm:^0.179.0"
+    typescript: "npm:^5.9.2"
+    vite-plugin-glsl: "npm:^1.5.1"
+    vue: "npm:^3.5.20"
+    vue-router: "npm:^4.5.1"
+    xstate: "npm:^5.22.0"
+  languageName: unknown
+  linkType: soft
 
 "regexp-ast-analysis@npm:^0.7.0, regexp-ast-analysis@npm:^0.7.1":
   version: 0.7.1
