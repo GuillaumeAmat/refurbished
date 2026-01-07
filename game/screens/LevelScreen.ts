@@ -38,6 +38,15 @@ export class LevelScreen {
       }
     });
 
+    this.#gamepadManager.addEventListener('controllersReadyChange', ((event: CustomEvent) => {
+      const { ready } = event.detail;
+      const currentState = this.#stageActor.getSnapshot();
+
+      if (ready && currentState.matches('Pause')) {
+        this.#stageActor.send({ type: 'resume' });
+      }
+    }) as EventListener);
+
     this.#group = new Group();
     this.#scene.add(this.#group);
   }

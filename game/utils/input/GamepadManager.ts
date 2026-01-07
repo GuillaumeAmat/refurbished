@@ -74,7 +74,12 @@ export class GamepadManager extends EventTarget {
 
   #assignGamepad(gamepad: Gamepad): void {
     const profile = this.#detectProfile(gamepad);
-    const availableSlot = this.#getFirstAvailableSlot();
+    let availableSlot = this.#getFirstAvailableSlot();
+
+    // If no slot available, try to replace a disconnected controller
+    if (!availableSlot) {
+      availableSlot = this.#getDisconnectedSlot();
+    }
 
     if (availableSlot) {
       const controller = new GamepadController(gamepad.index, profile);
@@ -122,6 +127,22 @@ export class GamepadManager extends EventTarget {
     } else {
       if (!this.#assignments.has(1)) return 1;
       if (!this.#assignments.has(2)) return 2;
+    }
+    return null;
+  }
+
+  #getDisconnectedSlot(): PlayerId | null {
+    // Prefer slot 2 first if keyboard fallback is enabled
+    if (this.#keyboardFallback) {
+      const slot2 = this.#assignments.get(2);
+      if (slot2 && !slot2.controller.connected) return 2;
+      const slot1 = this.#assignments.get(1);
+      if (slot1 && !slot1.controller.connected) return 1;
+    } else {
+      const slot1 = this.#assignments.get(1);
+      if (slot1 && !slot1.controller.connected) return 1;
+      const slot2 = this.#assignments.get(2);
+      if (slot2 && !slot2.controller.connected) return 2;
     }
     return null;
   }
