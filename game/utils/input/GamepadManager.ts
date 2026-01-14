@@ -1,12 +1,7 @@
 import { InputController } from '../InputController';
 import { GamepadController } from './GamepadController';
 import type { InputSource } from './InputSource';
-import {
-  type ControllerProfile,
-  LogitechProfile,
-  PS4Profile,
-  XboxProfile,
-} from './profiles';
+import { type ControllerProfile, LogitechProfile, PS4Profile, XboxProfile } from './profiles';
 
 export type PlayerId = 1 | 2;
 
@@ -27,14 +22,14 @@ export class GamepadManager extends EventTarget {
     this.#setupEventListeners();
     this.#scanConnectedGamepads();
 
-    // Poll for gamepads - browser requires button press before gamepad is visible
-    this.#pollInterval = window.setInterval(() => this.#scanConnectedGamepads(), 500);
+    // Start rAF loop - required for Firefox to fire gamepadconnected on pre-plugged gamepads
+    this.#startPolling();
 
     // Enable keyboard as fallback for player 1
     this.enableKeyboardFallback();
   }
 
-  #pollInterval: number | null = null;
+  #rafId: number | null = null;
 
   static getInstance(): GamepadManager {
     if (!GamepadManager.#instance) {
@@ -46,6 +41,14 @@ export class GamepadManager extends EventTarget {
   #setupEventListeners(): void {
     window.addEventListener('gamepadconnected', (e) => this.#onGamepadConnected(e));
     window.addEventListener('gamepaddisconnected', (e) => this.#onGamepadDisconnected(e));
+  }
+
+  #startPolling(): void {
+    const poll = () => {
+      this.#scanConnectedGamepads();
+      this.#rafId = requestAnimationFrame(poll);
+    };
+    poll();
   }
 
   #scanConnectedGamepads(): void {
@@ -200,9 +203,9 @@ export class GamepadManager extends EventTarget {
   }
 
   cleanup(): void {
-    if (this.#pollInterval) {
-      clearInterval(this.#pollInterval);
-      this.#pollInterval = null;
+    if (this.#rafId) {
+      cancelAnimationFrame(this.#rafId);
+      this.#rafId = null;
     }
     this.#assignments.forEach((a) => a.controller.cleanup());
     this.#keyboardFallback?.cleanup();
