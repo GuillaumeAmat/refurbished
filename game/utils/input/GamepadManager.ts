@@ -15,7 +15,8 @@ export class GamepadManager extends EventTarget {
 
   #profiles: ControllerProfile[] = [LogitechProfile, XboxProfile, PS4Profile];
   #assignments = new Map<PlayerId, PlayerAssignment>();
-  #keyboardFallback: KeyboardController | null = null;
+  #keyboardPlayer1: KeyboardController | null = null;
+  #keyboardPlayer2: KeyboardController | null = null;
 
   private constructor() {
     super();
@@ -24,9 +25,6 @@ export class GamepadManager extends EventTarget {
 
     // Start rAF loop - required for Firefox to fire gamepadconnected on pre-plugged gamepads
     this.#startPolling();
-
-    // Enable keyboard as fallback for player 1
-    this.enableKeyboardFallback();
   }
 
   #rafId: number | null = null;
@@ -123,30 +121,16 @@ export class GamepadManager extends EventTarget {
   }
 
   #getFirstAvailableSlot(): PlayerId | null {
-    // If keyboard fallback is enabled, reserve slot 1 for keyboard, assign gamepads to slot 2 first
-    if (this.#keyboardFallback) {
-      if (!this.#assignments.has(2)) return 2;
-      if (!this.#assignments.has(1)) return 1;
-    } else {
-      if (!this.#assignments.has(1)) return 1;
-      if (!this.#assignments.has(2)) return 2;
-    }
+    if (!this.#assignments.has(1)) return 1;
+    if (!this.#assignments.has(2)) return 2;
     return null;
   }
 
   #getDisconnectedSlot(): PlayerId | null {
-    // Prefer slot 2 first if keyboard fallback is enabled
-    if (this.#keyboardFallback) {
-      const slot2 = this.#assignments.get(2);
-      if (slot2 && !slot2.controller.connected) return 2;
-      const slot1 = this.#assignments.get(1);
-      if (slot1 && !slot1.controller.connected) return 1;
-    } else {
-      const slot1 = this.#assignments.get(1);
-      if (slot1 && !slot1.controller.connected) return 1;
-      const slot2 = this.#assignments.get(2);
-      if (slot2 && !slot2.controller.connected) return 2;
-    }
+    const slot1 = this.#assignments.get(1);
+    if (slot1 && !slot1.controller.connected) return 1;
+    const slot2 = this.#assignments.get(2);
+    if (slot2 && !slot2.controller.connected) return 2;
     return null;
   }
 
@@ -156,6 +140,12 @@ export class GamepadManager extends EventTarget {
   }
 
   areControllersReady(): boolean {
+    // Always ready when keyboards enabled
+    if (this.#keyboardPlayer1 && this.#keyboardPlayer2) {
+      return true;
+    }
+
+    // Otherwise require 2 connected gamepads
     const p1 = this.getInputSource(1);
     const p2 = this.getInputSource(2);
     return (p1?.connected ?? false) && (p2?.connected ?? false);
@@ -163,27 +153,32 @@ export class GamepadManager extends EventTarget {
 
   getInputSource(playerId: PlayerId): InputSource | null {
     const assignment = this.#assignments.get(playerId);
+    const gamepad = assignment?.controller;
 
-    // Player 1 uses keyboard if no gamepad assigned or gamepad disconnected
-    if (playerId === 1 && this.#keyboardFallback) {
-      if (!assignment || !assignment.controller.connected) {
-        return this.#keyboardFallback;
-      }
-    }
+    // Priority: gamepad → keyboard → null
+    if (gamepad?.connected) return gamepad;
 
-    return assignment?.controller ?? null;
+    if (playerId === 1) return this.#keyboardPlayer1;
+    if (playerId === 2) return this.#keyboardPlayer2;
+
+    return null;
   }
 
-  enableKeyboardFallback(): void {
-    if (!this.#keyboardFallback) {
-      this.#keyboardFallback = new KeyboardController();
+  enableKeyboards(): void {
+    if (!this.#keyboardPlayer1) {
+      this.#keyboardPlayer1 = new KeyboardController('player1');
+    }
+    if (!this.#keyboardPlayer2) {
+      this.#keyboardPlayer2 = new KeyboardController('player2');
     }
     this.#checkControllersReady();
   }
 
-  disableKeyboardFallback(): void {
-    this.#keyboardFallback?.cleanup();
-    this.#keyboardFallback = null;
+  disableKeyboards(): void {
+    this.#keyboardPlayer1?.cleanup();
+    this.#keyboardPlayer2?.cleanup();
+    this.#keyboardPlayer1 = null;
+    this.#keyboardPlayer2 = null;
     this.#checkControllersReady();
   }
 
@@ -208,7 +203,8 @@ export class GamepadManager extends EventTarget {
       this.#rafId = null;
     }
     this.#assignments.forEach((a) => a.controller.cleanup());
-    this.#keyboardFallback?.cleanup();
+    this.#keyboardPlayer1?.cleanup();
+    this.#keyboardPlayer2?.cleanup();
     this.#assignments.clear();
   }
 }

@@ -1,7 +1,7 @@
 import { Scene } from 'three';
 import { type Actor, type AnyActorLogic, createActor, fromPromise } from 'xstate';
 
-import { navigateTo } from '#app';
+import { navigateTo, useRuntimeConfig } from '#app';
 
 import { Camera } from './Camera';
 import { Environment } from './Environment';
@@ -18,6 +18,7 @@ import { TutorialScreen } from './screens/TutorialScreen';
 import { WaitingScreen } from './screens/WaitingScreen';
 import { stageMachine } from './Stage.machine';
 import { Debug } from './utils/Debug';
+import { GamepadManager } from './utils/input/GamepadManager';
 import { Renderer } from './utils/Renderer';
 import { Resources } from './utils/Resources';
 import { Sizes } from './utils/Sizes';
@@ -101,6 +102,15 @@ export class Stage {
       //   path: '/game/svg/bmLogo.svg',
       // },
     });
+
+    // Initialize keyboard fallback based on runtime config
+    const config = useRuntimeConfig();
+    const gamepadManager = GamepadManager.getInstance();
+    if (config.public.keyboardFallbackEnabled) {
+      gamepadManager.enableKeyboards();
+    } else {
+      gamepadManager.disableKeyboards();
+    }
 
     this.#actor = createActor(
       stageMachine.provide({

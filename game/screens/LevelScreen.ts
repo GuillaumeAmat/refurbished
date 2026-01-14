@@ -1,6 +1,8 @@
 import { Group, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
+import { useRuntimeConfig } from '#app';
+
 import type { Camera } from '../Camera';
 import { ControllersHUD } from '../hud/ControllersHUD';
 import { GamepadManager } from '../utils/input/GamepadManager';
@@ -39,7 +41,10 @@ export class LevelScreen {
     });
 
     this.#gamepadManager.addEventListener('gamepadDisconnected', () => {
-      if (this.#group.visible) {
+      if (!this.#group.visible) return;
+
+      const config = useRuntimeConfig();
+      if (!config.public.keyboardFallbackEnabled) {
         this.#stageActor.send({ type: 'controllerDisconnected' });
       }
     });

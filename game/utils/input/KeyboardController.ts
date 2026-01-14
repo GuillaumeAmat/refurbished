@@ -6,14 +6,16 @@ export class KeyboardController implements InputSource {
   #boundKeyDownHandler: (event: KeyboardEvent) => void;
 
   #keysPressed = new Set<string>();
+  #keySet?: 'player1' | 'player2';
 
   readonly connected = true;
 
-  constructor() {
+  constructor(keySet?: 'player1' | 'player2') {
     if (!window) {
       throw new Error('"KeyboardController" can only be instanciated in a browser environment.');
     }
 
+    this.#keySet = keySet;
     this.#boundKeyUpHandler = this.#handleKeyUp.bind(this);
     this.#boundKeyDownHandler = this.#handleKeyDown.bind(this);
 
@@ -33,24 +35,55 @@ export class KeyboardController implements InputSource {
     let x = 0;
     let z = 0;
 
-    if (
-      this.#keysPressed.has('ArrowLeft') ||
-      this.#keysPressed.has('KeyA') ||
-      this.#keysPressed.has('KeyQ')
-    ) {
-      x = -1;
-    } else if (this.#keysPressed.has('ArrowRight') || this.#keysPressed.has('KeyD')) {
-      x = 1;
-    }
+    // Player 1: WASD/ZQSD keys only
+    if (this.#keySet === 'player1') {
+      if (this.#keysPressed.has('KeyA') || this.#keysPressed.has('KeyQ')) {
+        x = -1;
+      } else if (this.#keysPressed.has('KeyD')) {
+        x = 1;
+      }
 
-    if (
-      this.#keysPressed.has('ArrowUp') ||
-      this.#keysPressed.has('KeyW') ||
-      this.#keysPressed.has('KeyZ')
-    ) {
-      z = -1;
-    } else if (this.#keysPressed.has('ArrowDown') || this.#keysPressed.has('KeyS')) {
-      z = 1;
+      if (this.#keysPressed.has('KeyW') || this.#keysPressed.has('KeyZ')) {
+        z = -1;
+      } else if (this.#keysPressed.has('KeyS')) {
+        z = 1;
+      }
+    }
+    // Player 2: Arrow keys only
+    else if (this.#keySet === 'player2') {
+      if (this.#keysPressed.has('ArrowLeft')) {
+        x = -1;
+      } else if (this.#keysPressed.has('ArrowRight')) {
+        x = 1;
+      }
+
+      if (this.#keysPressed.has('ArrowUp')) {
+        z = -1;
+      } else if (this.#keysPressed.has('ArrowDown')) {
+        z = 1;
+      }
+    }
+    // No keySet: all keys (backward compatibility)
+    else {
+      if (
+        this.#keysPressed.has('ArrowLeft') ||
+        this.#keysPressed.has('KeyA') ||
+        this.#keysPressed.has('KeyQ')
+      ) {
+        x = -1;
+      } else if (this.#keysPressed.has('ArrowRight') || this.#keysPressed.has('KeyD')) {
+        x = 1;
+      }
+
+      if (
+        this.#keysPressed.has('ArrowUp') ||
+        this.#keysPressed.has('KeyW') ||
+        this.#keysPressed.has('KeyZ')
+      ) {
+        z = -1;
+      } else if (this.#keysPressed.has('ArrowDown') || this.#keysPressed.has('KeyS')) {
+        z = 1;
+      }
     }
 
     return { x, z };
