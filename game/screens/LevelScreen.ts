@@ -1,14 +1,18 @@
 import { Group, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
+import type { Camera } from '../Camera';
+import { ControllersHUD } from '../hud/ControllersHUD';
 import { GamepadManager } from '../utils/input/GamepadManager';
 import { Physics } from '../utils/Physics';
+import { Sizes } from '../utils/Sizes';
 import { Level } from '../world/Level';
 import { Player } from '../world/Player';
 
 export class LevelScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
+  #camera: Camera;
   #physics: Physics;
   #gamepadManager: GamepadManager;
 
@@ -16,11 +20,13 @@ export class LevelScreen {
   #player1: Player | null = null;
   #player2: Player | null = null;
   #level: Level | null = null;
+  #hud: ControllersHUD;
   #physicsInitialized = false;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera) {
     this.#stageActor = stageActor;
     this.#scene = scene;
+    this.#camera = camera;
     this.#physics = Physics.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
 
@@ -49,6 +55,13 @@ export class LevelScreen {
 
     this.#group = new Group();
     this.#scene.add(this.#group);
+
+    this.#hud = new ControllersHUD(this.#camera.camera, this.#gamepadManager);
+
+    const sizes = Sizes.getInstance();
+    sizes.addEventListener('resize', () => {
+      this.#hud.updatePosition();
+    });
   }
 
   #levelInitialized = false;
@@ -68,11 +81,13 @@ export class LevelScreen {
 
   private show() {
     this.#group.visible = true;
+    this.#hud.show();
     this.initLevel();
   }
 
   private hide() {
     this.#group.visible = false;
+    this.#hud.hide();
   }
 
   public update() {
@@ -84,5 +99,6 @@ export class LevelScreen {
     this.#player1?.update();
     this.#player2?.update();
     this.#level?.update();
+    this.#hud.update();
   }
 }

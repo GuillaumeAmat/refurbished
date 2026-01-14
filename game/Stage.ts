@@ -26,6 +26,7 @@ import { Time } from './utils/Time';
 export class Stage {
   #actor: Actor<AnyActorLogic>;
   #scene: Scene;
+  #camera: Camera;
   #resources: Resources;
   #time: Time;
   #environment: Environment | null = null;
@@ -38,14 +39,14 @@ export class Stage {
     new Debug();
 
     this.#scene = new Scene();
-    const camera = new Camera(this.#scene, canvas);
-    const renderer = new Renderer(this.#scene, canvas, camera);
+    this.#camera = new Camera(this.#scene, canvas);
+    const renderer = new Renderer(this.#scene, canvas, this.#camera);
     const loadingOverlay = new LoadingOverlay(this.#scene);
 
     const sizes = new Sizes();
     sizes.addEventListener('resize', () => {
       window.requestAnimationFrame(() => {
-        camera.setSizesAndRatio();
+        this.#camera.setSizesAndRatio();
 
         /**
          * Must be called after the camera has been resized,
@@ -136,7 +137,7 @@ export class Stage {
 
     this.#time = new Time();
     this.#time.addEventListener('tick', () => {
-      camera.update();
+      this.#camera.update();
       loadingOverlay.update();
       renderer.update();
     });
@@ -182,7 +183,7 @@ export class Stage {
     }
 
     const startScreen = new StartScreen(this.#actor, this.#scene);
-    const levelScreen = new LevelScreen(this.#actor, this.#scene);
+    const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera);
     const menuScreen = new MenuScreen(this.#actor, this.#scene);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
     const waitingScreen = new WaitingScreen(this.#actor, this.#scene);
