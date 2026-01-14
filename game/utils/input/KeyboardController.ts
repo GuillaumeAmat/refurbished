@@ -1,6 +1,6 @@
-import type { InputSource, InputVector } from './input/InputSource';
+import type { InputSource, InputVector } from './InputSource';
 
-export class InputController implements InputSource {
+export class KeyboardController implements InputSource {
   #buttonUpCallback: ((button: string) => void) | null = null;
   #boundKeyUpHandler: (event: KeyboardEvent) => void;
   #boundKeyDownHandler: (event: KeyboardEvent) => void;
@@ -11,7 +11,7 @@ export class InputController implements InputSource {
 
   constructor() {
     if (!window) {
-      throw new Error('"InputController" can only be instanciated in a browser environment.');
+      throw new Error('"KeyboardController" can only be instanciated in a browser environment.');
     }
 
     this.#boundKeyUpHandler = this.#handleKeyUp.bind(this);

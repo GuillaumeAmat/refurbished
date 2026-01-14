@@ -125,7 +125,7 @@ export class ControllersHUD {
 
     const getControllerInfo = (source: any) => {
       if (!source) return { type: 'None', status: '' };
-      const type = source.constructor.name === 'InputController' ? 'Keyboard' : 'Gamepad';
+      const type = source.constructor.name === 'KeyboardController' ? 'Keyboard' : 'Gamepad';
       const status = source.connected ? '' : ' (disconnected)';
       return { type, status };
     };

@@ -1,6 +1,6 @@
-import { InputController } from '../InputController';
 import { GamepadController } from './GamepadController';
 import type { InputSource } from './InputSource';
+import { KeyboardController } from './KeyboardController';
 import { type ControllerProfile, LogitechProfile, PS4Profile, XboxProfile } from './profiles';
 
 export type PlayerId = 1 | 2;
@@ -15,7 +15,7 @@ export class GamepadManager extends EventTarget {
 
   #profiles: ControllerProfile[] = [LogitechProfile, XboxProfile, PS4Profile];
   #assignments = new Map<PlayerId, PlayerAssignment>();
-  #keyboardFallback: InputController | null = null;
+  #keyboardFallback: KeyboardController | null = null;
 
   private constructor() {
     super();
@@ -176,7 +176,7 @@ export class GamepadManager extends EventTarget {
 
   enableKeyboardFallback(): void {
     if (!this.#keyboardFallback) {
-      this.#keyboardFallback = new InputController();
+      this.#keyboardFallback = new KeyboardController();
     }
     this.#checkControllersReady();
   }
