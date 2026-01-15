@@ -1,25 +1,20 @@
 import * as THREE from 'three';
+
 import { loadPrefabModel } from '~/three/utils/prefabLoader';
 
-// Shared materials cache - one material per unique color
-const sharedMaterials = new Map<number, THREE.MeshStandardMaterial>();
+// Shared wood material (simple, no textures)
+let sharedWoodMaterial: THREE.MeshStandardMaterial | null = null;
 
-function getOrCreateSharedMaterial(sourceColor: THREE.Color): THREE.MeshStandardMaterial {
-  const colorKey = sourceColor.getHex();
-
-  if (!sharedMaterials.has(colorKey)) {
-    // Create material with lightened color from MTL file
-    const lightenedColor = sourceColor.clone();
-    lightenedColor.multiplyScalar(1.4); // Lighten by 40%
-
-    sharedMaterials.set(colorKey, new THREE.MeshStandardMaterial({
-      color: lightenedColor,
+function getOrCreateWoodMaterial(): THREE.MeshStandardMaterial {
+  if (!sharedWoodMaterial) {
+    sharedWoodMaterial = new THREE.MeshStandardMaterial({
+      color: 0xdeb887, // Warm wood color (burlywood)
       roughness: 0.8,
-      metalness: 0.2,
-    }));
+      metalness: 0.0,
+    });
   }
 
-  return sharedMaterials.get(colorKey)!;
+  return sharedWoodMaterial;
 }
 
 /**
@@ -30,16 +25,26 @@ export async function createWoodWallPrefab(): Promise<THREE.Group> {
   const group = new THREE.Group();
   group.name = 'WOOD_WALL_PREFAB';
 
+  // Get simple wood material
+  const woodMaterial = getOrCreateWoodMaterial();
+
   // Load the model using shared loader
   const model = await loadPrefabModel({
     objPath: '/experiments/wood-wall.obj',
     mtlPath: '/experiments/wood-wall.mtl',
     modelName: 'WOOD_WALL',
     onMaterialSetup: (child) => {
-      // Capture original color from MTL and create/reuse shared material
-      const oldMaterial = Array.isArray(child.material) ? child.material[0] : child.material;
-      child.material = getOrCreateSharedMaterial(oldMaterial.color);
+      // Apply shared wood material
+      child.material = woodMaterial;
     },
+  });
+
+  // Double-check: traverse again and force material application
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.material = woodMaterial;
+      child.material.needsUpdate = true;
+    }
   });
 
   group.add(model);

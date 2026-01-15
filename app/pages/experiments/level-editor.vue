@@ -1,118 +1,363 @@
 <template>
   <div class="level-editor">
     <!-- Loading screen -->
-    <div v-if="isLoading" class="loading-screen">
+    <div
+      v-if="isLoading"
+      class="loading-screen"
+    >
       <p class="loading-text">Loading...</p>
     </div>
 
     <canvas ref="canvasRef" />
 
-    <!-- Test Mode Button -->
-    <button
+    <!-- Top Right Buttons -->
+    <div
       v-if="!isLoading"
-      class="test-mode-btn"
-      @click="toggleTestMode"
-      :class="{ active: isTestMode }"
+      class="top-right-buttons"
     >
-      {{ isTestMode ? 'Exit Test Mode' : 'Test Mode' }}
-    </button>
+      <!-- Toggle Settings Panels Button (Eye) -->
+      <button
+        v-if="!isTestMode"
+        class="toggle-btn"
+        @click="showSettingsPanels = !showSettingsPanels"
+        :title="showSettingsPanels ? 'Hide Settings' : 'Show Settings'"
+      >
+        <svg
+          v-if="showSettingsPanels"
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+          />
+        </svg>
+        <svg
+          v-else
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+          />
+        </svg>
+      </button>
+      <!-- Test Mode Button -->
+      <button
+        class="test-mode-btn-inline"
+        @click="toggleTestMode"
+        :class="{ active: isTestMode }"
+      >
+        {{ isTestMode ? 'Exit Test Mode' : 'Test Mode' }}
+      </button>
+    </div>
 
     <!-- Toggle Prefab Panel Button -->
-    <button v-if="!isLoading && !isTestMode" class="toggle-prefab-panel-btn" @click="showPrefabPanel = !showPrefabPanel">
+    <button
+      v-if="!isLoading && !isTestMode"
+      class="toggle-prefab-panel-btn"
+      @click="showPrefabPanel = !showPrefabPanel"
+    >
       {{ showPrefabPanel ? '✕' : '☰' }}
     </button>
 
     <!-- Prefab Selection Panel -->
-    <div v-if="!isLoading && !isTestMode && showPrefabPanel" class="prefab-panel" @click.stop>
-      <h3>Prefabs</h3>
-      <button @click="addPrefab('workbench')">Workbench</button>
-      <button @click="addPrefab('neonwall-yellow')">Neon Wall Yellow</button>
-      <button @click="addPrefab('neonwall-blue')">Neon Wall Blue</button>
-      <button @click="addPrefab('blueworkzone')">Blue Work Zone</button>
-      <button @click="addPrefab('woodwall')">Wood Wall</button>
-      <button @click="saveLevel">Save Level</button>
+    <div
+      v-if="!isLoading && !isTestMode && showPrefabPanel"
+      class="prefab-panel"
+      @click.stop
+    >
+      <div class="prefab-sections">
+        <div class="prefab-section">
+          <h4>Prefabs</h4>
+          <div class="prefab-grid">
+            <button
+              v-for="prefab in prefabItems"
+              :key="prefab.type"
+              class="prefab-thumb"
+              @click="addPrefab(prefab.type)"
+              :title="prefab.label"
+            >
+              <img
+                v-if="prefabThumbnails[prefab.type]"
+                :src="prefabThumbnails[prefab.type]"
+                :alt="prefab.label"
+              />
+              <span
+                v-else
+                class="thumb-placeholder"
+              >{{ prefab.label.charAt(0) }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="prefab-section">
+          <h4>Resources</h4>
+          <div class="prefab-grid">
+            <button
+              v-for="resource in resourceItems"
+              :key="resource.type"
+              class="prefab-thumb"
+              @click="addPrefab(resource.type)"
+              :title="resource.label"
+            >
+              <img
+                v-if="prefabThumbnails[resource.type]"
+                :src="prefabThumbnails[resource.type]"
+                :alt="resource.label"
+              />
+              <span
+                v-else
+                class="thumb-placeholder"
+              >{{ resource.label.charAt(0) }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <button
+        class="save-btn"
+        @click="saveLevel"
+      >💾 Save</button>
     </div>
 
     <!-- Save Toast -->
-    <div v-if="showSaveToast" class="save-toast">
+    <div
+      v-if="showSaveToast"
+      class="save-toast"
+    >
       Save in progress...
     </div>
 
     <!-- Copy Toast -->
-    <div v-if="showCopyToast" class="copy-toast">
+    <div
+      v-if="showCopyToast"
+      class="copy-toast"
+    >
       {{ copyToastMessage }}
     </div>
 
-    <!-- Ambient Light Panel -->
-    <div v-if="!isLoading && !isTestMode" class="ambient-light-panel" @click.stop>
-      <h3>Ambient Light</h3>
-      <div class="control-group">
-        <label>Color: {{ ambientLightInfo.color }}</label>
-        <input
-          type="color"
-          :value="ambientLightInfo.color"
-          @input="updateAmbientLightColor(($event.target as HTMLInputElement).value)"
-          class="color-picker"
-        />
+    <!-- Settings Panels (stacked on left) -->
+    <div
+      v-if="!isLoading && !isTestMode && showSettingsPanels"
+      class="settings-panels"
+    >
+      <!-- Directional Light Panel -->
+      <div class="settings-panel bg-cyan-600/90">
+        <p class="panel-title">Directional Light</p>
+        <div class="panel-content">
+          <label class="setting-row">
+            <span>Color:</span>
+            <input
+              type="color"
+              :value="directionalLightInfo.color"
+              @input="updateDirectionalLightColor(($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Intensity: {{ directionalLightInfo.intensity.toFixed(2) }}</span>
+            <input
+              type="range"
+              min="0"
+              max="5"
+              step="0.1"
+              :value="directionalLightInfo.intensity"
+              @input="updateDirectionalLightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <p class="subsection-title">Position</p>
+          <label class="setting-row">
+            <span>X: {{ directionalLightInfo.position.x.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              step="1"
+              :value="directionalLightInfo.position.x"
+              @input="updateDirectionalLightPosition('x', parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Y: {{ directionalLightInfo.position.y.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="5"
+              max="50"
+              step="1"
+              :value="directionalLightInfo.position.y"
+              @input="updateDirectionalLightPosition('y', parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Z: {{ directionalLightInfo.position.z.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              step="1"
+              :value="directionalLightInfo.position.z"
+              @input="updateDirectionalLightPosition('z', parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <label class="setting-row checkbox">
+            <span>Show Grid</span>
+            <input
+              type="checkbox"
+              :checked="showGrid"
+              @change="toggleGrid"
+            />
+          </label>
+        </div>
       </div>
-      <div class="control-group">
-        <label>Intensity: {{ ambientLightInfo.intensity.toFixed(2) }}</label>
-        <input
-          type="range"
-          min="0"
-          max="5"
-          step="0.1"
-          :value="ambientLightInfo.intensity"
-          @input="updateAmbientLightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
-          class="slider"
-        />
-      </div>
-      <div class="control-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            :checked="showGrid"
-            @change="toggleGrid"
-            class="checkbox"
-          />
-          Show Grid
-        </label>
+
+      <!-- Ambient Light Panel -->
+      <div class="settings-panel bg-yellow-600/90">
+        <p class="panel-title">Ambient Light</p>
+        <div class="panel-content">
+          <label class="setting-row">
+            <span>Color:</span>
+            <input
+              type="color"
+              :value="ambientLightInfo.color"
+              @input="updateAmbientLightColor(($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Intensity: {{ ambientLightInfo.intensity.toFixed(2) }}</span>
+            <input
+              type="range"
+              min="0"
+              max="3"
+              step="0.1"
+              :value="ambientLightInfo.intensity"
+              @input="updateAmbientLightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+        </div>
       </div>
     </div>
 
     <!-- Transform Panel (shown when objects selected) -->
-    <div v-if="selectedObjects.length > 0 && !isTestMode" class="transform-panel" @click.stop>
+    <div
+      v-if="selectedObjects.length > 0 && !isTestMode"
+      class="transform-panel"
+      @click.stop
+    >
       <h3>Transform</h3>
-      <p class="prefab-name" v-if="selectedObjects.length === 1">{{ selectedObjects[0].userData.prefabType }}</p>
-      <p class="prefab-name" v-else>{{ selectedObjects.length }} objects selected</p>
+      <p
+        class="prefab-name"
+        v-if="selectedObjects.length === 1"
+      >{{ selectedObjects[0].userData.prefabType }}</p>
+      <p
+        class="prefab-name"
+        v-else
+      >{{ selectedObjects.length }} objects selected</p>
 
       <template v-if="selectedObjects.length === 1">
-        <div class="control-group">
-          <label>Position X: {{ selectedObjects[0].position.x.toFixed(2) }}</label>
-          <div class="buttons">
-            <button @click.stop="adjustPosition('x', -1)" @mousedown.stop>-</button>
-            <button @click.stop="adjustPosition('x', 1)" @mousedown.stop>+</button>
+        <p class="section-label">Position</p>
+        <div class="control-row">
+          <div class="control-group compact">
+            <label>X: {{ selectedObjects[0].position.x.toFixed(1) }}</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustPosition('x', -1)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustPosition('x', 1)"
+                @mousedown.stop
+              >+</button>
+            </div>
+          </div>
+          <div class="control-group compact">
+            <label>Y: {{ selectedObjects[0].position.y.toFixed(1) }}</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustPosition('y', -1)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustPosition('y', 1)"
+                @mousedown.stop
+              >+</button>
+            </div>
+          </div>
+          <div class="control-group compact">
+            <label>Z: {{ selectedObjects[0].position.z.toFixed(1) }}</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustPosition('z', -1)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustPosition('z', 1)"
+                @mousedown.stop
+              >+</button>
+            </div>
           </div>
         </div>
 
-        <div class="control-group">
-          <label>Position Z: {{ selectedObjects[0].position.z.toFixed(2) }}</label>
-          <div class="buttons">
-            <button @click.stop="adjustPosition('z', -1)" @mousedown.stop>-</button>
-            <button @click.stop="adjustPosition('z', 1)" @mousedown.stop>+</button>
+        <p class="section-label">Rotation</p>
+        <div class="control-row">
+          <div class="control-group compact">
+            <label>X: {{ (selectedObjects[0].rotation.x * 180 / Math.PI).toFixed(0) }}°</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustRotationAxis('x', -15)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustRotationAxis('x', 15)"
+                @mousedown.stop
+              >+</button>
+            </div>
           </div>
-        </div>
-
-        <div class="control-group">
-          <label>Rotation: {{ (selectedObjects[0].rotation.y * 180 / Math.PI).toFixed(0) }}°</label>
-          <div class="buttons">
-            <button @click.stop="adjustRotation(-90)" @mousedown.stop>-90°</button>
-            <button @click.stop="adjustRotation(90)" @mousedown.stop>+90°</button>
+          <div class="control-group compact">
+            <label>Y: {{ (selectedObjects[0].rotation.y * 180 / Math.PI).toFixed(0) }}°</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustRotationAxis('y', -15)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustRotationAxis('y', 15)"
+                @mousedown.stop
+              >+</button>
+            </div>
+          </div>
+          <div class="control-group compact">
+            <label>Z: {{ (selectedObjects[0].rotation.z * 180 / Math.PI).toFixed(0) }}°</label>
+            <div class="buttons">
+              <button
+                @click.stop="adjustRotationAxis('z', -15)"
+                @mousedown.stop
+              >-</button>
+              <button
+                @click.stop="adjustRotationAxis('z', 15)"
+                @mousedown.stop
+              >+</button>
+            </div>
           </div>
         </div>
       </template>
 
-      <button class="delete-btn" @click="deleteSelected">Delete{{ selectedObjects.length > 1 ? ' All' : '' }}</button>
+      <button
+        class="delete-btn"
+        @click="deleteSelected"
+      >Delete{{ selectedObjects.length > 1 ? ' All' : '' }}</button>
     </div>
   </div>
 </template>
@@ -129,8 +374,10 @@ import { PhysicsManager } from '~/three/utils/PhysicsManager';
 import { CowController } from '~/three/controllers/CowController';
 import { PrefabColliderManager } from '~/three/utils/PrefabColliderManager';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const textureLoader = new THREE.TextureLoader();
 
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -143,6 +390,7 @@ let dragPlane: THREE.Plane;
 let isDragging = false;
 let selectionHelpers: THREE.BoxHelper[] = [];
 let dragOffsets = new Map<THREE.Group, THREE.Vector3>();
+let directionalLight: THREE.DirectionalLight;
 let ambientLight: THREE.AmbientLight;
 let gridHelper: THREE.GridHelper;
 
@@ -151,15 +399,42 @@ const placedObjects = ref<THREE.Group[]>([]);
 const showSaveToast = ref(false);
 const showCopyToast = ref(false);
 const copyToastMessage = ref('');
-const copiedData = ref<Array<{ type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'blueworkzone' | 'woodwall'; position: { x: number; y: number; z: number }; rotation: { y: number } }>>([]);
+type PrefabType = 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'blueworkzone' | 'woodwall' | 'battery-full' | 'battery-low' | 'chassis' | 'chassis-broken' | 'screen-repaired' | 'screen-broken';
+const copiedData = ref<Array<{ type: PrefabType; position: { x: number; y: number; z: number }; rotation: { y: number } }>>([]);
+const directionalLightInfo = ref({
+  color: '#ffffff',
+  intensity: 1.5,
+  position: { x: 0, y: 20, z: 0 }
+});
 const ambientLightInfo = ref({
   color: '#ffffff',
-  intensity: 2
+  intensity: 0.5
 });
 const isLoading = ref(true);
 const showGrid = ref(true);
-const showPrefabPanel = ref(true);
+const showPrefabPanel = ref(false);
+const showSettingsPanels = ref(true);
 const isTestMode = ref(false);
+
+// Prefab items for the panel
+const prefabItems = [
+  { type: 'workbench' as PrefabType, label: 'Workbench' },
+  { type: 'neonwall-yellow' as PrefabType, label: 'Neon Yellow' },
+  { type: 'neonwall-blue' as PrefabType, label: 'Neon Blue' },
+  { type: 'blueworkzone' as PrefabType, label: 'Work Zone' },
+  { type: 'woodwall' as PrefabType, label: 'Wood Wall' },
+];
+
+const resourceItems = [
+  { type: 'battery-full' as PrefabType, label: 'Battery Full' },
+  { type: 'battery-low' as PrefabType, label: 'Battery Low' },
+  { type: 'chassis' as PrefabType, label: 'Chassis' },
+  { type: 'chassis-broken' as PrefabType, label: 'Chassis Broken' },
+  { type: 'screen-repaired' as PrefabType, label: 'Screen OK' },
+  { type: 'screen-broken' as PrefabType, label: 'Screen Broken' },
+];
+
+const prefabThumbnails = ref<Record<string, string>>({});
 
 // Test mode variables (outside reactive state)
 let physicsManager: PhysicsManager | null = null;
@@ -169,13 +444,64 @@ let storedCameraPosition: THREE.Vector3 | null = null;
 let storedCameraTarget: THREE.Vector3 | null = null;
 let preloadedCowModel: THREE.Group | null = null;
 
+
+// GLB model cache for robot parts
+const glbModelCache = new Map<string, THREE.Group>();
+const glbLoader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+glbLoader.setDRACOLoader(dracoLoader);
+
+// GLB paths for robot parts only
+const GLB_PREFAB_PATHS: Record<string, string> = {
+  'battery-full': '/models/battery_full.glb',
+  'battery-low': '/models/battery_low.glb',
+  'chassis': '/models/chassis.glb',
+  'chassis-broken': '/models/chassis_broken.glb',
+  'screen-repaired': '/models/screen_repaired.glb',
+  'screen-broken': '/models/screen_broken.glb',
+};
+
+const loadGLBPrefab = async (type: string): Promise<THREE.Group> => {
+  const glbPath = GLB_PREFAB_PATHS[type];
+  if (!glbPath) throw new Error(`Unknown GLB prefab type: ${type}`);
+
+  // Check cache first
+  const cached = glbModelCache.get(type);
+  if (cached) {
+    return cached.clone();
+  }
+
+  // Load the model
+  const gltf = await glbLoader.loadAsync(glbPath);
+  const model = gltf.scene;
+
+  // Configure shadows for all meshes
+  model.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+
+  // Cache the model
+  glbModelCache.set(type, model);
+  return model.clone();
+};
+
 interface LevelData {
   prefabs: Array<{
-    type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'neonwall' | 'blueworkzone' | 'woodwall';
+    type: PrefabType | 'neonwall';  // 'neonwall' for legacy support
     position: { x: number; y: number; z: number };
     rotation: { y: number };
   }>;
   settings?: {
+    directionalLight?: {
+      color: string;
+      intensity: number;
+      position: { x: number; y: number; z: number };
+    };
+    // Legacy support
     ambientLight?: {
       color: string;
       intensity: number;
@@ -184,43 +510,33 @@ interface LevelData {
   };
 }
 
-const createFloorTexture = (noiseIntensity: number): THREE.CanvasTexture => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not get canvas context');
+const loadConcreteTextures = () => {
+  const colorMap = textureLoader.load('/textures/concrete/Concrete047A_1K-JPG_Color.jpg');
+  const normalMap = textureLoader.load('/textures/concrete/Concrete047A_1K-JPG_NormalGL.jpg');
+  const roughnessMap = textureLoader.load('/textures/concrete/Concrete047A_1K-JPG_Roughness.jpg');
+  const aoMap = textureLoader.load('/textures/concrete/Concrete047A_1K-JPG_AmbientOcclusion.jpg');
 
-  ctx.fillStyle = '#666666';
-  ctx.fillRect(0, 0, 512, 512);
+  // Configure texture wrapping and repeat
+  // Floor is 39x27, use low repeat to avoid visible tiling
+  [colorMap, normalMap, roughnessMap, aoMap].forEach((texture) => {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 1.4);
+  });
 
-  const imageData = ctx.getImageData(0, 0, 512, 512);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * noiseIntensity;
-    data[i] += noise;
-    data[i + 1] += noise;
-    data[i + 2] += noise;
-  }
-  ctx.putImageData(imageData, 0, 0);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(10, 10);
-  return texture;
+  return { colorMap, normalMap, roughnessMap, aoMap };
 };
 
 const setupScene = () => {
   if (!canvasRef.value) return;
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a1a);
+  scene.background = new THREE.Color(0xffffff);
 
   const aspect = window.innerWidth / window.innerHeight;
   camera = new THREE.PerspectiveCamera(35, aspect, 0.1, 200);
-  camera.position.set(0, 50, 40);
-  camera.lookAt(0, 0, 0);
+  camera.position.set(-3.5, 40, 38.5);
+  camera.lookAt(-3.5, 0, 3.5);
 
   renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
@@ -234,43 +550,68 @@ const setupScene = () => {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
+  controls.target.set(-3.5, 0, 3.5); // Center of floor
 
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
   dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
-  ambientLight = new THREE.AmbientLight(0xffffff, 2);
+  // Ambient light for base illumination (prevents completely black areas)
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
   scene.add(ambientLight);
+
   ambientLightInfo.value = {
     color: '#' + ambientLight.color.getHexString(),
-    intensity: ambientLight.intensity,
+    intensity: ambientLight.intensity
   };
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
   directionalLight.position.set(0, 20, 0);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 2048;
   directionalLight.shadow.mapSize.height = 2048;
-  directionalLight.shadow.camera.left = -50;
-  directionalLight.shadow.camera.right = 50;
-  directionalLight.shadow.camera.top = 25;
-  directionalLight.shadow.camera.bottom = -25;
+  directionalLight.shadow.camera.left = -20;
+  directionalLight.shadow.camera.right = 20;
+  directionalLight.shadow.camera.top = 14;
+  directionalLight.shadow.camera.bottom = -14;
   directionalLight.shadow.camera.near = 0.5;
   directionalLight.shadow.camera.far = 50;
   scene.add(directionalLight);
 
-  const floorGeometry = new THREE.PlaneGeometry(100, 50);
+  directionalLightInfo.value = {
+    color: '#' + directionalLight.color.getHexString(),
+    intensity: directionalLight.intensity,
+    position: {
+      x: directionalLight.position.x,
+      y: directionalLight.position.y,
+      z: directionalLight.position.z
+    }
+  };
+
+  const floorGeometry = new THREE.PlaneGeometry(39, 27);
+  const concreteTextures = loadConcreteTextures();
   const floorMaterial = new THREE.MeshStandardMaterial({
-    map: createFloorTexture(30),
+    map: concreteTextures.colorMap,
+    normalMap: concreteTextures.normalMap,
+    normalScale: new THREE.Vector2(0.8, 0.8), // Subtle surface relief
+    roughnessMap: concreteTextures.roughnessMap,
+    aoMap: concreteTextures.aoMap,
+    aoMapIntensity: 0.6, // Soft ambient occlusion
     roughness: 0.95,
     metalness: 0.0,
   });
   floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
+  floor.position.set(-3.5, 0, 3.5); // Top-left corner at (-23, -10)
   floor.receiveShadow = true;
+  // Set up UV2 for AO map
+  if (floor.geometry.attributes.uv) {
+    floor.geometry.setAttribute('uv2', floor.geometry.attributes.uv);
+  }
   scene.add(floor);
 
-  gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
+  gridHelper = new THREE.GridHelper(39, 39, 0x444444, 0x222222);
+  gridHelper.position.set(-3.5, 0, 3.5); // Match floor position
   scene.add(gridHelper);
 
   window.addEventListener('resize', onWindowResize);
@@ -322,6 +663,24 @@ const onWindowResize = () => {
 const updateMousePosition = (event: MouseEvent) => {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+};
+
+const updateDirectionalLightColor = (hexColor: string) => {
+  if (!directionalLight) return;
+  directionalLight.color.setHex(parseInt(hexColor.replace('#', ''), 16));
+  directionalLightInfo.value.color = hexColor;
+};
+
+const updateDirectionalLightIntensity = (value: number) => {
+  if (!directionalLight) return;
+  directionalLight.intensity = value;
+  directionalLightInfo.value.intensity = value;
+};
+
+const updateDirectionalLightPosition = (axis: 'x' | 'y' | 'z', value: number) => {
+  if (!directionalLight) return;
+  directionalLight.position[axis] = value;
+  directionalLightInfo.value.position[axis] = value;
 };
 
 const updateAmbientLightColor = (hexColor: string) => {
@@ -495,9 +854,10 @@ const autoSaveLevel = () => {
   }, 1500);
 };
 
-const addPrefab = async (type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue' | 'blueworkzone' | 'woodwall') => {
+const addPrefab = async (type: PrefabType) => {
   let prefabGroup: THREE.Group;
 
+  // Use OBJ prefab creators for furniture
   if (type === 'workbench') {
     prefabGroup = await createWorkbenchPrefab();
   } else if (type === 'neonwall-yellow') {
@@ -506,42 +866,77 @@ const addPrefab = async (type: 'workbench' | 'neonwall-yellow' | 'neonwall-blue'
     prefabGroup = await createNeonWallPrefab('blue');
   } else if (type === 'blueworkzone') {
     prefabGroup = await createBlueWorkZonePrefab();
-  } else {
+  } else if (type === 'woodwall') {
     prefabGroup = await createWoodWallPrefab();
+  } else if (GLB_PREFAB_PATHS[type]) {
+    // Use GLB loader for robot parts
+    prefabGroup = await loadGLBPrefab(type);
+  } else {
+    console.error(`Unknown prefab type: ${type}`);
+    return;
   }
 
-  prefabGroup.position.set(0, 0, 0);
+  prefabGroup.position.set(-3.5, 5, 3.5); // Center of floor, elevated so it falls
   prefabGroup.userData.prefabType = type;
 
   scene.add(prefabGroup);
   placedObjects.value.push(prefabGroup);
   selectedObjects.value = [prefabGroup];
   updateSelectionHelpers();
+
+  // Animate the drop
+  animateDrop(prefabGroup);
 };
 
-const adjustPosition = (axis: 'x' | 'z', delta: number) => {
+// Simple drop animation
+const animateDrop = (object: THREE.Group) => {
+  const startY = object.position.y;
+  const targetY = 0;
+  const duration = 400; // ms
+  const startTime = performance.now();
+
+  const animate = () => {
+    const elapsed = performance.now() - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Easing: ease-out bounce effect
+    const easeOutBounce = (t: number) => {
+      if (t < 1 / 2.75) {
+        return 7.5625 * t * t;
+      } else if (t < 2 / 2.75) {
+        return 7.5625 * (t -= 1.5 / 2.75) * t + 0.75;
+      } else if (t < 2.5 / 2.75) {
+        return 7.5625 * (t -= 2.25 / 2.75) * t + 0.9375;
+      } else {
+        return 7.5625 * (t -= 2.625 / 2.75) * t + 0.984375;
+      }
+    };
+
+    object.position.y = startY + (targetY - startY) * easeOutBounce(progress);
+    updateSelectionHelpers();
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  };
+
+  requestAnimationFrame(animate);
+};
+
+const adjustPosition = (axis: 'x' | 'y' | 'z', delta: number) => {
   if (selectedObjects.value.length !== 1) return;
   selectedObjects.value[0].position[axis] += delta;
   selectionHelpers.forEach((helper) => helper.update());
 };
 
-const adjustRotation = (degrees: number) => {
+const adjustRotationAxis = (axis: 'x' | 'y' | 'z', degrees: number) => {
   if (selectedObjects.value.length !== 1) return;
 
   const obj = selectedObjects.value[0];
   const radians = (degrees * Math.PI) / 180;
 
-  const boxBefore = new THREE.Box3().setFromObject(obj);
-  const centerBefore = boxBefore.getCenter(new THREE.Vector3());
-
-  obj.rotation.y += radians;
+  obj.rotation[axis] += radians;
   obj.updateMatrixWorld(true);
-
-  const boxAfter = new THREE.Box3().setFromObject(obj);
-  const centerAfter = boxAfter.getCenter(new THREE.Vector3());
-
-  const offset = new THREE.Vector3().subVectors(centerBefore, centerAfter);
-  obj.position.add(offset);
 
   selectionHelpers.forEach((helper) => helper.update());
 };
@@ -616,6 +1011,7 @@ const pasteSelected = async () => {
   for (const data of copiedData.value) {
     let prefabGroup: THREE.Group;
 
+    // Use OBJ prefab creators for furniture
     if (data.type === 'workbench') {
       prefabGroup = await createWorkbenchPrefab();
     } else if (data.type === 'neonwall-yellow') {
@@ -624,8 +1020,14 @@ const pasteSelected = async () => {
       prefabGroup = await createNeonWallPrefab('blue');
     } else if (data.type === 'blueworkzone') {
       prefabGroup = await createBlueWorkZonePrefab();
-    } else {
+    } else if (data.type === 'woodwall') {
       prefabGroup = await createWoodWallPrefab();
+    } else if (GLB_PREFAB_PATHS[data.type]) {
+      // Use GLB loader for robot parts
+      prefabGroup = await loadGLBPrefab(data.type);
+    } else {
+      console.error(`Unknown prefab type: ${data.type}`);
+      continue;
     }
 
     prefabGroup.position.set(
@@ -665,9 +1067,14 @@ const saveLevel = () => {
       },
     })),
     settings: {
-      ambientLight: {
-        color: ambientLightInfo.value.color,
-        intensity: ambientLightInfo.value.intensity,
+      directionalLight: {
+        color: directionalLightInfo.value.color,
+        intensity: directionalLightInfo.value.intensity,
+        position: {
+          x: directionalLightInfo.value.position.x,
+          y: directionalLightInfo.value.position.y,
+          z: directionalLightInfo.value.position.z
+        }
       },
       showGrid: showGrid.value,
     },
@@ -688,19 +1095,28 @@ const loadLevel = async () => {
     const levelData: LevelData = JSON.parse(savedData);
 
     for (const prefabData of levelData.prefabs) {
+      // Handle legacy 'neonwall' type as yellow
+      const type = prefabData.type === 'neonwall' ? 'neonwall-yellow' : prefabData.type;
+
       let prefabGroup: THREE.Group;
 
-      if (prefabData.type === 'workbench') {
+      // Use OBJ prefab creators for furniture
+      if (type === 'workbench') {
         prefabGroup = await createWorkbenchPrefab();
-      } else if (prefabData.type === 'neonwall-yellow' || prefabData.type === 'neonwall') {
-        // Support legacy 'neonwall' type as yellow
+      } else if (type === 'neonwall-yellow') {
         prefabGroup = await createNeonWallPrefab('yellow');
-      } else if (prefabData.type === 'neonwall-blue') {
+      } else if (type === 'neonwall-blue') {
         prefabGroup = await createNeonWallPrefab('blue');
-      } else if (prefabData.type === 'blueworkzone') {
+      } else if (type === 'blueworkzone') {
         prefabGroup = await createBlueWorkZonePrefab();
-      } else {
+      } else if (type === 'woodwall') {
         prefabGroup = await createWoodWallPrefab();
+      } else if (GLB_PREFAB_PATHS[type]) {
+        // Use GLB loader for robot parts
+        prefabGroup = await loadGLBPrefab(type);
+      } else {
+        console.warn(`Unknown prefab type: ${prefabData.type}, skipping`);
+        continue;
       }
 
       prefabGroup.position.set(
@@ -709,18 +1125,30 @@ const loadLevel = async () => {
         prefabData.position.z
       );
       prefabGroup.rotation.y = prefabData.rotation.y;
-      prefabGroup.userData.prefabType = prefabData.type;
+      prefabGroup.userData.prefabType = type;
 
       scene.add(prefabGroup);
       placedObjects.value.push(prefabGroup);
     }
 
     if (levelData.settings) {
-      if (levelData.settings.ambientLight) {
-        ambientLightInfo.value.color = levelData.settings.ambientLight.color;
-        ambientLightInfo.value.intensity = levelData.settings.ambientLight.intensity;
-        ambientLight.color.setHex(parseInt(levelData.settings.ambientLight.color.replace('#', ''), 16));
-        ambientLight.intensity = levelData.settings.ambientLight.intensity;
+      if (levelData.settings.directionalLight) {
+        directionalLightInfo.value.color = levelData.settings.directionalLight.color;
+        directionalLightInfo.value.intensity = levelData.settings.directionalLight.intensity;
+        directionalLightInfo.value.position = levelData.settings.directionalLight.position;
+        directionalLight.color.setHex(parseInt(levelData.settings.directionalLight.color.replace('#', ''), 16));
+        directionalLight.intensity = levelData.settings.directionalLight.intensity;
+        directionalLight.position.set(
+          levelData.settings.directionalLight.position.x,
+          levelData.settings.directionalLight.position.y,
+          levelData.settings.directionalLight.position.z
+        );
+      } else if (levelData.settings.ambientLight) {
+        // Legacy support: convert ambient light to directional light
+        directionalLightInfo.value.color = levelData.settings.ambientLight.color;
+        directionalLightInfo.value.intensity = levelData.settings.ambientLight.intensity;
+        directionalLight.color.setHex(parseInt(levelData.settings.ambientLight.color.replace('#', ''), 16));
+        directionalLight.intensity = levelData.settings.ambientLight.intensity;
       }
 
       if (levelData.settings.showGrid !== undefined) {
@@ -804,8 +1232,100 @@ const exitTestMode = () => {
   isTestMode.value = false;
 };
 
+// Generate thumbnail for a prefab
+const generateThumbnail = async (type: PrefabType): Promise<string> => {
+  // Create a small scene for the thumbnail
+  const thumbScene = new THREE.Scene();
+  thumbScene.background = new THREE.Color(0xffffff);
+
+  // Add lights
+  const thumbAmbient = new THREE.AmbientLight(0xffffff, 0.8);
+  thumbScene.add(thumbAmbient);
+  const thumbDirectional = new THREE.DirectionalLight(0xffffff, 0.8);
+  thumbDirectional.position.set(3, 5, 3);
+  thumbScene.add(thumbDirectional);
+  const thumbDirectional2 = new THREE.DirectionalLight(0xffffff, 0.4);
+  thumbDirectional2.position.set(-2, 3, -2);
+  thumbScene.add(thumbDirectional2);
+
+  // Load the prefab
+  let prefabGroup: THREE.Group;
+  try {
+    if (type === 'workbench') {
+      prefabGroup = await createWorkbenchPrefab();
+    } else if (type === 'neonwall-yellow') {
+      prefabGroup = await createNeonWallPrefab('yellow');
+    } else if (type === 'neonwall-blue') {
+      prefabGroup = await createNeonWallPrefab('blue');
+    } else if (type === 'blueworkzone') {
+      prefabGroup = await createBlueWorkZonePrefab();
+    } else if (type === 'woodwall') {
+      prefabGroup = await createWoodWallPrefab();
+    } else if (GLB_PREFAB_PATHS[type]) {
+      prefabGroup = await loadGLBPrefab(type);
+    } else {
+      throw new Error(`Unknown type: ${type}`);
+    }
+  } catch {
+    return '';
+  }
+
+  // Get bounding box and center
+  const box = new THREE.Box3().setFromObject(prefabGroup);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+
+  // Move model to origin (centered)
+  prefabGroup.position.x = -center.x;
+  prefabGroup.position.y = -center.y;
+  prefabGroup.position.z = -center.z;
+
+  thumbScene.add(prefabGroup);
+
+  // Calculate camera distance to fit the object
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const fov = 35;
+  const cameraDistance = maxDim / (2 * Math.tan((fov * Math.PI) / 360)) * 1.4;
+
+  // Create camera positioned to see the object
+  const thumbCamera = new THREE.PerspectiveCamera(fov, 1, 0.1, 100);
+  thumbCamera.position.set(cameraDistance * 0.7, cameraDistance * 0.5, cameraDistance * 0.7);
+  thumbCamera.lookAt(0, 0, 0);
+
+  // Create renderer
+  const thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  thumbRenderer.setSize(160, 160);
+  thumbRenderer.render(thumbScene, thumbCamera);
+
+  const dataUrl = thumbRenderer.domElement.toDataURL();
+
+  // Cleanup
+  thumbRenderer.dispose();
+  prefabGroup.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry?.dispose();
+    }
+  });
+
+  return dataUrl;
+};
+
+const generateAllThumbnails = async () => {
+  const allItems = [...prefabItems, ...resourceItems];
+  for (const item of allItems) {
+    const thumb = await generateThumbnail(item.type);
+    if (thumb) {
+      prefabThumbnails.value[item.type] = thumb;
+    }
+  }
+};
+
 onMounted(() => {
   setupScene();
+  // Generate thumbnails after scene is ready
+  setTimeout(() => {
+    generateAllThumbnails();
+  }, 500);
 });
 
 onUnmounted(() => {
@@ -837,12 +1357,12 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a1a1a;
+  background: #ffffff;
   z-index: 9999;
 }
 
 .loading-text {
-  color: white;
+  color: #333;
   font-size: 2rem;
   font-family: monospace;
 }
@@ -854,74 +1374,228 @@ canvas {
   cursor: default;
 }
 
+/* Top right buttons */
+.top-right-buttons {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+}
+
+.toggle-btn {
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Settings panels stacked on left */
+.settings-panels {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 100;
+}
+
+.settings-panel {
+  padding: 12px;
+  border-radius: 8px;
+  color: white;
+  width: 200px;
+  user-select: none;
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subsection-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.setting-row span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.setting-row input[type="range"] {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.setting-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.setting-row input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.setting-row.checkbox {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-row.checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
 .prefab-panel {
   position: absolute;
   top: 80px;
   left: 20px;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 10px;
   border-radius: 8px;
   color: white;
-  min-width: 150px;
   user-select: none;
 }
 
-.prefab-panel h3 {
-  margin: 0 0 15px 0;
-  font-size: 16px;
+.prefab-sections {
+  display: flex;
+  gap: 12px;
 }
 
-.prefab-panel button {
+.prefab-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.prefab-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.prefab-thumb {
+  width: 80px;
+  height: 80px;
+  padding: 4px;
+  background: #fff;
+  border: 2px solid #555;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.prefab-thumb:hover {
+  border-color: #4CAF50;
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.prefab-thumb img {
   width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #4CAF50;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.thumb-placeholder {
+  font-size: 24px;
+  font-weight: bold;
+  color: #999;
+}
+
+.prefab-panel .save-btn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 10px;
+  background: #2196F3;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 11px;
 }
 
-.prefab-panel button:hover {
-  background: #45a049;
-}
-
-.prefab-panel button:last-child {
-  background: #2196F3;
-  margin-top: 10px;
-}
-
-.prefab-panel button:last-child:hover {
+.prefab-panel .save-btn:hover {
   background: #0b7dda;
 }
 
-.test-mode-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+.test-mode-btn-inline {
   padding: 12px 24px;
   background: rgba(255, 152, 0, 0.9);
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
-  z-index: 100;
   transition: background 0.2s;
   user-select: none;
 }
 
-.test-mode-btn:hover {
+.test-mode-btn-inline:hover {
   background: rgba(255, 152, 0, 1);
 }
 
-.test-mode-btn.active {
+.test-mode-btn-inline.active {
   background: rgba(244, 67, 54, 0.9);
 }
 
-.test-mode-btn.active:hover {
+.test-mode-btn-inline.active:hover {
   background: rgba(244, 67, 54, 1);
 }
 
@@ -973,8 +1647,40 @@ canvas {
   text-transform: capitalize;
 }
 
+.section-label {
+  margin: 10px 0 5px 0;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.control-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .control-group {
   margin-bottom: 15px;
+}
+
+.control-group.compact {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.control-group.compact label {
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.control-group.compact .buttons {
+  gap: 4px;
+}
+
+.control-group.compact button {
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 .control-group label {
@@ -1054,6 +1760,7 @@ canvas {
     transform: translateY(100px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1065,72 +1772,10 @@ canvas {
     transform: translateX(-100px);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
   }
-}
-
-.ambient-light-panel {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: rgba(6, 182, 212, 0.9);
-  padding: 20px;
-  border-radius: 8px;
-  color: white;
-  min-width: 200px;
-  user-select: none;
-}
-
-.ambient-light-panel h3 {
-  margin: 0 0 15px 0;
-  font-size: 16px;
-}
-
-.ambient-light-panel .control-group {
-  margin-bottom: 15px;
-}
-
-.ambient-light-panel .control-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 14px;
-}
-
-.ambient-light-panel .color-picker {
-  width: 100%;
-  height: 30px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.ambient-light-panel .slider {
-  width: 100%;
-  height: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  outline: none;
-  cursor: pointer;
-}
-
-.ambient-light-panel .slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.ambient-light-panel .slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
 }
 </style>
