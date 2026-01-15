@@ -2,15 +2,13 @@ import * as THREE from 'three';
 
 import { loadPrefabModel } from '~/three/utils/prefabLoader';
 
-// Shared wood material (simple, no textures)
-let sharedWoodMaterial: THREE.MeshStandardMaterial | null = null;
+// Shared wood material (cartoon-style)
+let sharedWoodMaterial: THREE.MeshToonMaterial | null = null;
 
-function getOrCreateWoodMaterial(): THREE.MeshStandardMaterial {
+function getOrCreateWoodMaterial(): THREE.MeshToonMaterial {
   if (!sharedWoodMaterial) {
-    sharedWoodMaterial = new THREE.MeshStandardMaterial({
+    sharedWoodMaterial = new THREE.MeshToonMaterial({
       color: 0xdeb887, // Warm wood color (burlywood)
-      roughness: 0.8,
-      metalness: 0.0,
     });
   }
 
@@ -44,6 +42,8 @@ export async function createWoodWallPrefab(): Promise<THREE.Group> {
     if (child instanceof THREE.Mesh) {
       child.material = woodMaterial;
       child.material.needsUpdate = true;
+      child.castShadow = true;
+      child.receiveShadow = true;
     }
   });
 

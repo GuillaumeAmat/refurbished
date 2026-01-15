@@ -2,17 +2,15 @@ import * as THREE from 'three';
 import { loadPrefabModel } from '~/three/utils/prefabLoader';
 
 // Shared materials cache - one material per unique color
-const sharedMaterials = new Map<number, THREE.MeshStandardMaterial>();
+const sharedMaterials = new Map<number, THREE.MeshToonMaterial>();
 
-function getOrCreateSharedMaterial(sourceColor: THREE.Color): THREE.MeshStandardMaterial {
+function getOrCreateSharedMaterial(sourceColor: THREE.Color): THREE.MeshToonMaterial {
   const colorKey = sourceColor.getHex();
 
   if (!sharedMaterials.has(colorKey)) {
-    // Create material with original color from MTL file
-    sharedMaterials.set(colorKey, new THREE.MeshStandardMaterial({
+    // Create cartoon-style material with original color from MTL file
+    sharedMaterials.set(colorKey, new THREE.MeshToonMaterial({
       color: sourceColor.clone(),
-      roughness: 0.8,
-      metalness: 0.2,
     }));
   }
 

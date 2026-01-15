@@ -248,6 +248,46 @@
           </label>
         </div>
       </div>
+
+      <!-- Neon Lights Panel -->
+      <div class="settings-panel bg-purple-600/90">
+        <p class="panel-title">Neon Lights</p>
+        <div class="panel-content">
+          <label class="setting-row">
+            <span>Spotlight: {{ neonLightInfo.spotlightIntensity.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="0"
+              max="30"
+              step="0.5"
+              :value="neonLightInfo.spotlightIntensity"
+              @input="updateNeonSpotlightIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Emissive: {{ neonLightInfo.emissiveIntensity.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              :value="neonLightInfo.emissiveIntensity"
+              @input="updateNeonEmissiveIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+          <label class="setting-row">
+            <span>Glass Emissive: {{ neonLightInfo.glassEmissiveIntensity.toFixed(1) }}</span>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              step="0.5"
+              :value="neonLightInfo.glassEmissiveIntensity"
+              @input="updateNeonGlassEmissiveIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+            />
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- Transform Panel (shown when objects selected) -->
@@ -366,6 +406,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OutlineEffect } from 'three/examples/jsm/effects/OutlineEffect.js';
 import { createWorkbenchPrefab } from '~/three/prefabs/WorkbenchPrefab';
 import { createNeonWallPrefab } from '~/three/prefabs/NeonWallPrefab';
 import { createBlueWorkZonePrefab } from '~/three/prefabs/BlueWorkZonePrefab';
@@ -382,6 +423,7 @@ const textureLoader = new THREE.TextureLoader();
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
+let effect: OutlineEffect;
 let controls: OrbitControls;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2;
@@ -409,6 +451,11 @@ const directionalLightInfo = ref({
 const ambientLightInfo = ref({
   color: '#ffffff',
   intensity: 0.5
+});
+const neonLightInfo = ref({
+  spotlightIntensity: 9.0,
+  emissiveIntensity: 35,
+  glassEmissiveIntensity: 7
 });
 const isLoading = ref(true);
 const showGrid = ref(true);
@@ -506,6 +553,11 @@ interface LevelData {
       color: string;
       intensity: number;
     };
+    neonLights?: {
+      spotlightIntensity: number;
+      emissiveIntensity: number;
+      glassEmissiveIntensity: number;
+    };
     showGrid?: boolean;
   };
 }
@@ -547,6 +599,12 @@ const setupScene = () => {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+  // OutlineEffect for cartoon-style outlines
+  effect = new OutlineEffect(renderer, {
+    defaultThickness: 0.003,
+    defaultColor: [0, 0, 0],
+  });
+
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
@@ -556,8 +614,8 @@ const setupScene = () => {
   mouse = new THREE.Vector2();
   dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
-  // Ambient light for base illumination (prevents completely black areas)
-  ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  // Simplified cartoon-style lighting
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
   ambientLightInfo.value = {
@@ -565,15 +623,15 @@ const setupScene = () => {
     intensity: ambientLight.intensity
   };
 
-  directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  directionalLight.position.set(0, 20, 0);
+  directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(5, 10, 5);
   directionalLight.castShadow = true;
   directionalLight.shadow.mapSize.width = 2048;
   directionalLight.shadow.mapSize.height = 2048;
-  directionalLight.shadow.camera.left = -20;
-  directionalLight.shadow.camera.right = 20;
-  directionalLight.shadow.camera.top = 14;
-  directionalLight.shadow.camera.bottom = -14;
+  directionalLight.shadow.camera.left = -25;
+  directionalLight.shadow.camera.right = 25;
+  directionalLight.shadow.camera.top = 20;
+  directionalLight.shadow.camera.bottom = -20;
   directionalLight.shadow.camera.near = 0.5;
   directionalLight.shadow.camera.far = 50;
   scene.add(directionalLight);
@@ -589,25 +647,16 @@ const setupScene = () => {
   };
 
   const floorGeometry = new THREE.PlaneGeometry(39, 27);
-  const concreteTextures = loadConcreteTextures();
-  const floorMaterial = new THREE.MeshStandardMaterial({
-    map: concreteTextures.colorMap,
-    normalMap: concreteTextures.normalMap,
-    normalScale: new THREE.Vector2(0.8, 0.8), // Subtle surface relief
-    roughnessMap: concreteTextures.roughnessMap,
-    aoMap: concreteTextures.aoMap,
-    aoMapIntensity: 0.6, // Soft ambient occlusion
-    roughness: 0.95,
-    metalness: 0.0,
+  // Cartoon-style floor material with texture
+  const { colorMap } = loadConcreteTextures();
+  const floorMaterial = new THREE.MeshToonMaterial({
+    color: 0xffffff, // White base - texture shows at natural brightness
+    map: colorMap,
   });
   floor = new THREE.Mesh(floorGeometry, floorMaterial);
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(-3.5, 0, 3.5); // Top-left corner at (-23, -10)
   floor.receiveShadow = true;
-  // Set up UV2 for AO map
-  if (floor.geometry.attributes.uv) {
-    floor.geometry.setAttribute('uv2', floor.geometry.attributes.uv);
-  }
   scene.add(floor);
 
   gridHelper = new THREE.GridHelper(39, 39, 0x444444, 0x222222);
@@ -651,7 +700,7 @@ const animate = () => {
   }
 
   selectionHelpers.forEach((helper) => helper.update());
-  renderer.render(scene, camera);
+  effect.render(scene, camera);
 };
 
 const onWindowResize = () => {
@@ -693,6 +742,54 @@ const updateAmbientLightIntensity = (value: number) => {
   if (!ambientLight) return;
   ambientLight.intensity = value;
   ambientLightInfo.value.intensity = value;
+};
+
+// Update all neon spotlights in the scene
+const updateNeonSpotlightIntensity = (value: number) => {
+  neonLightInfo.value.spotlightIntensity = value;
+  placedObjects.value.forEach((obj) => {
+    if (obj.userData.prefabType?.startsWith('neonwall')) {
+      obj.traverse((child) => {
+        if (child instanceof THREE.SpotLight) {
+          child.intensity = value;
+        }
+      });
+    }
+  });
+};
+
+// Update all neon emissive materials in the scene
+const updateNeonEmissiveIntensity = (value: number) => {
+  neonLightInfo.value.emissiveIntensity = value;
+  placedObjects.value.forEach((obj) => {
+    if (obj.userData.prefabType?.startsWith('neonwall')) {
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.name.match(/^NEON_[1-5]$/)) {
+          const mat = child.material as THREE.MeshToonMaterial;
+          if (mat.emissiveIntensity !== undefined) {
+            mat.emissiveIntensity = value;
+          }
+        }
+      });
+    }
+  });
+};
+
+// Update all glass emissive materials in the scene
+const updateNeonGlassEmissiveIntensity = (value: number) => {
+  neonLightInfo.value.glassEmissiveIntensity = value;
+  placedObjects.value.forEach((obj) => {
+    if (obj.userData.prefabType?.startsWith('neonwall')) {
+      obj.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.name === 'GLASS') {
+          const mat = child.material as THREE.MeshToonMaterial;
+          if (mat.emissiveIntensity !== undefined) {
+            mat.emissiveIntensity = value;
+          }
+        }
+      });
+    }
+  });
 };
 
 const toggleGrid = () => {
@@ -977,7 +1074,7 @@ const deleteSelected = () => {
   });
 
   selectedObjects.value = [];
-  renderer.render(scene, camera);
+  effect.render(scene, camera);
   autoSaveLevel();
 };
 
@@ -1076,6 +1173,11 @@ const saveLevel = () => {
           z: directionalLightInfo.value.position.z
         }
       },
+      neonLights: {
+        spotlightIntensity: neonLightInfo.value.spotlightIntensity,
+        emissiveIntensity: neonLightInfo.value.emissiveIntensity,
+        glassEmissiveIntensity: neonLightInfo.value.glassEmissiveIntensity
+      },
       showGrid: showGrid.value,
     },
   };
@@ -1154,6 +1256,32 @@ const loadLevel = async () => {
       if (levelData.settings.showGrid !== undefined) {
         showGrid.value = levelData.settings.showGrid;
         gridHelper.visible = levelData.settings.showGrid;
+      }
+
+      // Restore neon lights settings
+      if (levelData.settings.neonLights) {
+        neonLightInfo.value.spotlightIntensity = levelData.settings.neonLights.spotlightIntensity;
+        neonLightInfo.value.emissiveIntensity = levelData.settings.neonLights.emissiveIntensity;
+        neonLightInfo.value.glassEmissiveIntensity = levelData.settings.neonLights.glassEmissiveIntensity;
+
+        // Apply to all neon walls
+        placedObjects.value.forEach((obj) => {
+          if (obj.userData.prefabType?.startsWith('neonwall')) {
+            obj.traverse((child) => {
+              if (child instanceof THREE.SpotLight) {
+                child.intensity = neonLightInfo.value.spotlightIntensity;
+              }
+              if (child instanceof THREE.Mesh) {
+                const mat = child.material as THREE.MeshToonMaterial;
+                if (child.name.match(/^NEON_[1-5]$/)) {
+                  mat.emissiveIntensity = neonLightInfo.value.emissiveIntensity;
+                } else if (child.name === 'GLASS') {
+                  mat.emissiveIntensity = neonLightInfo.value.glassEmissiveIntensity;
+                }
+              }
+            });
+          }
+        });
       }
     }
   } catch (error) {

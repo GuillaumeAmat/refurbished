@@ -4,29 +4,26 @@ import { loadPrefabModel } from '~/three/utils/prefabLoader';
 // Shared materials cache - materials are created once and reused across all instances
 const sharedMaterials = {
   yellow: {
-    default: null as THREE.MeshStandardMaterial | null,
-    neon: null as THREE.MeshStandardMaterial | null,
-    glass: null as THREE.MeshStandardMaterial | null,
+    default: null as THREE.MeshToonMaterial | null,
+    neon: null as THREE.MeshToonMaterial | null,
+    glass: null as THREE.MeshToonMaterial | null,
   },
   blue: {
-    default: null as THREE.MeshStandardMaterial | null,
-    neon: null as THREE.MeshStandardMaterial | null,
-    glass: null as THREE.MeshStandardMaterial | null,
+    default: null as THREE.MeshToonMaterial | null,
+    neon: null as THREE.MeshToonMaterial | null,
+    glass: null as THREE.MeshToonMaterial | null,
   },
 };
 
 function getSharedMaterial(
   color: 'yellow' | 'blue',
   type: 'default' | 'neon' | 'glass'
-): THREE.MeshStandardMaterial {
+): THREE.MeshToonMaterial {
   if (!sharedMaterials[color][type]) {
     if (type === 'glass') {
-      // Glass uses simple transparent MeshStandardMaterial to avoid GPU texture unit overflow
-      // MeshPhysicalMaterial with transmission consumes too many texture units
-      sharedMaterials[color].glass = new THREE.MeshStandardMaterial({
+      // Glass with cartoon-style toon shading
+      sharedMaterials[color].glass = new THREE.MeshToonMaterial({
         color: color === 'yellow' ? 0x8cff1a : 0x007bff,
-        roughness: 0.34,
-        metalness: 0.64,
         transparent: true,
         opacity: 0.47,
         emissive: color === 'yellow' ? 0xffff00 : 0x00ffff,
@@ -34,19 +31,15 @@ function getSharedMaterial(
       });
     } else if (type === 'neon') {
       // Neon meshes have emissive glow
-      sharedMaterials[color].neon = new THREE.MeshStandardMaterial({
+      sharedMaterials[color].neon = new THREE.MeshToonMaterial({
         color: color === 'yellow' ? 0xffdd1a : 0x1ae4ff,
-        roughness: 0.8,
-        metalness: 0.2,
         emissive: color === 'yellow' ? 0xffff00 : 0x00ffff,
         emissiveIntensity: 35,
       });
     } else {
       // Default material
-      sharedMaterials[color].default = new THREE.MeshStandardMaterial({
+      sharedMaterials[color].default = new THREE.MeshToonMaterial({
         color: color === 'yellow' ? 0xffdd1a : 0x6b90ff,
-        roughness: 0.8,
-        metalness: 0.2,
       });
     }
   }
@@ -71,10 +64,15 @@ export async function createNeonWallPrefab(color: 'yellow' | 'blue' = 'yellow'):
       if (child.name === 'GLASS') {
         child.material = getSharedMaterial(color, 'glass');
         child.castShadow = false;
+        child.receiveShadow = true;
       } else if (child.name.match(/^NEON_[1-5]$/)) {
         child.material = getSharedMaterial(color, 'neon');
+        child.castShadow = false; // Light sources shouldn't cast shadows
+        child.receiveShadow = false; // Neon tubes don't need to receive shadows
       } else {
         child.material = getSharedMaterial(color, 'default');
+        child.castShadow = true;
+        child.receiveShadow = true;
       }
     },
   });
