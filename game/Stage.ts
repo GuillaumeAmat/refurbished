@@ -79,11 +79,6 @@ export class Stage {
         path: '/game/audio/effect/select.opus',
         priority: 'low',
       },
-      playerTexture: {
-        type: 'texture',
-        path: '/game/player.png',
-        priority: 'low',
-      },
       duckModel: {
         type: 'gltf',
         path: '/game/Duck.gltf',
