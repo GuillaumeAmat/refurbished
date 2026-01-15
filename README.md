@@ -2,33 +2,12 @@
 
 Unofficial Back Market themed web video game.
 
-## Setup
+## Controls
 
-Make sure to install dependencies:
+| Key | Action |
+| --- | ------ |
+| `B` | Dash   |
 
-```bash
-curl https://get.volta.sh | bash
-yarn install
-```
+## Contributing
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-yarn dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-yarn build
-```
-
-Locally preview production build:
-
-```bash
-yarn preview
-```
+See [CONTRIBUTING.md](./CONTRIBUTING.md)

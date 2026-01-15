@@ -1,11 +1,12 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
-import { MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
+import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
 import { Debug } from '../utils/Debug';
 import { GamepadManager, type PlayerId } from '../utils/input/GamepadManager';
 import { Physics } from '../utils/Physics';
 import { Resources } from '../utils/Resources';
+import { Time } from '../utils/Time';
 
 const SPAWN_POSITIONS = new Map<PlayerId, { x: number; z: number }>([
   [1, { x: -1, z: 2 }],
@@ -35,9 +36,17 @@ export class Player {
     movementSpeed: MOVEMENT_SPEED,
   };
 
+  #dashState = {
+    isDashing: false,
+    timer: 0,
+    cooldownTimer: 0,
+    direction: { x: 0, z: 0 },
+  };
+
   #debug: Debug;
   #gamepadManager: GamepadManager;
   #playerId: PlayerId;
+  #time: Time;
   #debugProperties = {
     DisplayHelper: true,
   };
@@ -54,6 +63,7 @@ export class Player {
 
     this.#debug = Debug.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
+    this.#time = Time.getInstance();
     this.#playerId = playerId;
 
     this.createMesh();
@@ -137,12 +147,52 @@ export class Player {
     const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
     if (!inputSource?.connected) return;
 
+    const deltaTime = this.#time.delta * 0.001;
+
+    // Update dash timers
+    if (this.#dashState.timer > 0) {
+      this.#dashState.timer -= deltaTime;
+      if (this.#dashState.timer <= 0) {
+        this.#dashState.isDashing = false;
+        this.#dashState.timer = 0;
+      }
+    }
+
+    if (this.#dashState.cooldownTimer > 0) {
+      this.#dashState.cooldownTimer -= deltaTime;
+      if (this.#dashState.cooldownTimer < 0) {
+        this.#dashState.cooldownTimer = 0;
+      }
+    }
+
     const { movementSpeed } = this.#properties;
     const { x, z } = inputSource.getMovement();
 
+    // Check for dash button press (B button like in Overcooked)
+    const isDashButtonPressed = inputSource.isButtonPressed('b');
+    const isMoving = Math.abs(x) > 0.01 || Math.abs(z) > 0.01;
+
+    if (isDashButtonPressed && !this.#dashState.isDashing && this.#dashState.cooldownTimer <= 0 && isMoving) {
+      // Initiate dash
+      this.#dashState.isDashing = true;
+      this.#dashState.timer = DASH_DURATION;
+      this.#dashState.cooldownTimer = DASH_COOLDOWN;
+      this.#dashState.direction = { x, z };
+    }
+
     const currentVel = this.#rigidBody.linvel();
-    const desiredVelX = x * movementSpeed;
-    const desiredVelZ = z * movementSpeed;
+    let desiredVelX: number;
+    let desiredVelZ: number;
+
+    if (this.#dashState.isDashing) {
+      // Apply dash velocity
+      desiredVelX = this.#dashState.direction.x * DASH_SPEED;
+      desiredVelZ = this.#dashState.direction.z * DASH_SPEED;
+    } else {
+      // Apply normal movement velocity
+      desiredVelX = x * movementSpeed;
+      desiredVelZ = z * movementSpeed;
+    }
 
     const forceVector = new RAPIER.Vector3(desiredVelX, currentVel.y, desiredVelZ);
     this.#rigidBody.setLinvel(forceVector, true);
