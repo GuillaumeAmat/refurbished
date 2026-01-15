@@ -11,6 +11,12 @@ export default defineNuxtConfig({
     autoImport: false,
   },
 
+  runtimeConfig: {
+    public: {
+      keyboardFallbackEnabled: true,
+    },
+  },
+
   vite: {
     plugins: [glslPlugin()],
   },

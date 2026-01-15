@@ -1,7 +1,7 @@
 import { Scene } from 'three';
 import { type Actor, type AnyActorLogic, createActor, fromPromise } from 'xstate';
 
-import { navigateTo } from '#app';
+import { navigateTo, useRuntimeConfig } from '#app';
 
 import { Camera } from './Camera';
 import { Environment } from './Environment';
@@ -15,8 +15,10 @@ import { SavingScoreScreen } from './screens/SavingScoreScreen';
 import { ScoreScreen } from './screens/ScoreScreen';
 import { StartScreen } from './screens/StartScreen';
 import { TutorialScreen } from './screens/TutorialScreen';
+import { WaitingScreen } from './screens/WaitingScreen';
 import { stageMachine } from './Stage.machine';
 import { Debug } from './utils/Debug';
+import { GamepadManager } from './utils/input/GamepadManager';
 import { Renderer } from './utils/Renderer';
 import { Resources } from './utils/Resources';
 import { Sizes } from './utils/Sizes';
@@ -25,6 +27,7 @@ import { Time } from './utils/Time';
 export class Stage {
   #actor: Actor<AnyActorLogic>;
   #scene: Scene;
+  #camera: Camera;
   #resources: Resources;
   #time: Time;
   #environment: Environment | null = null;
@@ -37,14 +40,14 @@ export class Stage {
     new Debug();
 
     this.#scene = new Scene();
-    const camera = new Camera(this.#scene, canvas);
-    const renderer = new Renderer(this.#scene, canvas, camera);
+    this.#camera = new Camera(this.#scene, canvas);
+    const renderer = new Renderer(this.#scene, canvas, this.#camera);
     const loadingOverlay = new LoadingOverlay(this.#scene);
 
     const sizes = new Sizes();
     sizes.addEventListener('resize', () => {
       window.requestAnimationFrame(() => {
-        camera.setSizesAndRatio();
+        this.#camera.setSizesAndRatio();
 
         /**
          * Must be called after the camera has been resized,
@@ -95,6 +98,15 @@ export class Stage {
       // },
     });
 
+    // Initialize keyboard fallback based on runtime config
+    const config = useRuntimeConfig();
+    const gamepadManager = GamepadManager.getInstance();
+    if (config.public.keyboardFallbackEnabled) {
+      gamepadManager.enableKeyboards();
+    } else {
+      gamepadManager.disableKeyboards();
+    }
+
     this.#actor = createActor(
       stageMachine.provide({
         actions: {
@@ -130,7 +142,7 @@ export class Stage {
 
     this.#time = new Time();
     this.#time.addEventListener('tick', () => {
-      camera.update();
+      this.#camera.update();
       loadingOverlay.update();
       renderer.update();
     });
@@ -176,9 +188,10 @@ export class Stage {
     }
 
     const startScreen = new StartScreen(this.#actor, this.#scene);
-    const levelScreen = new LevelScreen(this.#actor, this.#scene);
+    const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera);
     const menuScreen = new MenuScreen(this.#actor, this.#scene);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
+    const waitingScreen = new WaitingScreen(this.#actor, this.#scene);
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#scene);
     const pauseScreen = new PauseScreen(this.#actor, this.#scene);
     const scoreScreen = new ScoreScreen(this.#actor, this.#scene);
@@ -196,6 +209,7 @@ export class Stage {
       levelScreen.update();
       menuScreen.update();
       tutorialScreen.update();
+      waitingScreen.update();
       leaderboardScreen.update();
       pauseScreen.update();
       scoreScreen.update();

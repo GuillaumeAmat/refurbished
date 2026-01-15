@@ -1,12 +1,21 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { type Group, MathUtils, Mesh, type Object3D, type Scene, Vector3 } from 'three';
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
 import { MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
 import { Debug } from '../utils/Debug';
-import { InputController } from '../utils/InputController';
+import { GamepadManager, type PlayerId } from '../utils/input/GamepadManager';
 import { Physics } from '../utils/Physics';
 import { Resources } from '../utils/Resources';
+
+const SPAWN_POSITIONS = new Map<PlayerId, { x: number; z: number }>([
+  [1, { x: -1, z: 2 }],
+  [2, { x: 1, z: 2 }],
+]);
+
+const PLAYER_COLORS = new Map<PlayerId, number>([
+  [1, 0x4488ff],
+  [2, 0xff8844],
+]);
 
 export class Player {
   #screenGroup: Group;
@@ -27,7 +36,8 @@ export class Player {
   };
 
   #debug: Debug;
-  #inputController: InputController;
+  #gamepadManager: GamepadManager;
+  #playerId: PlayerId;
   #debugProperties = {
     DisplayHelper: true,
   };
@@ -36,14 +46,15 @@ export class Player {
     return this.#mesh;
   }
 
-  constructor(screenGroup: Group, scene: Scene) {
+  constructor(screenGroup: Group, scene: Scene, playerId: PlayerId) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
     this.#physics = Physics.getInstance();
 
     this.#debug = Debug.getInstance();
-    this.#inputController = new InputController();
+    this.#gamepadManager = GamepadManager.getInstance();
+    this.#playerId = playerId;
 
     this.createMesh();
     this.createPhysicsBody();
@@ -58,18 +69,22 @@ export class Player {
     }
 
     this.#mesh = duckModel.scene.clone();
-
-    // Scale to match PLAYER_SIZE
     this.#mesh.scale.setScalar(1);
 
-    // Position on floor plane
-    this.#mesh.position.set(0, 0.1, 2);
+    const spawn = SPAWN_POSITIONS.get(this.#playerId)!;
+    this.#mesh.position.set(spawn.x, 0.1, spawn.z);
 
-    // Enable shadows
+    const playerColor = new Color(PLAYER_COLORS.get(this.#playerId)!);
+
     this.#mesh.traverse((child) => {
       if (child instanceof Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+
+        if (child.material instanceof MeshStandardMaterial) {
+          child.material = child.material.clone();
+          child.material.color.multiply(playerColor);
+        }
       }
     });
 
@@ -79,7 +94,8 @@ export class Player {
   private createPhysicsBody() {
     if (!this.#mesh) return;
 
-    const initialPosition = new Vector3(0, 0.1, 2);
+    const spawn = SPAWN_POSITIONS.get(this.#playerId)!;
+    const initialPosition = new Vector3(spawn.x, 0.1, spawn.z);
     this.#rigidBody = this.#physics.createDynamicRigidBody(initialPosition);
 
     const radius = this.#properties.width / 2;
@@ -93,7 +109,7 @@ export class Player {
 
   private async setupHelpers() {
     if (this.#debug.active) {
-      const folderName = 'Player';
+      const folderName = `Player ${this.#playerId}`;
       const guiFolder = this.#debug.gui.addFolder(folderName);
 
       this.#debugProperties = {
@@ -118,40 +134,16 @@ export class Player {
   private updateMovement() {
     if (!this.#rigidBody) return;
 
+    const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
+    if (!inputSource?.connected) return;
+
     const { movementSpeed } = this.#properties;
+    const { x, z } = inputSource.getMovement();
 
-    // Determine movement direction based on input
-    let x = 0;
-    let z = 0;
-
-    if (
-      this.#inputController.isKeyPressed('ArrowLeft') ||
-      this.#inputController.isKeyPressed('KeyA') ||
-      this.#inputController.isKeyPressed('KeyQ')
-    ) {
-      x = -1;
-    } else if (this.#inputController.isKeyPressed('ArrowRight') || this.#inputController.isKeyPressed('KeyD')) {
-      x = 1;
-    }
-
-    if (
-      this.#inputController.isKeyPressed('ArrowUp') ||
-      this.#inputController.isKeyPressed('KeyW') ||
-      this.#inputController.isKeyPressed('KeyZ')
-    ) {
-      z = -1;
-    } else if (this.#inputController.isKeyPressed('ArrowDown') || this.#inputController.isKeyPressed('KeyS')) {
-      z = 1;
-    }
-
-    // Get current velocity to preserve Y component
     const currentVel = this.#rigidBody.linvel();
-
-    // Calculate desired velocity
     const desiredVelX = x * movementSpeed;
     const desiredVelZ = z * movementSpeed;
 
-    // Apply velocity with smoother control
     const forceVector = new RAPIER.Vector3(desiredVelX, currentVel.y, desiredVelZ);
     this.#rigidBody.setLinvel(forceVector, true);
   }
@@ -163,19 +155,14 @@ export class Player {
     const vx = velocity.x;
     const vz = velocity.z;
 
-    // Update target rotation when moving
     const isMoving = Math.abs(vx) > 0.01 || Math.abs(vz) > 0.01;
 
     if (isMoving) {
-      // Calculate angle from velocity (atan2 for XZ plane = Y-rotation)
-      // Negate vz because Z-axis is inverted (negative Z = forward)
       this.#targetRotationY = Math.atan2(-vz, vx);
     }
 
-    // Smooth interpolation with angle wrapping
     let angleDiff = this.#targetRotationY - this.#currentRotationY;
 
-    // Normalize to [-PI, PI] for shortest rotation path
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 

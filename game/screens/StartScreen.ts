@@ -2,14 +2,14 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { InputController } from '../utils/InputController';
+import { KeyboardController } from '../utils/input/KeyboardController';
 import { Resources } from '../utils/Resources';
 
 export class StartScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
-  #inputController: InputController;
+  #inputController: KeyboardController;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -20,7 +20,7 @@ export class StartScreen {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
-    this.#inputController = new InputController();
+    this.#inputController = new KeyboardController();
 
     this.#group = new Group();
     this.#group.position.set(0, 30, 0);
@@ -68,7 +68,7 @@ export class StartScreen {
   }
 
   private show() {
-    this.#inputController.onKeyUp(() => this.onKeyUp());
+    this.#inputController.onButtonUp(() => this.onButtonUp());
     this.#group.visible = true;
   }
 
@@ -77,7 +77,7 @@ export class StartScreen {
     this.#group.visible = false;
   }
 
-  private onKeyUp() {
+  private onButtonUp() {
     this.#stageActor.send({ type: 'start' });
   }
 
