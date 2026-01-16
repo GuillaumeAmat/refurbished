@@ -23,8 +23,8 @@ export const BACKGROUND_COLOR_R = '51';
 export const BACKGROUND_COLOR_G = '51';
 export const BACKGROUND_COLOR_B = '51';
 
-export const TILE_SIZE = 1;
-export const PLAYER_SIZE = 1;
+export const TILE_SIZE = 2;
+export const PLAYER_SIZE = 1.5;
 export const WALL_HEIGHT = 1;
 export const WALL_DEPTH = 0.3;
 export const MOVEMENT_SPEED = 5;

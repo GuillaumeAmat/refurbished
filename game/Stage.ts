@@ -89,12 +89,12 @@ export class Stage {
       },
       benchModel: {
         type: 'gltf',
-        path: '/game/model/environment/bench.glb',
+        path: '/game/model/environment/workbench.glb',
         priority: 'low',
       },
-      blueWorkZoneModel: {
+      wallModel: {
         type: 'gltf',
-        path: '/game/model/environment/blue_work_zone.glb',
+        path: '/game/model/environment/wall.glb',
         priority: 'low',
       },
       batteryLowModel: {

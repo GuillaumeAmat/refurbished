@@ -1,7 +1,8 @@
 import type { Scene } from 'three';
-import { PerspectiveCamera } from 'three';
+import { PerspectiveCamera, Vector3 } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+import { LEVEL_1_MATRIX, TILE_SIZE } from './constants';
 import { Debug } from './utils/Debug';
 import { Sizes } from './utils/Sizes';
 
@@ -26,11 +27,14 @@ export class Camera {
 
     const aspect = this.#sizes.width / this.#sizes.height;
 
+    // Calculate level center in positive space
+    const levelWidth = (LEVEL_1_MATRIX[0]?.length || 0) * TILE_SIZE;
+    const levelDepth = LEVEL_1_MATRIX.length * TILE_SIZE;
+    const levelCenter = new Vector3(levelWidth / 2, 0, levelDepth / 2);
+
     this.#camera = new PerspectiveCamera(35, aspect, 0.1, 100);
-    this.#camera.position.set(0, 14, 11);
-    // FIXME
-    // this.#camera.lookAt(0, 30, 0);
-    this.#camera.lookAt(0, 0, 0);
+    this.#camera.position.set(levelCenter.x, levelCenter.y + 22, levelCenter.z + 18);
+    this.#camera.lookAt(levelCenter);
     this.#scene.add(this.#camera);
 
     this.setupControls();
@@ -41,11 +45,14 @@ export class Camera {
     if (this.#debug.active) {
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
 
+      // Calculate level center in positive space
+      const levelWidth = (LEVEL_1_MATRIX[0]?.length || 0) * TILE_SIZE;
+      const levelDepth = LEVEL_1_MATRIX.length * TILE_SIZE;
+      const levelCenter = new Vector3(levelWidth / 2, 0, levelDepth / 2);
+
       this.#controls = new OrbitControls(this.#camera, this.#canvas);
       this.#controls.enableDamping = true;
-      // FIXME
-      // this.#controls.target.set(0, 30, 0);
-      this.#controls.target.set(0, 0, 0);
+      this.#controls.target.set(levelCenter.x, levelCenter.y, levelCenter.z);
       this.#controls.update();
     }
   }

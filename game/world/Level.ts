@@ -1,6 +1,6 @@
-import { BoxGeometry, Group, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene, Vector3 } from 'three';
+import { Group, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene, Vector3 } from 'three';
 
-import { LEVEL_1_MATRIX, TILE_SIZE, WALL_DEPTH, WALL_HEIGHT } from '../constants';
+import { LEVEL_1_MATRIX, TILE_SIZE } from '../constants';
 import { Debug } from '../utils/Debug';
 import { Physics } from '../utils/Physics';
 import { Resources } from '../utils/Resources';
@@ -14,8 +14,6 @@ export class Level {
 
   #properties = {
     tileSize: TILE_SIZE,
-    wallDepth: WALL_DEPTH,
-    wallHeight: WALL_HEIGHT,
   };
 
   #debug: Debug;
@@ -41,7 +39,10 @@ export class Level {
   }
 
   private createFloor() {
-    const geometry = new PlaneGeometry(LEVEL_1_MATRIX[0]?.length, LEVEL_1_MATRIX.length, 1, 1);
+    const levelWidth = LEVEL_1_MATRIX[0]?.length || 0;
+    const levelDepth = LEVEL_1_MATRIX.length;
+
+    const geometry = new PlaneGeometry(levelWidth * TILE_SIZE, levelDepth * TILE_SIZE, 1, 1);
 
     const material = new MeshStandardMaterial({
       color: '#83898E',
@@ -53,7 +54,11 @@ export class Level {
     const mesh = new Mesh(geometry, material);
     mesh.receiveShadow = true;
     mesh.rotation.x = Math.PI * -0.5;
+
+    // Position at origin - geometry already translated
+    mesh.position.x = (levelWidth * TILE_SIZE) / 2;
     mesh.position.y = 0;
+    mesh.position.z = (levelDepth * TILE_SIZE) / 2;
 
     this.#group.add(mesh);
   }
@@ -69,32 +74,38 @@ export class Level {
       return;
     }
 
-    benchModel.scene.position.y = 0;
-    benchModel.scene.scale.setScalar(11);
-
-    benchModel.scene.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-
-    this.#group.add(benchModel.scene);
-
     const levelWidth = LEVEL_1_MATRIX[0].length;
     const levelDepth = LEVEL_1_MATRIX.length;
     const meshes: Group[] = [];
 
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
       for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
-        if (LEVEL_1_MATRIX[zIndex]?.[xIndex] === 0) {
+        const cellValue = LEVEL_1_MATRIX[zIndex]?.[xIndex];
+
+        if (cellValue === 0) {
           continue;
         }
 
         const mesh = benchModel.scene.clone();
 
-        mesh.position.x = xIndex - Math.floor(levelWidth / 2);
-        mesh.position.z = zIndex - Math.floor(levelDepth / 2);
+        // New coordinate system: level in positive space, origin at corner
+        mesh.position.x = (xIndex + 1) * TILE_SIZE;
+        mesh.position.y = 0;
+        mesh.position.z = (zIndex + 1) * TILE_SIZE;
+
+        // Setup shadows
+        mesh.traverse((child) => {
+          if (child instanceof Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            // Apply blue color for blue work zones (value 2)
+            if (cellValue === 2 && child.material) {
+              child.material = child.material.clone();
+              child.material.color.set('#77f8de'); // MOODS['dark-bush-90']
+            }
+          }
+        });
 
         meshes.push(mesh);
       }
@@ -104,67 +115,94 @@ export class Level {
   }
 
   private createWall() {
-    const { tileSize, wallDepth, wallHeight } = this.#properties;
+    const { tileSize } = this.#properties;
 
     if (!Array.isArray(LEVEL_1_MATRIX) || !LEVEL_1_MATRIX[0]) {
       return;
     }
 
-    const material = new MeshStandardMaterial({
-      color: '#C3A561',
-      // color: MOODS['light-tangaroa-20'].value,
-      metalness: 0.1,
-      roughness: 0.5,
-    });
+    const wallModel = this.#resources.getGLTFAsset('wallModel');
 
-    const meshReference = new Mesh(new BoxGeometry(tileSize, wallHeight, wallDepth), material);
-    meshReference.castShadow = true;
-    meshReference.receiveShadow = true;
-    meshReference.position.y = wallHeight / 2;
-    meshReference.geometry.scale(0.98, 0.98, 0.98);
+    if (!wallModel) {
+      return;
+    }
 
     const levelWidth = LEVEL_1_MATRIX[0].length;
     const levelDepth = LEVEL_1_MATRIX.length;
-    const meshes: Mesh[] = [];
+    const meshes: Group[] = [];
 
-    // Top side
+    // Top side (z = 0, facing inward)
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
-      const mesh = meshReference.clone();
+      const mesh = wallModel.scene.clone();
 
-      mesh.position.x = xIndex - Math.floor(levelWidth / 2);
-      mesh.position.z = (Math.floor(levelDepth / 2) + tileSize / 2 + wallDepth / 2) * -1;
+      mesh.position.x = (xIndex + 1) * tileSize;
+      mesh.position.y = 0;
+      mesh.position.z = 0;
+      mesh.rotation.y = 0;
+
+      mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
 
       meshes.push(mesh);
     }
 
-    // Bottom side
+    // Bottom side (z = max, facing inward)
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
-      const mesh = meshReference.clone();
+      const mesh = wallModel.scene.clone();
 
-      mesh.position.x = xIndex - Math.floor(levelWidth / 2);
-      mesh.position.z = levelDepth - Math.floor(levelDepth / 2) - tileSize / 2 + wallDepth / 2;
+      mesh.position.x = xIndex * tileSize;
+      mesh.position.y = 0;
+      mesh.position.z = levelDepth * tileSize;
+      mesh.rotation.y = Math.PI;
 
-      meshes.push(mesh);
-    }
-
-    // Left side
-    for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
-      const mesh = meshReference.clone();
-
-      mesh.rotation.y = Math.PI / 2;
-      mesh.position.x = (Math.floor(levelWidth / 2) + tileSize / 2 + wallDepth / 2) * -1;
-      mesh.position.z = zIndex - Math.floor(levelDepth / 2);
+      mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
 
       meshes.push(mesh);
     }
 
-    // Right side
+    // Left side (x = 0, facing inward)
     for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
-      const mesh = meshReference.clone();
+      const mesh = wallModel.scene.clone();
 
+      mesh.position.x = 0;
+      mesh.position.y = 0;
+      mesh.position.z = zIndex * tileSize;
       mesh.rotation.y = Math.PI / 2;
-      mesh.position.x = levelWidth - Math.floor(levelWidth / 2) - tileSize / 2 + wallDepth / 2;
-      mesh.position.z = zIndex - Math.floor(levelDepth / 2);
+
+      mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      meshes.push(mesh);
+    }
+
+    // Right side (x = max, facing inward)
+    for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
+      const mesh = wallModel.scene.clone();
+
+      mesh.position.x = levelWidth * tileSize;
+      mesh.position.y = 0;
+      mesh.position.z = (zIndex + 1) * tileSize;
+      mesh.rotation.y = -Math.PI / 2;
+
+      mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
 
       meshes.push(mesh);
     }
@@ -180,83 +218,26 @@ export class Level {
     const levelWidth = LEVEL_1_MATRIX[0].length;
     const levelDepth = LEVEL_1_MATRIX.length;
 
-    // Create floor physics body
-    const floorPosition = new Vector3(0, -0.1, 0);
+    // Create floor physics body - centered under level in positive space
+    const floorPosition = new Vector3((levelWidth * TILE_SIZE) / 2, -0.1, (levelDepth * TILE_SIZE) / 2);
     const floorRigidBody = this.#physics.createStaticRigidBody(floorPosition);
-    const floorHalfExtents = new Vector3(levelWidth / 2, 0.1, levelDepth / 2);
+    const floorHalfExtents = new Vector3((levelWidth * TILE_SIZE) / 2, 0.1, (levelDepth * TILE_SIZE) / 2);
     this.#physics.createBoxCollider(floorRigidBody, floorHalfExtents, 0.5);
 
-    // Create merged bench physics bodies to eliminate seams
-    this.createMergedBenchBodies(levelWidth, levelDepth);
-  }
+    // Create workbench physics bodies - one per workbench (1:1 mapping)
+    for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
+      for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
+        const cellValue = LEVEL_1_MATRIX[zIndex]?.[xIndex];
 
-  private createMergedBenchBodies(levelWidth: number, levelDepth: number) {
-    const processed = Array.from({ length: levelDepth }, () => Array(levelWidth).fill(false));
-
-    for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
-      for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
-        if (LEVEL_1_MATRIX[zIndex]?.[xIndex] === 1 && !processed[zIndex]?.[xIndex]) {
-          // Find the extent of this contiguous rectangular region
-          const rect = this.findLargestRectangle(xIndex, zIndex, levelWidth, levelDepth, processed);
-
-          if (rect.width > 0 && rect.height > 0) {
-            // Create a single physics body for this rectangular region
-            // Align with visual bench positioning: rect coordinates to world coordinates
-            const centerX = rect.x + (rect.width - 1) / 2 - Math.floor(levelWidth / 2);
-            const centerZ = rect.z + (rect.height - 1) / 2 - Math.floor(levelDepth / 2);
-
-            const position = new Vector3(centerX, 0.5, centerZ);
-            const rigidBody = this.#physics.createStaticRigidBody(position);
-            const halfExtents = new Vector3(rect.width / 2, 0.5, rect.height / 2);
-            this.#physics.createBoxCollider(rigidBody, halfExtents, 0.0);
-
-            // Mark all tiles in this rectangle as processed
-            for (let z = rect.z; z < rect.z + rect.height; z++) {
-              for (let x = rect.x; x < rect.x + rect.width; x++) {
-                processed[z]![x] = true;
-              }
-            }
-          }
+        if (cellValue === 1 || cellValue === 2) {
+          // Position at center of 2x2 workbench
+          const position = new Vector3(xIndex * TILE_SIZE + 1, 0.5, zIndex * TILE_SIZE + 1);
+          const rigidBody = this.#physics.createStaticRigidBody(position);
+          const halfExtents = new Vector3(1, 0.5, 1);
+          this.#physics.createBoxCollider(rigidBody, halfExtents, 0.0);
         }
       }
     }
-  }
-
-  private findLargestRectangle(
-    startX: number,
-    startZ: number,
-    levelWidth: number,
-    levelDepth: number,
-    processed: boolean[][],
-  ): { x: number; z: number; width: number; height: number } {
-    // Find the maximum width starting from this position
-    let maxWidth = 0;
-    for (let x = startX; x < levelWidth; x++) {
-      if (LEVEL_1_MATRIX[startZ]?.[x] === 1 && !processed[startZ]?.[x]) {
-        maxWidth++;
-      } else {
-        break;
-      }
-    }
-
-    // Now find the maximum height for this width
-    let maxHeight = 0;
-    for (let z = startZ; z < levelDepth; z++) {
-      let canExtend = true;
-      for (let x = startX; x < startX + maxWidth; x++) {
-        if (LEVEL_1_MATRIX[z]?.[x] !== 1 || processed[z]?.[x]) {
-          canExtend = false;
-          break;
-        }
-      }
-      if (canExtend) {
-        maxHeight++;
-      } else {
-        break;
-      }
-    }
-
-    return { x: startX, z: startZ, width: maxWidth, height: maxHeight };
   }
 
   private async setupHelpers() {
