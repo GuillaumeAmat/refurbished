@@ -111,7 +111,14 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
 
     if (hasGLTF && !this.#gltfLoader) {
       const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+      const { DRACOLoader } = await import('three/examples/jsm/loaders/DRACOLoader.js');
+
       this.#gltfLoader = new GLTFLoader();
+
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('/game/libs/draco/');
+
+      this.#gltfLoader.setDRACOLoader(dracoLoader);
     }
 
     if (hasSVGs && !this.#svgLoader) {
