@@ -48,3 +48,11 @@ export const LEVEL_1_MATRIX = [
   [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
+
+/**
+ * Spawn positions for level 1 (matrix indices [xIndex, zIndex])
+ */
+export const LEVEL_1_SPAWN_POSITIONS: [number, number][] = [
+  [3, 6], // Player 1 - left side, lower area
+  [10, 2], // Player 2 - right side, upper area
+];

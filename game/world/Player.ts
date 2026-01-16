@@ -1,16 +1,37 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
-import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
+import {
+  DASH_COOLDOWN,
+  DASH_DURATION,
+  DASH_SPEED,
+  LEVEL_1_SPAWN_POSITIONS,
+  MOVEMENT_SPEED,
+  PLAYER_SIZE,
+  TILE_SIZE,
+} from '../constants';
 import { Debug } from '../utils/Debug';
 import { GamepadManager, type PlayerId } from '../utils/input/GamepadManager';
 import { Physics } from '../utils/Physics';
 import { Resources } from '../utils/Resources';
 import { Time } from '../utils/Time';
 
+// Convert matrix indices to world coordinates
 const SPAWN_POSITIONS = new Map<PlayerId, { x: number; z: number }>([
-  [1, { x: -1, z: 2 }],
-  [2, { x: 1, z: 2 }],
+  [
+    1,
+    {
+      x: LEVEL_1_SPAWN_POSITIONS[0][0] * TILE_SIZE + 1.5,
+      z: LEVEL_1_SPAWN_POSITIONS[0][1] * TILE_SIZE + 1.5,
+    },
+  ],
+  [
+    2,
+    {
+      x: LEVEL_1_SPAWN_POSITIONS[1][0] * TILE_SIZE + 1.5,
+      z: LEVEL_1_SPAWN_POSITIONS[1][1] * TILE_SIZE + 1.5,
+    },
+  ],
 ]);
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
