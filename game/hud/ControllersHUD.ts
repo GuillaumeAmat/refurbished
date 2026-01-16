@@ -1,8 +1,8 @@
 import { Group, type Mesh, MeshStandardMaterial, type PerspectiveCamera } from 'three';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../utils/Resources';
-import type { GamepadManager } from '../utils/input/GamepadManager';
+import { Resources } from '../util/Resources';
+import type { GamepadManager } from '../util/input/GamepadManager';
 
 export class ControllersHUD {
   static readonly HUD_DISTANCE = 5;
@@ -68,23 +68,19 @@ export class ControllersHUD {
     const lineHeight = ControllersHUD.HUD_LINE_HEIGHT;
 
     if (this.#player1Mesh) {
-      this.#player1Mesh.position.set(
-        bounds.left + padding,
-        bounds.top - padding,
-        -ControllersHUD.HUD_DISTANCE
-      );
+      this.#player1Mesh.position.set(bounds.left + padding, bounds.top - padding, -ControllersHUD.HUD_DISTANCE);
     }
 
     if (this.#player2Mesh) {
       this.#player2Mesh.position.set(
         bounds.left + padding,
         bounds.top - padding - lineHeight,
-        -ControllersHUD.HUD_DISTANCE
+        -ControllersHUD.HUD_DISTANCE,
       );
     }
   }
 
-  private #alignTextLeft(mesh: Mesh) {
+  #alignTextLeft(mesh: Mesh) {
     mesh.geometry.computeBoundingBox();
     if (mesh.geometry.boundingBox) {
       const width = mesh.geometry.boundingBox.max.x - mesh.geometry.boundingBox.min.x;

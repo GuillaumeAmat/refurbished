@@ -2,18 +2,17 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../utils/Resources';
+import { Resources } from '../util/Resources';
 
-export class TutorialScreen {
+export class SavingScoreScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
-  #commandsMesh: Mesh | null = null;
-  #backMesh: Mesh | null = null;
-  #playMesh: Mesh | null = null;
+  #statusMesh: Mesh | null = null;
+  #continueMesh: Mesh | null = null;
   #material: MeshStandardMaterial;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
@@ -26,7 +25,7 @@ export class TutorialScreen {
     this.#scene.add(this.#group);
 
     this.#stageActor.subscribe((state) => {
-      if (state.matches('Tutorial')) {
+      if (state.matches('Saving score')) {
         this.show();
       } else {
         this.hide();
@@ -49,41 +48,29 @@ export class TutorialScreen {
       return;
     }
 
-    this.#titleMesh = createTextMesh('Tutorial', font, {
+    this.#titleMesh = createTextMesh('Saving Score...', font, {
       extrusionDepth: 0.1,
       size: 1.5,
       material: this.#material,
     });
-    this.#titleMesh.position.set(0, 4, 0);
+    this.#titleMesh.position.set(0, 2, 0);
     this.#group.add(this.#titleMesh);
 
-    this.#commandsMesh = createTextMesh(
-      'Use gamepad to control vehicle\nCooperative 2-player game\nAvoid obstacles, collect points',
-      font,
-      {
-        extrusionDepth: 0.05,
-        size: 0.7,
-        material: this.#material,
-      },
-    );
-    this.#commandsMesh.position.set(0, 1, 0);
-    this.#group.add(this.#commandsMesh);
+    this.#statusMesh = createTextMesh('Score saved successfully!', font, {
+      extrusionDepth: 0.05,
+      size: 1,
+      material: this.#material,
+    });
+    this.#statusMesh.position.set(0, 0, 0);
+    this.#group.add(this.#statusMesh);
 
-    this.#backMesh = createTextMesh('Back', font, {
+    this.#continueMesh = createTextMesh('> Continue to Leaderboard', font, {
       extrusionDepth: 0.05,
       size: 0.8,
       material: this.#material,
     });
-    this.#backMesh.position.set(-2, -2, 0);
-    this.#group.add(this.#backMesh);
-
-    this.#playMesh = createTextMesh('> Start Game', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#playMesh.position.set(1, -2, 0);
-    this.#group.add(this.#playMesh);
+    this.#continueMesh.position.set(0, -2, 0);
+    this.#group.add(this.#continueMesh);
   }
 
   private show() {

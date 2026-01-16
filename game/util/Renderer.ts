@@ -1,7 +1,7 @@
 import type { Scene } from 'three';
 import { CineonToneMapping, PCFSoftShadowMap, SRGBColorSpace, WebGLRenderer } from 'three';
 
-import type { Camera } from '../Camera';
+import type { Camera } from '../world/Camera';
 import { Sizes } from './Sizes';
 
 export class Renderer {

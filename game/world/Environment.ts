@@ -1,8 +1,9 @@
 import type { CubeTexture, Scene } from 'three';
 import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } from 'three';
 
-import { BACKGROUND_COLOR } from './constants';
-import { Debug } from './utils/Debug';
+import { BACKGROUND_COLOR } from '../constants';
+import type { LevelInfo } from '../levels';
+import { Debug } from '../util/Debug';
 
 type EnvironmentMap = {
   intensity: number;
@@ -11,7 +12,9 @@ type EnvironmentMap = {
 
 export class Environment {
   #scene: Scene;
+  #levelInfo: LevelInfo;
   #sunLight: DirectionalLight | null = null;
+  #counterSunLight: DirectionalLight | null = null;
   #environmentMap: EnvironmentMap = {
     intensity: 0.4,
     texture: null,
@@ -24,8 +27,9 @@ export class Environment {
     DisplayLightsHelpers: true,
   };
 
-  constructor(scene: Scene) {
+  constructor(scene: Scene, levelInfo: LevelInfo) {
     this.#scene = scene;
+    this.#levelInfo = levelInfo;
     this.#debug = Debug.getInstance();
 
     this.setupLights();
@@ -34,20 +38,35 @@ export class Environment {
   }
 
   private setupLights() {
-    const ambientLight = new AmbientLight('#ffffff', 1);
+    const ambientLight = new AmbientLight('#ffffff', 1.5);
     this.#scene.add(ambientLight);
 
     this.#sunLight = new DirectionalLight('#ffffff', 1);
     this.#sunLight.castShadow = true;
-    this.#sunLight.shadow.camera.far = 15;
+    this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(2048, 2048);
-    // this.#sunLight.shadow.normalBias = 0.05;
-    this.#sunLight.shadow.camera.left = -10;
-    this.#sunLight.shadow.camera.right = 10;
+    this.#sunLight.shadow.normalBias = 0.05;
+    this.#sunLight.shadow.camera.top = -20;
+    this.#sunLight.shadow.camera.bottom = 20;
+    this.#sunLight.shadow.camera.left = -20;
+    this.#sunLight.shadow.camera.right = 20;
 
-    this.#sunLight.position.set(0, 10, -1);
+    const { width, depth, center } = this.#levelInfo;
+
+    this.#sunLight.position.set(width, 16, 0);
+    this.#sunLight.target.position.set(center.x, 0, center.z);
 
     this.#scene.add(this.#sunLight);
+    this.#scene.add(this.#sunLight.target);
+
+    this.#counterSunLight = new DirectionalLight('#ffffff', 0.8);
+    this.#counterSunLight.castShadow = false;
+
+    this.#counterSunLight.position.set(0, 14, depth);
+    this.#counterSunLight.target.position.set(center.x, 0, center.z);
+
+    this.#scene.add(this.#counterSunLight);
+    this.#scene.add(this.#counterSunLight.target);
   }
 
   private setupEnvironment() {

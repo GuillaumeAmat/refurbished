@@ -3,26 +3,27 @@ import { type Actor, type AnyActorLogic, createActor, fromPromise } from 'xstate
 
 import { navigateTo, useRuntimeConfig } from '#app';
 
-import { Camera } from './Camera';
-import { Environment } from './Environment';
+import { levelsInfo } from './levels';
 import { LoadingOverlay } from './LoadingOverlay';
-import { LeaderboardScreen } from './screens/LeaderboardScreen';
-import { LevelScreen } from './screens/LevelScreen';
-import { LoadingScreen } from './screens/LoadingScreen';
-import { MenuScreen } from './screens/MenuScreen';
-import { PauseScreen } from './screens/PauseScreen';
-import { SavingScoreScreen } from './screens/SavingScoreScreen';
-import { ScoreScreen } from './screens/ScoreScreen';
-import { StartScreen } from './screens/StartScreen';
-import { TutorialScreen } from './screens/TutorialScreen';
-import { WaitingScreen } from './screens/WaitingScreen';
+import { LeaderboardScreen } from './screen/LeaderboardScreen';
+import { LevelScreen } from './screen/LevelScreen';
+import { LoadingScreen } from './screen/LoadingScreen';
+import { MenuScreen } from './screen/MenuScreen';
+import { PauseScreen } from './screen/PauseScreen';
+import { SavingScoreScreen } from './screen/SavingScoreScreen';
+import { ScoreScreen } from './screen/ScoreScreen';
+import { StartScreen } from './screen/StartScreen';
+import { TutorialScreen } from './screen/TutorialScreen';
+import { WaitingScreen } from './screen/WaitingScreen';
 import { stageMachine } from './Stage.machine';
-import { Debug } from './utils/Debug';
-import { GamepadManager } from './utils/input/GamepadManager';
-import { Renderer } from './utils/Renderer';
-import { Resources } from './utils/Resources';
-import { Sizes } from './utils/Sizes';
-import { Time } from './utils/Time';
+import { Debug } from './util/Debug';
+import { GamepadManager } from './util/input/GamepadManager';
+import { Renderer } from './util/Renderer';
+import { Resources } from './util/Resources';
+import { Sizes } from './util/Sizes';
+import { Time } from './util/Time';
+import { Camera } from './world/Camera';
+import { Environment } from './world/Environment';
 
 export class Stage {
   #actor: Actor<AnyActorLogic>;
@@ -31,6 +32,7 @@ export class Stage {
   #resources: Resources;
   #time: Time;
   #environment: Environment | null = null;
+  #levelInfo = levelsInfo[0]!;
 
   constructor(canvas: HTMLCanvasElement) {
     if (!window) {
@@ -40,7 +42,7 @@ export class Stage {
     new Debug();
 
     this.#scene = new Scene();
-    this.#camera = new Camera(this.#scene, canvas);
+    this.#camera = new Camera(this.#scene, canvas, this.#levelInfo);
     const renderer = new Renderer(this.#scene, canvas, this.#camera);
     const loadingOverlay = new LoadingOverlay(this.#scene);
 
@@ -87,14 +89,24 @@ export class Stage {
         path: '/game/Duck.gltf',
         priority: 'low',
       },
-      benchModel: {
+      workbenchModel: {
         type: 'gltf',
-        path: '/game/model/environment/bench.glb',
+        path: '/game/model/environment/workbench.glb',
+        priority: 'low',
+      },
+      wallModel: {
+        type: 'gltf',
+        path: '/game/model/environment/wall.glb',
         priority: 'low',
       },
       blueWorkZoneModel: {
         type: 'gltf',
         path: '/game/model/environment/blue_work_zone.glb',
+        priority: 'low',
+      },
+      crateModel: {
+        type: 'gltf',
+        path: '/game/model/environment/crate.glb',
         priority: 'low',
       },
       batteryLowModel: {
@@ -208,7 +220,7 @@ export class Stage {
   }
 
   private setupLoadingScreen() {
-    this.#environment = new Environment(this.#scene);
+    this.#environment = new Environment(this.#scene, this.#levelInfo);
 
     const loadingScreen = new LoadingScreen(this.#actor, this.#scene);
 
@@ -223,7 +235,7 @@ export class Stage {
     }
 
     const startScreen = new StartScreen(this.#actor, this.#scene);
-    const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera);
+    const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera, this.#levelInfo);
     const menuScreen = new MenuScreen(this.#actor, this.#scene);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
     const waitingScreen = new WaitingScreen(this.#actor, this.#scene);

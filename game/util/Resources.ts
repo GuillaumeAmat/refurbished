@@ -116,7 +116,7 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
       this.#gltfLoader = new GLTFLoader();
 
       const dracoLoader = new DRACOLoader();
-      dracoLoader.setDecoderPath('/game/libs/draco/');
+      dracoLoader.setDecoderPath('/game/lib/draco/');
 
       this.#gltfLoader.setDRACOLoader(dracoLoader);
     }

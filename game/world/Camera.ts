@@ -2,8 +2,9 @@ import type { Scene } from 'three';
 import { PerspectiveCamera } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { Debug } from './utils/Debug';
-import { Sizes } from './utils/Sizes';
+import type { LevelInfo } from '../levels';
+import { Debug } from '../util/Debug';
+import { Sizes } from '../util/Sizes';
 
 export class Camera {
   #canvas: HTMLCanvasElement;
@@ -11,6 +12,7 @@ export class Camera {
   #scene: Scene;
   #sizes: Sizes;
   #debug: Debug;
+  #levelInfo: LevelInfo;
 
   #controls?: OrbitControls;
 
@@ -18,19 +20,19 @@ export class Camera {
     return this.#camera;
   }
 
-  constructor(scene: Scene, canvas: HTMLCanvasElement) {
+  constructor(scene: Scene, canvas: HTMLCanvasElement, levelInfo: LevelInfo) {
     this.#canvas = canvas;
     this.#scene = scene;
     this.#sizes = new Sizes();
     this.#debug = Debug.getInstance();
+    this.#levelInfo = levelInfo;
 
     const aspect = this.#sizes.width / this.#sizes.height;
+    const { center } = this.#levelInfo;
 
     this.#camera = new PerspectiveCamera(35, aspect, 0.1, 100);
-    this.#camera.position.set(0, 14, 11);
-    // FIXME
-    // this.#camera.lookAt(0, 30, 0);
-    this.#camera.lookAt(0, 0, 0);
+    this.#camera.position.set(center.x, center.y + 30, center.z + 18);
+    this.#camera.lookAt(center);
     this.#scene.add(this.#camera);
 
     this.setupControls();
@@ -41,11 +43,11 @@ export class Camera {
     if (this.#debug.active) {
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
 
+      const { center } = this.#levelInfo;
+
       this.#controls = new OrbitControls(this.#camera, this.#canvas);
       this.#controls.enableDamping = true;
-      // FIXME
-      // this.#controls.target.set(0, 30, 0);
-      this.#controls.target.set(0, 0, 0);
+      this.#controls.target.set(center.x, center.y, center.z);
       this.#controls.update();
     }
   }

@@ -2,8 +2,8 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Debug } from '../utils/Debug';
-import { Resources } from '../utils/Resources';
+import { Debug } from '../util/Debug';
+import { Resources } from '../util/Resources';
 
 export class MenuScreen {
   #stageActor: Actor<AnyActorLogic>;

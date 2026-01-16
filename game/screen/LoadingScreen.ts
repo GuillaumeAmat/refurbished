@@ -2,18 +2,21 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../utils/Resources';
+// import { MOODS } from '../constants';
+import { Resources } from '../util/Resources';
 
-export class LeaderboardScreen {
+export class LoadingScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
 
   #group: Group;
-  #titleMesh: Mesh | null = null;
-  #scoresMesh: Mesh | null = null;
-  #backMesh: Mesh | null = null;
+  #mesh: Mesh | null = null;
   #material: MeshStandardMaterial;
+
+  public get mesh() {
+    return this.#mesh;
+  }
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
     this.#stageActor = stageActor;
@@ -22,10 +25,12 @@ export class LeaderboardScreen {
 
     this.#group = new Group();
     this.#group.position.set(0, 30, 0);
+
     this.#scene.add(this.#group);
 
+    // TODO Improve this naive implementation
     this.#stageActor.subscribe((state) => {
-      if (state.matches('Leaderboard')) {
+      if (state.matches('Loading')) {
         this.show();
       } else {
         this.hide();
@@ -34,6 +39,7 @@ export class LeaderboardScreen {
 
     this.#material = new MeshStandardMaterial({
       color: '#FBD954',
+      // color: MOODS['mindaro-94'].value,
       metalness: 0.3,
       roughness: 0.4,
     });
@@ -44,48 +50,30 @@ export class LeaderboardScreen {
   private createText() {
     const font = this.#resources.getFontAsset('interFont');
 
+    // FIXME Temporary workaround for font loading issue
     if (!font) {
       return;
     }
 
-    this.#titleMesh = createTextMesh('Leaderboard', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 4, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#scoresMesh = createTextMesh(
-      '1. Player1 - 1000\n2. Player2 - 800\n3. Player3 - 600\n4. Player4 - 400\n5. Player5 - 200',
-      font,
-      {
-        extrusionDepth: 0.05,
-        size: 0.8,
-        material: this.#material,
-      },
-    );
-    this.#scoresMesh.position.set(0, 1, 0);
-    this.#group.add(this.#scoresMesh);
-
-    this.#backMesh = createTextMesh('> Back to Menu', font, {
+    this.#mesh = createTextMesh('Loading...', font, {
       extrusionDepth: 0.05,
-      size: 0.8,
+      size: 1.2,
       material: this.#material,
     });
-    this.#backMesh.position.set(0, -3, 0);
-    this.#group.add(this.#backMesh);
+    this.#mesh.position.set(0, 0, 0);
+    this.#group.add(this.#mesh);
   }
 
-  private show() {
+  public show() {
     this.#group.visible = true;
   }
 
-  private hide() {
+  public hide() {
     this.#group.visible = false;
   }
 
   public update() {
+    // TODO Improve this naive implementation
     if (!this.#group.visible) return;
   }
 }

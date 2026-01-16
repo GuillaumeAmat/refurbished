@@ -3,11 +3,12 @@ import type { Actor, AnyActorLogic } from 'xstate';
 
 import { useRuntimeConfig } from '#app';
 
-import type { Camera } from '../Camera';
 import { ControllersHUD } from '../hud/ControllersHUD';
-import { GamepadManager } from '../utils/input/GamepadManager';
-import { Physics } from '../utils/Physics';
-import { Sizes } from '../utils/Sizes';
+import type { LevelInfo } from '../levels';
+import { GamepadManager } from '../util/input/GamepadManager';
+import { Physics } from '../util/Physics';
+import { Sizes } from '../util/Sizes';
+import type { Camera } from '../world/Camera';
 import { Level } from '../world/Level';
 import { Player } from '../world/Player';
 
@@ -15,6 +16,7 @@ export class LevelScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #camera: Camera;
+  #levelInfo: LevelInfo;
   #physics: Physics;
   #gamepadManager: GamepadManager;
 
@@ -25,12 +27,13 @@ export class LevelScreen {
   #hud: ControllersHUD;
   #physicsInitialized = false;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera) {
+  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera, levelInfo: LevelInfo) {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#camera = camera;
     this.#physics = Physics.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
+    this.#levelInfo = levelInfo;
 
     this.#stageActor.subscribe((state) => {
       if (state.matches('Level')) {
@@ -78,10 +81,10 @@ export class LevelScreen {
     await this.#physics.init(this.#scene);
     this.#physicsInitialized = true;
 
-    this.#player1 = new Player(this.#group, this.#scene, 1);
-    this.#player2 = new Player(this.#group, this.#scene, 2);
+    this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
+    this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
 
-    this.#level = new Level(this.#group, this.#scene);
+    this.#level = new Level(this.#group, this.#scene, this.#levelInfo);
   }
 
   private show() {

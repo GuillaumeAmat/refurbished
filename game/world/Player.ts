@@ -2,16 +2,11 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
-import { Debug } from '../utils/Debug';
-import { GamepadManager, type PlayerId } from '../utils/input/GamepadManager';
-import { Physics } from '../utils/Physics';
-import { Resources } from '../utils/Resources';
-import { Time } from '../utils/Time';
-
-const SPAWN_POSITIONS = new Map<PlayerId, { x: number; z: number }>([
-  [1, { x: -1, z: 2 }],
-  [2, { x: 1, z: 2 }],
-]);
+import { Debug } from '../util/Debug';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Physics } from '../util/Physics';
+import { Resources } from '../util/Resources';
+import { Time } from '../util/Time';
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
   [1, 0x4488ff],
@@ -23,6 +18,7 @@ export class Player {
   #scene: Scene;
   #resources: Resources;
   #physics: Physics;
+  #spawnPosition: Vector3;
 
   #mesh: Object3D | null = null;
   #rigidBody: RAPIER.RigidBody | null = null;
@@ -55,11 +51,12 @@ export class Player {
     return this.#mesh;
   }
 
-  constructor(screenGroup: Group, scene: Scene, playerId: PlayerId) {
+  constructor(screenGroup: Group, scene: Scene, playerId: PlayerId, spawnPosition: Vector3) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
     this.#physics = Physics.getInstance();
+    this.#spawnPosition = spawnPosition;
 
     this.#debug = Debug.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
@@ -80,9 +77,7 @@ export class Player {
 
     this.#mesh = duckModel.scene.clone();
     this.#mesh.scale.setScalar(1);
-
-    const spawn = SPAWN_POSITIONS.get(this.#playerId)!;
-    this.#mesh.position.set(spawn.x, 0.1, spawn.z);
+    this.#mesh.position.copy(this.#spawnPosition);
 
     const playerColor = new Color(PLAYER_COLORS.get(this.#playerId)!);
 
@@ -104,9 +99,7 @@ export class Player {
   private createPhysicsBody() {
     if (!this.#mesh) return;
 
-    const spawn = SPAWN_POSITIONS.get(this.#playerId)!;
-    const initialPosition = new Vector3(spawn.x, 0.1, spawn.z);
-    this.#rigidBody = this.#physics.createDynamicRigidBody(initialPosition);
+    this.#rigidBody = this.#physics.createDynamicRigidBody(this.#spawnPosition);
 
     const radius = this.#properties.width / 2;
     const halfHeight = this.#properties.height / 4;

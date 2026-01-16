@@ -2,17 +2,18 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../utils/Resources';
+import { Resources } from '../util/Resources';
 
-export class SavingScoreScreen {
+export class PauseScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
-  #statusMesh: Mesh | null = null;
-  #continueMesh: Mesh | null = null;
+  #commandsMesh: Mesh | null = null;
+  #resumeMesh: Mesh | null = null;
+  #quitMesh: Mesh | null = null;
   #material: MeshStandardMaterial;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
@@ -21,11 +22,10 @@ export class SavingScoreScreen {
     this.#resources = Resources.getInstance();
 
     this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
     this.#stageActor.subscribe((state) => {
-      if (state.matches('Saving score')) {
+      if (state.matches('Pause')) {
         this.show();
       } else {
         this.hide();
@@ -48,29 +48,37 @@ export class SavingScoreScreen {
       return;
     }
 
-    this.#titleMesh = createTextMesh('Saving Score...', font, {
+    this.#titleMesh = createTextMesh('Paused', font, {
       extrusionDepth: 0.1,
       size: 1.5,
       material: this.#material,
     });
-    this.#titleMesh.position.set(0, 2, 0);
+    this.#titleMesh.position.set(0, 4, 0);
     this.#group.add(this.#titleMesh);
 
-    this.#statusMesh = createTextMesh('Score saved successfully!', font, {
+    this.#commandsMesh = createTextMesh('Controls:\nGamepad - Move vehicle\nPause button - Resume/Pause', font, {
       extrusionDepth: 0.05,
-      size: 1,
+      size: 0.7,
       material: this.#material,
     });
-    this.#statusMesh.position.set(0, 0, 0);
-    this.#group.add(this.#statusMesh);
+    this.#commandsMesh.position.set(0, 1.5, 0);
+    this.#group.add(this.#commandsMesh);
 
-    this.#continueMesh = createTextMesh('> Continue to Leaderboard', font, {
+    this.#resumeMesh = createTextMesh('> Resume', font, {
       extrusionDepth: 0.05,
       size: 0.8,
       material: this.#material,
     });
-    this.#continueMesh.position.set(0, -2, 0);
-    this.#group.add(this.#continueMesh);
+    this.#resumeMesh.position.set(-1, -1, 0);
+    this.#group.add(this.#resumeMesh);
+
+    this.#quitMesh = createTextMesh('  Quit to Menu', font, {
+      extrusionDepth: 0.05,
+      size: 0.8,
+      material: this.#material,
+    });
+    this.#quitMesh.position.set(-1, -2.5, 0);
+    this.#group.add(this.#quitMesh);
   }
 
   private show() {

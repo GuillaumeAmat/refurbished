@@ -2,32 +2,31 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { KeyboardController } from '../utils/input/KeyboardController';
-import { Resources } from '../utils/Resources';
+import { Resources } from '../util/Resources';
 
-export class StartScreen {
+export class TutorialScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
-  #inputController: KeyboardController;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
-  #promptMesh: Mesh | null = null;
+  #commandsMesh: Mesh | null = null;
+  #backMesh: Mesh | null = null;
+  #playMesh: Mesh | null = null;
   #material: MeshStandardMaterial;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
-    this.#inputController = new KeyboardController();
 
     this.#group = new Group();
     this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
     this.#stageActor.subscribe((state) => {
-      if (state.matches('Start')) {
+      if (state.matches('Tutorial')) {
         this.show();
       } else {
         this.hide();
@@ -50,35 +49,49 @@ export class StartScreen {
       return;
     }
 
-    this.#titleMesh = createTextMesh('Refurbished!', font, {
+    this.#titleMesh = createTextMesh('Tutorial', font, {
       extrusionDepth: 0.1,
-      size: 2,
+      size: 1.5,
       material: this.#material,
     });
-    this.#titleMesh.position.set(0, 2, 0);
+    this.#titleMesh.position.set(0, 4, 0);
     this.#group.add(this.#titleMesh);
 
-    this.#promptMesh = createTextMesh('Press any button to start', font, {
+    this.#commandsMesh = createTextMesh(
+      'Use gamepad to control vehicle\nCooperative 2-player game\nAvoid obstacles, collect points',
+      font,
+      {
+        extrusionDepth: 0.05,
+        size: 0.7,
+        material: this.#material,
+      },
+    );
+    this.#commandsMesh.position.set(0, 1, 0);
+    this.#group.add(this.#commandsMesh);
+
+    this.#backMesh = createTextMesh('Back', font, {
       extrusionDepth: 0.05,
       size: 0.8,
       material: this.#material,
     });
-    this.#promptMesh.position.set(0, -1, 0);
-    this.#group.add(this.#promptMesh);
+    this.#backMesh.position.set(-2, -2, 0);
+    this.#group.add(this.#backMesh);
+
+    this.#playMesh = createTextMesh('> Start Game', font, {
+      extrusionDepth: 0.05,
+      size: 0.8,
+      material: this.#material,
+    });
+    this.#playMesh.position.set(1, -2, 0);
+    this.#group.add(this.#playMesh);
   }
 
   private show() {
-    this.#inputController.onButtonUp(() => this.onButtonUp());
     this.#group.visible = true;
   }
 
   private hide() {
-    this.#inputController.cleanup();
     this.#group.visible = false;
-  }
-
-  private onButtonUp() {
-    this.#stageActor.send({ type: 'start' });
   }
 
   public update() {
