@@ -1,19 +1,5 @@
 import * as THREE from 'three';
-
-import { loadPrefabModel } from '~/three/utils/prefabLoader';
-
-// Shared wood material (cartoon-style)
-let sharedWoodMaterial: THREE.MeshToonMaterial | null = null;
-
-function getOrCreateWoodMaterial(): THREE.MeshToonMaterial {
-  if (!sharedWoodMaterial) {
-    sharedWoodMaterial = new THREE.MeshToonMaterial({
-      color: 0xdeb887, // Warm wood color (burlywood)
-    });
-  }
-
-  return sharedWoodMaterial;
-}
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 /**
  * Creates a WOOD_WALL prefab
@@ -23,30 +9,40 @@ export async function createWoodWallPrefab(): Promise<THREE.Group> {
   const group = new THREE.Group();
   group.name = 'WOOD_WALL_PREFAB';
 
-  // Get simple wood material
-  const woodMaterial = getOrCreateWoodMaterial();
+  // Load the GLB model
+  const loader = new GLTFLoader();
 
-  // Load the model using shared loader
-  const model = await loadPrefabModel({
-    objPath: '/experiments/wood-wall.obj',
-    mtlPath: '/experiments/wood-wall.mtl',
-    modelName: 'WOOD_WALL',
-    onMaterialSetup: (child) => {
-      // Apply shared wood material
-      child.material = woodMaterial;
-    },
+  return new Promise((resolve, reject) => {
+    loader.load(
+      '/experiments/wood-wall.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.name = 'WOOD_WALL';
+
+        // Calculate bounding box
+        model.updateMatrixWorld(true);
+        const bbox = new THREE.Box3().setFromObject(model);
+
+        // Position model so bottom-right corner is at origin (0, 0, 0)
+        const bottomRightCorner = new THREE.Vector3(bbox.max.x, bbox.min.y, bbox.min.z);
+        model.position.set(-bottomRightCorner.x, -bottomRightCorner.y, -bottomRightCorner.z);
+
+        // Configure shadows for all meshes
+        model.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        group.add(model);
+        resolve(group);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading WOOD_WALL GLB:', error);
+        reject(error);
+      }
+    );
   });
-
-  // Double-check: traverse again and force material application
-  model.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      child.material = woodMaterial;
-      child.material.needsUpdate = true;
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
-  });
-
-  group.add(model);
-  return group;
 }
