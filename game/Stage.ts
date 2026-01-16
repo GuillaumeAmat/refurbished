@@ -89,7 +89,42 @@ export class Stage {
       },
       benchModel: {
         type: 'gltf',
-        path: '/game/bench.glb',
+        path: '/game/model/environment/bench.glb',
+        priority: 'low',
+      },
+      blueWorkZoneModel: {
+        type: 'gltf',
+        path: '/game/model/environment/blue_work_zone.glb',
+        priority: 'low',
+      },
+      batteryLowModel: {
+        type: 'gltf',
+        path: '/game/model/resource/battery_low.glb',
+        priority: 'low',
+      },
+      batteryFullModel: {
+        type: 'gltf',
+        path: '/game/model/resource/battery_full.glb',
+        priority: 'low',
+      },
+      chassisBrokenModel: {
+        type: 'gltf',
+        path: '/game/model/resource/chassis_broken.glb',
+        priority: 'low',
+      },
+      chassisRepairedModel: {
+        type: 'gltf',
+        path: '/game/model/resource/chassis_repaired.glb',
+        priority: 'low',
+      },
+      screenBrokenModel: {
+        type: 'gltf',
+        path: '/game/model/resource/screen_broken.glb',
+        priority: 'low',
+      },
+      screenRepairedModel: {
+        type: 'gltf',
+        path: '/game/model/resource/screen_repaired.glb',
         priority: 'low',
       },
       // bmLogo: {
