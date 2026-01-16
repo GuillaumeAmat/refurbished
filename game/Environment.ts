@@ -1,7 +1,7 @@
 import type { CubeTexture, Scene } from 'three';
 import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } from 'three';
 
-import { BACKGROUND_COLOR } from './constants';
+import { BACKGROUND_COLOR, LEVEL_1_MATRIX, TILE_SIZE } from './constants';
 import { Debug } from './utils/Debug';
 
 type EnvironmentMap = {
@@ -34,20 +34,30 @@ export class Environment {
   }
 
   private setupLights() {
-    const ambientLight = new AmbientLight('#ffffff', 1);
+    const ambientLight = new AmbientLight('#ffffff', 1.5);
     this.#scene.add(ambientLight);
 
     this.#sunLight = new DirectionalLight('#ffffff', 1);
     this.#sunLight.castShadow = true;
-    this.#sunLight.shadow.camera.far = 15;
+    this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(2048, 2048);
-    // this.#sunLight.shadow.normalBias = 0.05;
-    this.#sunLight.shadow.camera.left = -10;
-    this.#sunLight.shadow.camera.right = 10;
+    this.#sunLight.shadow.normalBias = 0.05;
+    this.#sunLight.shadow.camera.top = -30;
+    this.#sunLight.shadow.camera.bottom = 30;
+    this.#sunLight.shadow.camera.left = -30;
+    this.#sunLight.shadow.camera.right = 30;
 
-    this.#sunLight.position.set(0, 10, -1);
+    // Position and target light at level center
+    const levelWidth = (LEVEL_1_MATRIX[0]?.length || 0) * TILE_SIZE;
+    const levelDepth = LEVEL_1_MATRIX.length * TILE_SIZE;
+    const levelCenterX = levelWidth / 2;
+    const levelCenterZ = levelDepth / 2;
+
+    this.#sunLight.position.set(levelWidth, 20, 0);
+    this.#sunLight.target.position.set(levelCenterX, 0, levelCenterZ);
 
     this.#scene.add(this.#sunLight);
+    this.#scene.add(this.#sunLight.target);
   }
 
   private setupEnvironment() {
