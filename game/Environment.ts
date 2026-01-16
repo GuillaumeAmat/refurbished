@@ -12,6 +12,7 @@ type EnvironmentMap = {
 export class Environment {
   #scene: Scene;
   #sunLight: DirectionalLight | null = null;
+  #counterSunLight: DirectionalLight | null = null;
   #environmentMap: EnvironmentMap = {
     intensity: 0.4,
     texture: null,
@@ -42,10 +43,10 @@ export class Environment {
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(2048, 2048);
     this.#sunLight.shadow.normalBias = 0.05;
-    this.#sunLight.shadow.camera.top = -30;
-    this.#sunLight.shadow.camera.bottom = 30;
-    this.#sunLight.shadow.camera.left = -30;
-    this.#sunLight.shadow.camera.right = 30;
+    this.#sunLight.shadow.camera.top = -20;
+    this.#sunLight.shadow.camera.bottom = 20;
+    this.#sunLight.shadow.camera.left = -20;
+    this.#sunLight.shadow.camera.right = 20;
 
     // Position and target light at level center
     const levelWidth = (LEVEL_1_MATRIX[0]?.length || 0) * TILE_SIZE;
@@ -53,11 +54,20 @@ export class Environment {
     const levelCenterX = levelWidth / 2;
     const levelCenterZ = levelDepth / 2;
 
-    this.#sunLight.position.set(levelWidth, 20, 0);
+    this.#sunLight.position.set(levelWidth, 16, 0);
     this.#sunLight.target.position.set(levelCenterX, 0, levelCenterZ);
 
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
+
+    this.#counterSunLight = new DirectionalLight('#ffffff', 0.8);
+    this.#counterSunLight.castShadow = false;
+
+    this.#counterSunLight.position.set(0, 14, levelDepth);
+    this.#counterSunLight.target.position.set(levelCenterX, 0, levelCenterZ);
+
+    this.#scene.add(this.#counterSunLight);
+    this.#scene.add(this.#counterSunLight.target);
   }
 
   private setupEnvironment() {
