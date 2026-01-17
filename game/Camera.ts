@@ -33,7 +33,7 @@ export class Camera {
     const levelCenter = new Vector3(levelWidth / 2, 0, levelDepth / 2);
 
     this.#camera = new PerspectiveCamera(35, aspect, 0.1, 100);
-    this.#camera.position.set(levelCenter.x, levelCenter.y + 22, levelCenter.z + 18);
+    this.#camera.position.set(levelCenter.x, levelCenter.y + 30, levelCenter.z + 18);
     this.#camera.lookAt(levelCenter);
     this.#scene.add(this.#camera);
 
