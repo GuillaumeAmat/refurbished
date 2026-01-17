@@ -1,6 +1,7 @@
 import { Group, Mesh, MeshStandardMaterial, PlaneGeometry, type Scene, Vector3 } from 'three';
 
 import { LEVEL_1_MATRIX, TILE_SIZE } from '../constants';
+import { createGridTexture } from '../lib/createGridTexture';
 import { Debug } from '../utils/Debug';
 import { Physics } from '../utils/Physics';
 import { Resources } from '../utils/Resources';
@@ -31,6 +32,7 @@ export class Level {
     this.#group = new Group();
     this.#screenGroup.add(this.#group);
 
+    this.createOuterFloor();
     this.createFloor();
     this.createBench();
     this.createWall();
@@ -59,6 +61,49 @@ export class Level {
     mesh.position.x = (levelWidth * TILE_SIZE) / 2;
     mesh.position.y = 0;
     mesh.position.z = (levelDepth * TILE_SIZE) / 2;
+
+    this.#group.add(mesh);
+  }
+
+  private createOuterFloor() {
+    const levelWidth = LEVEL_1_MATRIX[0]?.length || 0;
+
+    const geometry = new PlaneGeometry(100, 100, 1, 1);
+
+    // Generate grid texture
+    const gridInterval = 5;
+    const textureSize = 320;
+    const gridSpacing = 64;
+    const gridTexture = createGridTexture({
+      backgroundColor: '#041428',
+      // backgroundColor: '#072346',
+      gridColor: '#FFFFFF',
+      gridSpacing,
+      lineWidth: 1,
+      textureSize,
+      minorLineOpacity: 0.1,
+      majorLineOpacity: 0.8,
+      majorLineInterval: gridInterval,
+    });
+
+    gridTexture.repeat.set(levelWidth, levelWidth);
+    // gridTexture.repeat.set(16, 16);
+
+    const material = new MeshStandardMaterial({
+      map: gridTexture,
+      color: '#FFFFFF',
+      metalness: 0.1,
+      roughness: 0.5,
+    });
+
+    const mesh = new Mesh(geometry, material);
+    mesh.receiveShadow = true;
+    mesh.rotation.x = Math.PI * -0.5;
+
+    // Position at origin - geometry already translated
+    mesh.position.x = 0;
+    mesh.position.y = -0.1;
+    mesh.position.z = 0;
 
     this.#group.add(mesh);
   }
