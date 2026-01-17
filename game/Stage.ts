@@ -97,6 +97,16 @@ export class Stage {
         path: '/game/model/environment/wall.glb',
         priority: 'low',
       },
+      blueWorkZoneModel: {
+        type: 'gltf',
+        path: '/game/model/environment/blue_work_zone.glb',
+        priority: 'low',
+      },
+      crateModel: {
+        type: 'gltf',
+        path: '/game/model/environment/crate.glb',
+        priority: 'low',
+      },
       batteryLowModel: {
         type: 'gltf',
         path: '/game/model/resource/battery_low.glb',

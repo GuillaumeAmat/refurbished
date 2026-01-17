@@ -69,8 +69,10 @@ export class Level {
     }
 
     const benchModel = this.#resources.getGLTFAsset('benchModel');
+    const blueWorkZoneModel = this.#resources.getGLTFAsset('blueWorkZoneModel');
+    const crateModel = this.#resources.getGLTFAsset('crateModel');
 
-    if (!benchModel) {
+    if (!benchModel || !blueWorkZoneModel || !crateModel) {
       return;
     }
 
@@ -86,24 +88,29 @@ export class Level {
           continue;
         }
 
-        const mesh = benchModel.scene.clone();
+        let modelToClone;
+        if (cellValue === 1) modelToClone = benchModel;
+        else if (cellValue === 2) modelToClone = blueWorkZoneModel;
+        else if (cellValue === 3) modelToClone = crateModel;
+        else continue;
 
-        // New coordinate system: level in positive space, origin at corner
-        mesh.position.x = (xIndex + 1) * TILE_SIZE;
-        mesh.position.y = 0;
-        mesh.position.z = (zIndex + 1) * TILE_SIZE;
+        const mesh = modelToClone.scene.clone();
+
+        if (cellValue === 1) {
+          mesh.position.x = (xIndex + 1) * TILE_SIZE;
+          mesh.position.y = 0;
+          mesh.position.z = (zIndex + 1) * TILE_SIZE;
+        } else {
+          mesh.position.x = xIndex * TILE_SIZE;
+          mesh.position.y = 0;
+          mesh.position.z = zIndex * TILE_SIZE;
+        }
 
         // Setup shadows
         mesh.traverse((child) => {
           if (child instanceof Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
-
-            // Apply blue color for blue work zones (value 2)
-            if (cellValue === 2 && child.material) {
-              child.material = child.material.clone();
-              child.material.color.set('#77f8de'); // MOODS['dark-bush-90']
-            }
           }
         });
 
@@ -229,7 +236,7 @@ export class Level {
       for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
         const cellValue = LEVEL_1_MATRIX[zIndex]?.[xIndex];
 
-        if (cellValue === 1 || cellValue === 2) {
+        if (cellValue === 1 || cellValue === 2 || cellValue === 3) {
           // Position at center of 2x2 workbench
           const position = new Vector3(xIndex * TILE_SIZE + 1, 0.5, zIndex * TILE_SIZE + 1);
           const rigidBody = this.#physics.createStaticRigidBody(position);
