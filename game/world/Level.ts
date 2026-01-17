@@ -140,6 +140,9 @@ export class Level {
 
     // Top side (z = 0, facing inward)
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
+      const cellValue = LEVEL_1_MATRIX[0]?.[xIndex];
+      if (cellValue === 0) continue;
+
       const mesh = wallModel.scene.clone();
 
       mesh.position.x = (xIndex + 1) * tileSize;
@@ -159,6 +162,9 @@ export class Level {
 
     // Bottom side (z = max, facing inward)
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
+      const cellValue = LEVEL_1_MATRIX[levelDepth - 1]?.[xIndex];
+      if (cellValue === 0) continue;
+
       const mesh = wallModel.scene.clone();
 
       mesh.position.x = xIndex * tileSize;
@@ -178,6 +184,9 @@ export class Level {
 
     // Left side (x = 0, facing inward)
     for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
+      const cellValue = LEVEL_1_MATRIX[zIndex]?.[0];
+      if (cellValue === 0) continue;
+
       const mesh = wallModel.scene.clone();
 
       mesh.position.x = 0;
@@ -197,6 +206,9 @@ export class Level {
 
     // Right side (x = max, facing inward)
     for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
+      const cellValue = LEVEL_1_MATRIX[zIndex]?.[levelWidth - 1];
+      if (cellValue === 0) continue;
+
       const mesh = wallModel.scene.clone();
 
       mesh.position.x = levelWidth * tileSize;
