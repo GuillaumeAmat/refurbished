@@ -141,45 +141,25 @@ export class Level {
 
         const mesh = modelToClone.scene.clone();
 
-        if (cellValue === 1) {
-          mesh.position.x = (xIndex + 1) * TILE_SIZE;
-          mesh.position.y = 0;
-          mesh.position.z = (zIndex + 1) * TILE_SIZE;
-        } else {
-          mesh.position.x = xIndex * TILE_SIZE;
-          mesh.position.y = 0;
-          mesh.position.z = zIndex * TILE_SIZE;
-        }
+        mesh.position.x = xIndex * TILE_SIZE;
+        mesh.position.y = 0;
+        mesh.position.z = zIndex * TILE_SIZE;
 
         // Rotate outer edge models to face inward
         const isBottomEdge = zIndex === levelDepth - 1;
         const isLeftEdge = xIndex === 0;
         const isRightEdge = xIndex === levelWidth - 1;
 
-        if (cellValue === 1) {
-          if (isBottomEdge) {
-            mesh.rotation.y = Math.PI;
-            mesh.position.x -= TILE_SIZE;
-            mesh.position.z -= TILE_SIZE;
-          } else if (isLeftEdge) {
-            mesh.rotation.y = Math.PI / 2;
-            mesh.position.z -= TILE_SIZE;
-          } else if (isRightEdge) {
-            mesh.rotation.y = -Math.PI / 2;
-            mesh.position.x -= TILE_SIZE;
-          }
-        } else {
-          if (isBottomEdge) {
-            mesh.rotation.y = Math.PI;
-            mesh.position.x += TILE_SIZE;
-            mesh.position.z += TILE_SIZE;
-          } else if (isLeftEdge) {
-            mesh.rotation.y = Math.PI / 2;
-            mesh.position.z += TILE_SIZE;
-          } else if (isRightEdge) {
-            mesh.rotation.y = -Math.PI / 2;
-            mesh.position.x += TILE_SIZE;
-          }
+        if (isBottomEdge) {
+          mesh.rotation.y = Math.PI;
+          mesh.position.x += TILE_SIZE;
+          mesh.position.z += TILE_SIZE;
+        } else if (isLeftEdge) {
+          mesh.rotation.y = Math.PI / 2;
+          mesh.position.z += TILE_SIZE;
+        } else if (isRightEdge) {
+          mesh.rotation.y = -Math.PI / 2;
+          mesh.position.x += TILE_SIZE;
         }
 
         // Setup shadows
