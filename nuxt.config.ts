@@ -19,6 +19,11 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [glslPlugin()],
+    server: {
+      fs: {
+        strict: false,  // Allow devtools extension files
+      },
+    },
   },
 
   modules: [
