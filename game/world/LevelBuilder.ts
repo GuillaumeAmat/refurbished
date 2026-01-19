@@ -5,6 +5,7 @@ import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import type { LevelObject } from './object/LevelObject';
+import { RepairZone } from './object/RepairZone';
 import { Wall, type WallSide } from './object/Wall';
 import { Workbench } from './object/Workbench';
 
@@ -29,9 +30,10 @@ export class LevelBuilder {
 
     const workbenchModel = this.#resources.getGLTFAsset('workbenchModel');
     const blueWorkZoneModel = this.#resources.getGLTFAsset('blueWorkZoneModel');
+    const repairZoneModel = this.#resources.getGLTFAsset('repairZoneModel');
     const crateModel = this.#resources.getGLTFAsset('crateModel');
 
-    if (!workbenchModel || !blueWorkZoneModel || !crateModel) return;
+    if (!workbenchModel || !blueWorkZoneModel || !repairZoneModel || !crateModel) return;
     if (!Array.isArray(matrix) || !matrix[0]) return;
 
     const levelWidth = matrix[0].length;
@@ -66,6 +68,15 @@ export class LevelBuilder {
         } else if (cellValue === 3) {
           obj = new Crate({
             model: crateModel,
+            xIndex,
+            zIndex,
+            tileSize,
+            levelWidth,
+            levelDepth,
+          });
+        } else if (cellValue === 4) {
+          obj = new RepairZone({
+            model: repairZoneModel,
             xIndex,
             zIndex,
             tileSize,

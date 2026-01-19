@@ -104,14 +104,19 @@ export class Stage {
         path: '/game/model/environment/blue_work_zone.glb',
         priority: 'low',
       },
+      repairZoneModel: {
+        type: 'gltf',
+        path: '/game/model/environment/repair_zone.glb',
+        priority: 'low',
+      },
       crateModel: {
         type: 'gltf',
         path: '/game/model/environment/crate.glb',
         priority: 'low',
       },
-      batteryLowModel: {
+      batteryEmptyModel: {
         type: 'gltf',
-        path: '/game/model/resource/battery_low.glb',
+        path: '/game/model/resource/battery_empty.glb',
         priority: 'low',
       },
       batteryFullModel: {
@@ -119,14 +124,14 @@ export class Stage {
         path: '/game/model/resource/battery_full.glb',
         priority: 'low',
       },
-      chassisBrokenModel: {
+      frameBrokenModel: {
         type: 'gltf',
-        path: '/game/model/resource/chassis_broken.glb',
+        path: '/game/model/resource/frame_broken.glb',
         priority: 'low',
       },
-      chassisRepairedModel: {
+      frameRepairedModel: {
         type: 'gltf',
-        path: '/game/model/resource/chassis_repaired.glb',
+        path: '/game/model/resource/frame_repaired.glb',
         priority: 'low',
       },
       screenBrokenModel: {

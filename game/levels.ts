@@ -7,8 +7,9 @@ import { TILE_SIZE } from './constants';
  * 1 = Workbench
  * 2 = Blue work zone
  * 3 = Crate
+ * 4 = Repair zone
  */
-export type CellValue = 0 | 1 | 2 | 3;
+export type CellValue = 0 | 1 | 2 | 3 | 4;
 
 export interface LevelData {
   matrix: CellValue[][];
@@ -31,11 +32,11 @@ const LEVEL_1: LevelData = {
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 4, 1, 1, 1, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 4, 1, 1, 1, 4, 1, 1, 1, 1],
   ],
   spawnPositions: [
     [3, 6], // Player 1
