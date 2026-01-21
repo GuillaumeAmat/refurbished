@@ -1,18 +1,13 @@
 import type { Group } from 'three';
 
-import { TILE_SIZE } from '../constants';
 import {
-  isBatteryCrate,
   isBlueWorkZone,
   isCrate,
-  isFrameCrate,
   isRepairZone,
-  isScreenCrate,
   isWalkable,
   isWorkbench,
   type LevelData,
 } from '../levels';
-import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import type { LevelObject } from './object/LevelObject';
@@ -22,33 +17,21 @@ import { Workbench } from './object/Workbench';
 
 export class LevelBuilder {
   #data: LevelData;
-  #resources: Resources;
   #objects: LevelObject[] = [];
 
   constructor(data: LevelData) {
     this.#data = data;
-    this.#resources = Resources.getInstance();
   }
 
   buildFromMatrix(group: Group): LevelObject[] {
-    this.buildWorkbenches(group);
+    this.buildLevelObjects(group);
     this.buildWalls(group);
     return this.#objects;
   }
 
-  private buildWorkbenches(group: Group): void {
+  private buildLevelObjects(group: Group): void {
     const { matrix } = this.#data;
-    const tileSize = TILE_SIZE;
 
-    const workbenchModel = this.#resources.getGLTFAsset('workbenchModel');
-    const blueWorkZoneModel = this.#resources.getGLTFAsset('blueWorkZoneModel');
-    const repairZoneModel = this.#resources.getGLTFAsset('repairZoneModel');
-    const crateModel = this.#resources.getGLTFAsset('crateModel');
-    const batteryEmptyModel = this.#resources.getGLTFAsset('batteryEmptyModel');
-    const frameBrokenModel = this.#resources.getGLTFAsset('frameBrokenModel');
-    const screenBrokenModel = this.#resources.getGLTFAsset('screenBrokenModel');
-
-    if (!workbenchModel || !blueWorkZoneModel || !repairZoneModel || !crateModel) return;
     if (!Array.isArray(matrix) || !matrix[0]) return;
 
     const levelWidth = matrix[0].length;
@@ -64,44 +47,30 @@ export class LevelBuilder {
 
         if (isWorkbench(cellValue)) {
           obj = new Workbench({
-            model: workbenchModel,
             xIndex,
             zIndex,
-            tileSize,
             levelWidth,
             levelDepth,
           });
         } else if (isBlueWorkZone(cellValue)) {
           obj = new BlueWorkZone({
-            model: blueWorkZoneModel,
             xIndex,
             zIndex,
-            tileSize,
             levelWidth,
             levelDepth,
           });
         } else if (isCrate(cellValue)) {
-          let resourceModel = null;
-          if (isBatteryCrate(cellValue)) resourceModel = batteryEmptyModel;
-          else if (isFrameCrate(cellValue)) resourceModel = frameBrokenModel;
-          else if (isScreenCrate(cellValue)) resourceModel = screenBrokenModel;
-
           obj = new Crate({
-            model: crateModel,
-            resourceModel,
             type: cellValue,
             xIndex,
             zIndex,
-            tileSize,
             levelWidth,
             levelDepth,
           });
         } else if (isRepairZone(cellValue)) {
           obj = new RepairZone({
-            model: repairZoneModel,
             xIndex,
             zIndex,
-            tileSize,
             levelWidth,
             levelDepth,
           });
@@ -117,10 +86,7 @@ export class LevelBuilder {
 
   private buildWalls(group: Group): void {
     const { matrix } = this.#data;
-    const tileSize = TILE_SIZE;
 
-    const wallModel = this.#resources.getGLTFAsset('wallModel');
-    if (!wallModel) return;
     if (!Array.isArray(matrix) || !matrix[0]) return;
 
     const levelWidth = matrix[0].length;
@@ -139,10 +105,8 @@ export class LevelBuilder {
         if (isWalkable(cellValue)) continue;
 
         const wall = new Wall({
-          model: wallModel,
           index: i,
           side,
-          tileSize,
           levelWidth,
           levelDepth,
         });

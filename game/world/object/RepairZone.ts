@@ -1,13 +1,12 @@
 import type { Group } from 'three';
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+import { TILE_SIZE } from '../../constants';
+import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
 export interface RepairZoneParams {
-  model: GLTF;
   xIndex: number;
   zIndex: number;
-  tileSize: number;
   levelWidth: number;
   levelDepth: number;
 }
@@ -21,19 +20,25 @@ export class RepairZone extends LevelObject {
   }
 
   create(group: Group): void {
-    const { model, xIndex, zIndex, tileSize, levelWidth, levelDepth } = this.#params;
+    const { xIndex, zIndex, levelWidth, levelDepth } = this.#params;
+
+    const model = Resources.getInstance().getGLTFAsset('repairZoneModel');
+    if (!model) {
+      console.error('RepairZone model not loaded');
+      return;
+    }
 
     const mesh = model.scene.clone();
-    mesh.position.x = xIndex * tileSize;
+    mesh.position.x = xIndex * TILE_SIZE;
     mesh.position.y = 0;
-    mesh.position.z = zIndex * tileSize;
+    mesh.position.z = zIndex * TILE_SIZE;
 
-    this.applyEdgeRotation(mesh, xIndex, zIndex, tileSize, levelWidth, levelDepth);
+    this.applyEdgeRotation(mesh, xIndex, zIndex, TILE_SIZE, levelWidth, levelDepth);
     this.setupShadows(mesh);
 
     this.mesh = mesh;
     group.add(mesh);
 
-    this.createPhysics(xIndex, zIndex, tileSize);
+    this.createPhysics(xIndex, zIndex, TILE_SIZE);
   }
 }

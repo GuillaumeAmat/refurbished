@@ -1,15 +1,14 @@
 import type { Group } from 'three';
-import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+import { TILE_SIZE } from '../../constants';
+import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
 export type WallSide = 'top' | 'bottom' | 'left' | 'right';
 
 export interface WallParams {
-  model: GLTF;
   index: number;
   side: WallSide;
-  tileSize: number;
   levelWidth: number;
   levelDepth: number;
 }
@@ -23,33 +22,39 @@ export class Wall extends LevelObject {
   }
 
   create(group: Group): void {
-    const { model, index, side, tileSize, levelWidth, levelDepth } = this.#params;
+    const { index, side, levelWidth, levelDepth } = this.#params;
+
+    const model = Resources.getInstance().getGLTFAsset('wallModel');
+    if (!model) {
+      console.error('Wall model not loaded');
+      return;
+    }
 
     const mesh = model.scene.clone();
 
     switch (side) {
       case 'top':
-        mesh.position.x = (index + 1) * tileSize;
+        mesh.position.x = (index + 1) * TILE_SIZE;
         mesh.position.y = 0;
         mesh.position.z = 0;
         mesh.rotation.y = 0;
         break;
       case 'bottom':
-        mesh.position.x = index * tileSize;
+        mesh.position.x = index * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = levelDepth * tileSize;
+        mesh.position.z = levelDepth * TILE_SIZE;
         mesh.rotation.y = Math.PI;
         break;
       case 'left':
         mesh.position.x = 0;
         mesh.position.y = 0;
-        mesh.position.z = index * tileSize;
+        mesh.position.z = index * TILE_SIZE;
         mesh.rotation.y = Math.PI / 2;
         break;
       case 'right':
-        mesh.position.x = levelWidth * tileSize;
+        mesh.position.x = levelWidth * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = (index + 1) * tileSize;
+        mesh.position.z = (index + 1) * TILE_SIZE;
         mesh.rotation.y = -Math.PI / 2;
         break;
     }
