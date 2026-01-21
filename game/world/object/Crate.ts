@@ -1,10 +1,14 @@
 import type { Group } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+import type { Cell } from '../../levels';
 import { LevelObject } from './LevelObject';
+
+export type CrateType = typeof Cell.CRATE_BATTERY | typeof Cell.CRATE_FRAME | typeof Cell.CRATE_SCREEN;
 
 export interface CrateParams {
   model: GLTF;
+  type: CrateType;
   xIndex: number;
   zIndex: number;
   tileSize: number;
@@ -14,10 +18,12 @@ export interface CrateParams {
 
 export class Crate extends LevelObject {
   #params: CrateParams;
+  type: CrateType;
 
   constructor(params: CrateParams) {
     super();
     this.#params = params;
+    this.type = params.type;
   }
 
   create(group: Group): void {

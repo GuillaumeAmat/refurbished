@@ -1,6 +1,8 @@
 import type { Group } from 'three';
 import { Mesh, MeshStandardMaterial, PlaneGeometry } from 'three';
 
+import { TILE_SIZE } from '~~/game/constants';
+
 import type { LevelInfo } from '../../levels';
 import { createGridTexture } from '../../lib/createGridTexture';
 import { LevelObject } from './LevelObject';
@@ -14,8 +16,8 @@ export class OuterFloor extends LevelObject {
   }
 
   create(group: Group): void {
-    const { width, tileSize } = this.#levelInfo;
-    const matrixWidth = width / tileSize;
+    const { width } = this.#levelInfo;
+    const matrixWidth = width / TILE_SIZE;
 
     const geometry = new PlaneGeometry(100, 100, 1, 1);
 

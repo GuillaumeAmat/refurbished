@@ -1,6 +1,14 @@
 import type { Group } from 'three';
 
-import type { LevelData } from '../levels';
+import { TILE_SIZE } from '../constants';
+import {
+  isBlueWorkZone,
+  isCrate,
+  isRepairZone,
+  isWalkable,
+  isWorkbench,
+  type LevelData,
+} from '../levels';
 import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
@@ -26,7 +34,8 @@ export class LevelBuilder {
   }
 
   private buildWorkbenches(group: Group): void {
-    const { matrix, tileSize } = this.#data;
+    const { matrix } = this.#data;
+    const tileSize = TILE_SIZE;
 
     const workbenchModel = this.#resources.getGLTFAsset('workbenchModel');
     const blueWorkZoneModel = this.#resources.getGLTFAsset('blueWorkZoneModel');
@@ -41,13 +50,13 @@ export class LevelBuilder {
 
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
       for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
-        const cellValue = matrix[zIndex]?.[xIndex];
+        const cellValue = matrix[zIndex]?.[xIndex] ?? '';
 
-        if (cellValue === 0) continue;
+        if (isWalkable(cellValue)) continue;
 
         let obj: LevelObject | null = null;
 
-        if (cellValue === 1) {
+        if (isWorkbench(cellValue)) {
           obj = new Workbench({
             model: workbenchModel,
             xIndex,
@@ -56,7 +65,7 @@ export class LevelBuilder {
             levelWidth,
             levelDepth,
           });
-        } else if (cellValue === 2) {
+        } else if (isBlueWorkZone(cellValue)) {
           obj = new BlueWorkZone({
             model: blueWorkZoneModel,
             xIndex,
@@ -65,16 +74,17 @@ export class LevelBuilder {
             levelWidth,
             levelDepth,
           });
-        } else if (cellValue === 3) {
+        } else if (isCrate(cellValue)) {
           obj = new Crate({
             model: crateModel,
+            type: cellValue,
             xIndex,
             zIndex,
             tileSize,
             levelWidth,
             levelDepth,
           });
-        } else if (cellValue === 4) {
+        } else if (isRepairZone(cellValue)) {
           obj = new RepairZone({
             model: repairZoneModel,
             xIndex,
@@ -94,7 +104,8 @@ export class LevelBuilder {
   }
 
   private buildWalls(group: Group): void {
-    const { matrix, tileSize } = this.#data;
+    const { matrix } = this.#data;
+    const tileSize = TILE_SIZE;
 
     const wallModel = this.#resources.getGLTFAsset('wallModel');
     if (!wallModel) return;
@@ -103,17 +114,17 @@ export class LevelBuilder {
     const levelWidth = matrix[0].length;
     const levelDepth = matrix.length;
 
-    const sides: { side: WallSide; getCell: (i: number) => number | undefined; length: number }[] = [
-      { side: 'top', getCell: (i) => matrix[0]?.[i], length: levelWidth },
-      { side: 'bottom', getCell: (i) => matrix[levelDepth - 1]?.[i], length: levelWidth },
-      { side: 'left', getCell: (i) => matrix[i]?.[0], length: levelDepth },
-      { side: 'right', getCell: (i) => matrix[i]?.[levelWidth - 1], length: levelDepth },
+    const sides: { side: WallSide; getCell: (i: number) => string; length: number }[] = [
+      { side: 'top', getCell: (i) => matrix[0]?.[i] ?? '', length: levelWidth },
+      { side: 'bottom', getCell: (i) => matrix[levelDepth - 1]?.[i] ?? '', length: levelWidth },
+      { side: 'left', getCell: (i) => matrix[i]?.[0] ?? '', length: levelDepth },
+      { side: 'right', getCell: (i) => matrix[i]?.[levelWidth - 1] ?? '', length: levelDepth },
     ];
 
     for (const { side, getCell, length } of sides) {
       for (let i = 0; i < length; i++) {
         const cellValue = getCell(i);
-        if (cellValue === 0) continue;
+        if (isWalkable(cellValue)) continue;
 
         const wall = new Wall({
           model: wallModel,
