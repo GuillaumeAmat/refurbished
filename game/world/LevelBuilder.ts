@@ -2,9 +2,12 @@ import type { Group } from 'three';
 
 import { TILE_SIZE } from '../constants';
 import {
+  isBatteryCrate,
   isBlueWorkZone,
   isCrate,
+  isFrameCrate,
   isRepairZone,
+  isScreenCrate,
   isWalkable,
   isWorkbench,
   type LevelData,
@@ -41,6 +44,9 @@ export class LevelBuilder {
     const blueWorkZoneModel = this.#resources.getGLTFAsset('blueWorkZoneModel');
     const repairZoneModel = this.#resources.getGLTFAsset('repairZoneModel');
     const crateModel = this.#resources.getGLTFAsset('crateModel');
+    const batteryEmptyModel = this.#resources.getGLTFAsset('batteryEmptyModel');
+    const frameBrokenModel = this.#resources.getGLTFAsset('frameBrokenModel');
+    const screenBrokenModel = this.#resources.getGLTFAsset('screenBrokenModel');
 
     if (!workbenchModel || !blueWorkZoneModel || !repairZoneModel || !crateModel) return;
     if (!Array.isArray(matrix) || !matrix[0]) return;
@@ -75,8 +81,14 @@ export class LevelBuilder {
             levelDepth,
           });
         } else if (isCrate(cellValue)) {
+          let resourceModel = null;
+          if (isBatteryCrate(cellValue)) resourceModel = batteryEmptyModel;
+          else if (isFrameCrate(cellValue)) resourceModel = frameBrokenModel;
+          else if (isScreenCrate(cellValue)) resourceModel = screenBrokenModel;
+
           obj = new Crate({
             model: crateModel,
+            resourceModel,
             type: cellValue,
             xIndex,
             zIndex,

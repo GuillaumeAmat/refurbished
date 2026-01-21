@@ -1,4 +1,4 @@
-import type { Group } from 'three';
+import { Box3, type Group, Vector3 } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import type { Cell } from '../../levels';
@@ -8,6 +8,7 @@ export type CrateType = typeof Cell.CRATE_BATTERY | typeof Cell.CRATE_FRAME | ty
 
 export interface CrateParams {
   model: GLTF;
+  resourceModel: GLTF | null;
   type: CrateType;
   xIndex: number;
   zIndex: number;
@@ -27,7 +28,7 @@ export class Crate extends LevelObject {
   }
 
   create(group: Group): void {
-    const { model, xIndex, zIndex, tileSize, levelWidth, levelDepth } = this.#params;
+    const { model, resourceModel, xIndex, zIndex, tileSize, levelWidth, levelDepth } = this.#params;
 
     const mesh = model.scene.clone();
     mesh.position.x = xIndex * tileSize;
@@ -36,6 +37,19 @@ export class Crate extends LevelObject {
 
     this.applyEdgeRotation(mesh, xIndex, zIndex, tileSize, levelWidth, levelDepth);
     this.setupShadows(mesh);
+
+    if (resourceModel) {
+      const resource = resourceModel.scene.clone();
+
+      const bbox = new Box3().setFromObject(mesh);
+      const size = new Vector3();
+      bbox.getSize(size);
+      const meshHeight = size.y;
+
+      resource.position.set(tileSize / 2, meshHeight, tileSize / 2);
+      this.setupShadows(resource);
+      mesh.add(resource);
+    }
 
     this.mesh = mesh;
     group.add(mesh);
