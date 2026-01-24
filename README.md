@@ -4,9 +4,9 @@ Unofficial Back Market themed web video game.
 
 ## Controls
 
-| Key | Action |
-| --- | ------ |
-| `B` | Dash   |
+| Action | Gamepad | Keyboard player #1 | Keyboard player #2 |
+| ------ | ------- | ------------------ | ------------------ |
+| Dash   | `B`     | `AltLeft`          | `AltRight`         |
 
 ## Contributing
 

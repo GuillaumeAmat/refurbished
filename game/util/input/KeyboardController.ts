@@ -28,6 +28,15 @@ export class KeyboardController implements InputSource {
   }
 
   public isButtonPressed(button: string): boolean {
+    if (button === 'b') {
+      if (this.#keySet === 'player1') {
+        return this.#keysPressed.has('AltLeft');
+      } else if (this.#keySet === 'player2') {
+        return this.#keysPressed.has('AltRight');
+      }
+      // No keySet: accept both (backward compat)
+      return this.#keysPressed.has('AltLeft') || this.#keysPressed.has('AltRight');
+    }
     return this.#keysPressed.has(button);
   }
 
@@ -65,21 +74,13 @@ export class KeyboardController implements InputSource {
     }
     // No keySet: all keys (backward compatibility)
     else {
-      if (
-        this.#keysPressed.has('ArrowLeft') ||
-        this.#keysPressed.has('KeyA') ||
-        this.#keysPressed.has('KeyQ')
-      ) {
+      if (this.#keysPressed.has('ArrowLeft') || this.#keysPressed.has('KeyA') || this.#keysPressed.has('KeyQ')) {
         x = -1;
       } else if (this.#keysPressed.has('ArrowRight') || this.#keysPressed.has('KeyD')) {
         x = 1;
       }
 
-      if (
-        this.#keysPressed.has('ArrowUp') ||
-        this.#keysPressed.has('KeyW') ||
-        this.#keysPressed.has('KeyZ')
-      ) {
+      if (this.#keysPressed.has('ArrowUp') || this.#keysPressed.has('KeyW') || this.#keysPressed.has('KeyZ')) {
         z = -1;
       } else if (this.#keysPressed.has('ArrowDown') || this.#keysPressed.has('KeyS')) {
         z = 1;
@@ -97,6 +98,10 @@ export class KeyboardController implements InputSource {
   }
 
   #handleKeyUp(event: KeyboardEvent) {
+    if (event.code === 'AltLeft') {
+      event.preventDefault();
+    }
+
     this.#keysPressed.delete(event.code);
 
     if (this.#buttonUpCallback) {
