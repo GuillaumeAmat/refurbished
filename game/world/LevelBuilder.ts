@@ -117,6 +117,10 @@ export class LevelBuilder {
     }
   }
 
+  getInteractables(): LevelObject[] {
+    return this.#objects.filter((obj) => obj.isInteractable);
+  }
+
   dispose(): void {
     for (const obj of this.#objects) {
       obj.dispose();

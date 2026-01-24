@@ -34,11 +34,13 @@ export class BlueWorkZone extends LevelObject {
     mesh.position.z = zIndex * TILE_SIZE;
 
     this.applyEdgeRotation(mesh, xIndex, zIndex, TILE_SIZE, levelWidth, levelDepth);
+    this.cloneMaterials(mesh);
     this.setupShadows(mesh);
 
     this.mesh = mesh;
     group.add(mesh);
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
+    this.isInteractable = true;
   }
 }

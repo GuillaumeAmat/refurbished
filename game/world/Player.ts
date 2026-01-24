@@ -51,6 +51,20 @@ export class Player {
     return this.#mesh;
   }
 
+  public getPosition(): Vector3 | null {
+    if (!this.#rigidBody) return null;
+    const t = this.#rigidBody.translation();
+    return new Vector3(t.x, t.y, t.z);
+  }
+
+  public getFacingDirection(): Vector3 {
+    return new Vector3(Math.cos(this.#currentRotationY), 0, -Math.sin(this.#currentRotationY));
+  }
+
+  public getPlayerId(): PlayerId {
+    return this.#playerId;
+  }
+
   constructor(screenGroup: Group, scene: Scene, playerId: PlayerId, spawnPosition: Vector3) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;

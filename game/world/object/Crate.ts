@@ -53,6 +53,7 @@ export class Crate extends LevelObject {
     mesh.position.z = zIndex * TILE_SIZE;
 
     this.applyEdgeRotation(mesh, xIndex, zIndex, TILE_SIZE, levelWidth, levelDepth);
+    this.cloneMaterials(mesh);
     this.setupShadows(mesh);
 
     const resourceModelName = Crate.getResourceModelName(type);
@@ -67,6 +68,7 @@ export class Crate extends LevelObject {
         const meshHeight = size.y;
 
         resource.position.set(TILE_SIZE / 2, meshHeight, TILE_SIZE / 2);
+        this.cloneMaterials(resource);
         this.setupShadows(resource);
         mesh.add(resource);
       }
@@ -76,5 +78,6 @@ export class Crate extends LevelObject {
     group.add(mesh);
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
+    this.isInteractable = true;
   }
 }

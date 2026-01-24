@@ -6,32 +6,26 @@ import { useRuntimeConfig } from '#app';
 import { ControllersHUD } from '../hud/ControllersHUD';
 import type { LevelInfo } from '../levels';
 import { GamepadManager } from '../util/input/GamepadManager';
-import { Physics } from '../util/Physics';
 import { Sizes } from '../util/Sizes';
 import type { Camera } from '../world/Camera';
 import { Level } from '../world/Level';
-import { Player } from '../world/Player';
 
 export class LevelScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #camera: Camera;
   #levelInfo: LevelInfo;
-  #physics: Physics;
   #gamepadManager: GamepadManager;
 
   #group: Group;
-  #player1: Player | null = null;
-  #player2: Player | null = null;
   #level: Level | null = null;
   #hud: ControllersHUD;
-  #physicsInitialized = false;
+  #levelInitialized = false;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera, levelInfo: LevelInfo) {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#camera = camera;
-    this.#physics = Physics.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
     this.#levelInfo = levelInfo;
 
@@ -72,19 +66,13 @@ export class LevelScreen {
     });
   }
 
-  #levelInitialized = false;
-
   private async initLevel() {
     if (this.#levelInitialized) return;
-    this.#levelInitialized = true;
-
-    await this.#physics.init(this.#scene);
-    this.#physicsInitialized = true;
-
-    this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
-    this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
 
     this.#level = new Level(this.#group, this.#scene, this.#levelInfo);
+    await this.#level.init();
+
+    this.#levelInitialized = true;
   }
 
   private show() {
@@ -100,12 +88,9 @@ export class LevelScreen {
 
   public update() {
     if (!this.#group.visible) return;
-    if (!this.#physicsInitialized) return;
+    if (!this.#levelInitialized) return;
 
     this.#gamepadManager.update();
-    this.#physics.update();
-    this.#player1?.update();
-    this.#player2?.update();
     this.#level?.update();
     this.#hud.update();
   }
