@@ -115,8 +115,26 @@ export class KeyboardController implements InputSource {
     this.#keysPressed.delete(event.code);
 
     if (this.#buttonUpCallback) {
-      this.#buttonUpCallback(event.code);
+      const button = this.#mapKeyToAbstractButton(event.code);
+      if (button) {
+        this.#buttonUpCallback(button);
+      }
     }
+  }
+
+  #mapKeyToAbstractButton(code: string): string | null {
+    // Interact = 'a'
+    if (this.#keySet === 'player1' && code === 'Space') return 'a';
+    if (this.#keySet === 'player2' && code === 'Enter') return 'a';
+    // Dash = 'b'
+    if (this.#keySet === 'player1' && code === 'AltLeft') return 'b';
+    if (this.#keySet === 'player2' && code === 'AltRight') return 'b';
+    // No keySet: backward compat
+    if (!this.#keySet) {
+      if (code === 'Space' || code === 'Enter') return 'a';
+      if (code === 'AltLeft' || code === 'AltRight') return 'b';
+    }
+    return null;
   }
 
   #handleKeyDown(event: KeyboardEvent) {

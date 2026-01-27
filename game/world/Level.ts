@@ -2,7 +2,6 @@ import { Group, type Scene } from 'three';
 
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
-import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
@@ -24,7 +23,6 @@ export class Level {
   #player2: Player | null = null;
   #interactionSystem!: InteractionSystem;
   #physics: Physics;
-  #gamepadManager: GamepadManager;
 
   #debug: Debug;
   #debugProperties = {
@@ -36,7 +34,6 @@ export class Level {
     this.#scene = scene;
     this.#debug = Debug.getInstance();
     this.#physics = Physics.getInstance();
-    this.#gamepadManager = GamepadManager.getInstance();
     this.#levelInfo = levelInfo;
 
     this.#group = new Group();
@@ -68,21 +65,12 @@ export class Level {
   }
 
   #setupInputCallbacks(): void {
-    const setupForPlayer = (playerId: PlayerId) => {
-      const inputSource = this.#gamepadManager.getInputSource(playerId);
-      if (inputSource) {
-        inputSource.onButtonUp((button) => {
-          const isInteractButton =
-            button === 'a' || (playerId === 1 && button === 'Space') || (playerId === 2 && button === 'Enter');
-          if (isInteractButton) {
-            this.#interactionSystem.handleInteraction(playerId);
-          }
-        });
-      }
-    };
-
-    setupForPlayer(1);
-    setupForPlayer(2);
+    this.#player1?.onInteract(() => {
+      this.#interactionSystem.handleInteraction(1);
+    });
+    this.#player2?.onInteract(() => {
+      this.#interactionSystem.handleInteraction(2);
+    });
   }
 
   private async setupHelpers() {

@@ -43,6 +43,8 @@ export class Player {
 
   #carriedResource: { type: ResourceType; mesh: Object3D } | null = null;
 
+  #interactCallback: (() => void) | null = null;
+
   #debug: Debug;
   #gamepadManager: GamepadManager;
   #playerId: PlayerId;
@@ -84,6 +86,22 @@ export class Player {
     this.createMesh();
     this.createPhysicsBody();
     this.setupHelpers();
+    this.#setupInputCallbacks();
+  }
+
+  #setupInputCallbacks(): void {
+    const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
+    if (inputSource) {
+      inputSource.onButtonUp((button) => {
+        if (button === 'a' && this.#interactCallback) {
+          this.#interactCallback();
+        }
+      });
+    }
+  }
+
+  public onInteract(callback: () => void): void {
+    this.#interactCallback = callback;
   }
 
   private createMesh() {
