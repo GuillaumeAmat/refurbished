@@ -2,6 +2,7 @@ import { Group, type Scene } from 'three';
 
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
@@ -23,6 +24,7 @@ export class Level {
   #player2: Player | null = null;
   #interactionSystem!: InteractionSystem;
   #physics: Physics;
+  #gamepadManager: GamepadManager;
 
   #debug: Debug;
   #debugProperties = {
@@ -34,6 +36,7 @@ export class Level {
     this.#scene = scene;
     this.#debug = Debug.getInstance();
     this.#physics = Physics.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
     this.#levelInfo = levelInfo;
 
     this.#group = new Group();
@@ -55,12 +58,31 @@ export class Level {
     this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
     this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
 
-    this.#interactionSystem = new InteractionSystem();
+    this.#interactionSystem = new InteractionSystem(this.#group);
     this.#interactionSystem.registerPlayer(this.#player1);
     this.#interactionSystem.registerPlayer(this.#player2);
     this.#interactionSystem.setInteractables(this.#levelBuilder.getInteractables());
 
+    this.#setupInputCallbacks();
     this.setupHelpers();
+  }
+
+  #setupInputCallbacks(): void {
+    const setupForPlayer = (playerId: PlayerId) => {
+      const inputSource = this.#gamepadManager.getInputSource(playerId);
+      if (inputSource) {
+        inputSource.onButtonUp((button) => {
+          const isInteractButton =
+            button === 'a' || (playerId === 1 && button === 'Space') || (playerId === 2 && button === 'Enter');
+          if (isInteractButton) {
+            this.#interactionSystem.handleInteraction(playerId);
+          }
+        });
+      }
+    };
+
+    setupForPlayer(1);
+    setupForPlayer(2);
   }
 
   private async setupHelpers() {

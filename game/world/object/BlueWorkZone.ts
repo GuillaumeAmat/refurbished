@@ -2,6 +2,7 @@ import type { Group } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
+import type { DroppedResource } from './DroppedResource';
 import { LevelObject } from './LevelObject';
 
 export interface BlueWorkZoneParams {
@@ -13,10 +14,23 @@ export interface BlueWorkZoneParams {
 
 export class BlueWorkZone extends LevelObject {
   #params: BlueWorkZoneParams;
+  #containedResource: DroppedResource | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
     this.#params = params;
+  }
+
+  public hasResource(): boolean {
+    return this.#containedResource !== null;
+  }
+
+  public getResource(): DroppedResource | null {
+    return this.#containedResource;
+  }
+
+  public setResource(resource: DroppedResource | null): void {
+    this.#containedResource = resource;
   }
 
   create(group: Group): void {

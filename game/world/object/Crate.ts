@@ -2,6 +2,7 @@ import { Box3, type Group, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Cell } from '../../levels';
+import type { ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -25,13 +26,29 @@ export class Crate extends LevelObject {
     this.type = params.type;
   }
 
-  private static getResourceModelName(type: CrateType): string | null {
+  public getResourceType(): ResourceType {
+    switch (this.type) {
+      case Cell.CRATE_BATTERY:
+        return 'battery';
+      case Cell.CRATE_FRAME:
+        return 'frame';
+      case Cell.CRATE_SCREEN:
+        return 'screen';
+      default:
+        return 'battery';
+    }
+  }
+
+  public static getResourceModelName(type: CrateType | ResourceType): string | null {
     switch (type) {
       case Cell.CRATE_BATTERY:
+      case 'battery':
         return 'batteryEmptyModel';
       case Cell.CRATE_FRAME:
+      case 'frame':
         return 'frameBrokenModel';
       case Cell.CRATE_SCREEN:
+      case 'screen':
         return 'screenBrokenModel';
       default:
         return null;

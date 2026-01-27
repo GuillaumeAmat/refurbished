@@ -37,6 +37,16 @@ export class KeyboardController implements InputSource {
       // No keySet: accept both (backward compat)
       return this.#keysPressed.has('AltLeft') || this.#keysPressed.has('AltRight');
     }
+
+    if (button === 'a') {
+      if (this.#keySet === 'player1') {
+        return this.#keysPressed.has('Space');
+      } else if (this.#keySet === 'player2') {
+        return this.#keysPressed.has('Enter');
+      }
+      return this.#keysPressed.has('Space') || this.#keysPressed.has('Enter');
+    }
+
     return this.#keysPressed.has(button);
   }
 

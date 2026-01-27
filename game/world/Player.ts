@@ -2,11 +2,13 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
+import type { ResourceType } from '../types';
 import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
 import { Time } from '../util/Time';
+import { Crate } from './object/Crate';
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
   [1, 0x4488ff],
@@ -38,6 +40,8 @@ export class Player {
     cooldownTimer: 0,
     direction: { x: 0, z: 0 },
   };
+
+  #carriedResource: { type: ResourceType; mesh: Object3D } | null = null;
 
   #debug: Debug;
   #gamepadManager: GamepadManager;
@@ -233,6 +237,46 @@ export class Player {
 
     const position = this.#rigidBody.translation();
     this.#mesh.position.set(position.x, position.y - 0.5, position.z);
+  }
+
+  public isCarrying(): boolean {
+    return this.#carriedResource !== null;
+  }
+
+  public getCarriedResourceType(): ResourceType | null {
+    return this.#carriedResource?.type ?? null;
+  }
+
+  public grabResource(type: ResourceType): void {
+    if (this.#carriedResource || !this.#mesh) return;
+
+    const modelName = Crate.getResourceModelName(type);
+    if (!modelName) return;
+
+    const model = this.#resources.getGLTFAsset(modelName);
+    if (!model) return;
+
+    const resourceMesh = model.scene.clone();
+    resourceMesh.position.set(0, 1.8, 0);
+
+    resourceMesh.traverse((child) => {
+      if (child instanceof Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    this.#mesh.add(resourceMesh);
+    this.#carriedResource = { type, mesh: resourceMesh };
+  }
+
+  public dropResource(): ResourceType | null {
+    if (!this.#carriedResource) return null;
+
+    const type = this.#carriedResource.type;
+    this.#carriedResource.mesh.removeFromParent();
+    this.#carriedResource = null;
+    return type;
   }
 
   public update() {
