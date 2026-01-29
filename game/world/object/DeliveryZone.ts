@@ -1,4 +1,5 @@
-import { Box3, Group, Vector3 } from 'three';
+import type { Group } from 'three';
+import { Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Physics } from '../../util/Physics';
@@ -50,15 +51,5 @@ export class DeliveryZone extends LevelObject {
     physics.createBoxCollider(this.rigidBody, halfExtents, 0.0);
 
     this.isInteractable = true;
-  }
-
-  public override getClosestPoint(from: Vector3): Vector3 | null {
-    if (!this.mesh) return null;
-    const box = new Box3().setFromObject(this.mesh);
-    return new Vector3(
-      Math.max(box.min.x, Math.min(from.x, box.max.x)),
-      from.y,
-      Math.max(box.min.z, Math.min(from.z, box.max.z)),
-    );
   }
 }

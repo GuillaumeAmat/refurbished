@@ -1,5 +1,6 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
-import { Box3, Color, type Group, Mesh, MeshStandardMaterial, type Object3D, Vector3 } from 'three';
+import type { Color, Group, Object3D } from 'three';
+import { Box3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 
 import { HIGHLIGHT_EMISSIVE } from '../../constants';
 import { Physics } from '../../util/Physics';
@@ -23,11 +24,16 @@ export abstract class LevelObject {
   }
 
   /**
-   * Returns the closest point on this object to the given position (XZ plane).
-   * Defaults to getPosition(). Override for multi-tile objects.
+   * Returns the closest point on this object's bounding box to the given position (XZ plane).
    */
   public getClosestPoint(from: Vector3): Vector3 | null {
-    return this.getPosition();
+    if (!this.mesh) return null;
+    const box = new Box3().setFromObject(this.mesh);
+    return new Vector3(
+      Math.max(box.min.x, Math.min(from.x, box.max.x)),
+      from.y,
+      Math.max(box.min.z, Math.min(from.z, box.max.z)),
+    );
   }
 
   public get isHighlighted(): boolean {
