@@ -1,0 +1,1006 @@
+{
+    "prefabs": [
+        {
+            "type": "workbench",
+            "position": {
+                "x": -14,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -5,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -20,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -14,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": -1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 10.995574287564276
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -5,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 7,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 10,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -4
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -7
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -23.000000029802322,
+                "y": 0,
+                "z": 17.000000029802322
+            },
+            "rotation": {
+                "y": 15.707963267948966
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -20,
+                "y": 0,
+                "z": -1
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -23.000000029802322,
+                "y": 0,
+                "z": 4.999999970197677
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 7,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -17,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -14,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -5,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 4,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 10,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 11
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 8
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 12.999999970197678,
+                "y": 0,
+                "z": 4.999999970197677
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": -4
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": -7
+            },
+            "rotation": {
+                "y": 14.137166941154069
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -17,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -14,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -8,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -8,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -8,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 7,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": 10,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 4.71238898038469
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": 7,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": -1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": -23.00000001490116,
+                "y": 0,
+                "z": 4.9999998807907104
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": -23.00000001490116,
+                "y": 0,
+                "z": 1.9999998807907078
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 17,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": 14
+            },
+            "rotation": {
+                "y": 3.141592653589793
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": 11
+            },
+            "rotation": {
+                "y": 3.141592653589793
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 17,
+                "y": 0,
+                "z": 5
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 17,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 17,
+                "y": 0,
+                "z": -1
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": -1
+            },
+            "rotation": {
+                "y": 3.141592653589793
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": 16,
+                "y": 0,
+                "z": -4
+            },
+            "rotation": {
+                "y": 3.141592653589793
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 17,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -20,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 10,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": -10
+            },
+            "rotation": {
+                "y": -1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -8,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": -11
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "blueworkzone",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 9.42477796076938
+            }
+        },
+        {
+            "type": "neonwall-blue",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -1
+            },
+            "rotation": {
+                "y": 6.283185307179586
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -7
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": -4
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -23,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -20,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -8,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -5,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -2,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 10,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": 13,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": 7,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 7.853981633974483
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": 4,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -17,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "neonwall-yellow",
+            "position": {
+                "x": -14,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "blueworkzone",
+            "position": {
+                "x": 4,
+                "y": 0,
+                "z": -7
+            },
+            "rotation": {
+                "y": 4.71238898038469
+            }
+        },
+        {
+            "type": "blueworkzone",
+            "position": {
+                "x": -17,
+                "y": 0,
+                "z": -7
+            },
+            "rotation": {
+                "y": 4.71238898038469
+            }
+        },
+        {
+            "type": "woodwall",
+            "position": {
+                "x": -11,
+                "y": 0,
+                "z": 17
+            },
+            "rotation": {
+                "y": 1.5707963267948966
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 1,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        },
+        {
+            "type": "workbench",
+            "position": {
+                "x": 4,
+                "y": 0,
+                "z": 2
+            },
+            "rotation": {
+                "y": 0
+            }
+        }
+    ],
+    "settings": {
+        "directionalLight": {
+            "color": "#ffffff",
+            "intensity": 1,
+            "position": {
+                "x": 0,
+                "y": 20,
+                "z": 0
+            }
+        },
+        "showGrid": false
+    }
+}
