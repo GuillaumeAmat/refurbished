@@ -99,6 +99,11 @@ export class Stage {
         path: '/game/model/environment/wall.glb',
         priority: 'low',
       },
+      wallTopRegularModel: {
+        type: 'gltf',
+        path: '/game/model/environment/wall_top_regular.glb',
+        priority: 'low',
+      },
       blueWorkZoneModel: {
         type: 'gltf',
         path: '/game/model/environment/blue_work_zone.glb',

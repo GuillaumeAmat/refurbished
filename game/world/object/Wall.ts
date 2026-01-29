@@ -1,4 +1,4 @@
-import type { Group } from 'three';
+import { Box3, Group, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
@@ -61,7 +61,34 @@ export class Wall extends LevelObject {
 
     this.setupShadows(mesh);
 
-    this.mesh = mesh;
-    group.add(mesh);
+    const wallTopModel =
+      Resources.getInstance().getGLTFAsset('wallTopRegularModel');
+
+    const container = new Group();
+    container.add(mesh);
+
+    if (wallTopModel) {
+      const wallTop = wallTopModel.scene.clone();
+
+      // Compute wall size from its bounding box (before position/rotation)
+      const wallBox = new Box3().setFromObject(model.scene);
+      const wallSize = wallBox.getSize(new Vector3());
+
+      // Offset to center of wall top surface in local (unrotated) space
+      const offset = new Vector3(wallSize.x / 2, 0, wallSize.z / 2);
+      offset.applyEuler(mesh.rotation);
+
+      wallTop.position.copy(mesh.position);
+      wallTop.position.x += offset.x;
+      wallTop.position.y = wallSize.y;
+      wallTop.position.z += offset.z;
+      wallTop.rotation.copy(mesh.rotation);
+
+      this.setupShadows(wallTop);
+      container.add(wallTop);
+    }
+
+    this.mesh = container;
+    group.add(container);
   }
 }
