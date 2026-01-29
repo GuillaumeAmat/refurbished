@@ -9,6 +9,7 @@ import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
 import { Time } from '../util/Time';
 import { Crate } from './object/Crate';
+import { SmokeParticleSystem } from './SmokeParticleSystem';
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
   [1, 0xffb6c1],
@@ -42,6 +43,9 @@ export class Player {
   };
 
   #carriedResource: { type: ResourceType; mesh: Object3D } | null = null;
+
+  #smokeSystem: SmokeParticleSystem | null = null;
+  #hasDashBurst = false;
 
   #interactCallback: (() => void) | null = null;
 
@@ -87,6 +91,7 @@ export class Player {
     this.createPhysicsBody();
     this.setupHelpers();
     this.#setupInputCallbacks();
+    this.#setupSmokeSystem();
   }
 
   #setupInputCallbacks(): void {
@@ -102,6 +107,10 @@ export class Player {
 
   public onInteract(callback: () => void): void {
     this.#interactCallback = callback;
+  }
+
+  #setupSmokeSystem(): void {
+    this.#smokeSystem = new SmokeParticleSystem(this.#scene);
   }
 
   private createMesh() {
@@ -209,6 +218,7 @@ export class Player {
       this.#dashState.timer = DASH_DURATION;
       this.#dashState.cooldownTimer = DASH_COOLDOWN;
       this.#dashState.direction = { x, z };
+      this.#hasDashBurst = false;
     }
 
     const currentVel = this.#rigidBody.linvel();
@@ -299,9 +309,26 @@ export class Player {
     return type;
   }
 
+  #updateSmoke(): void {
+    if (!this.#smokeSystem || !this.#rigidBody) return;
+
+    const position = this.getPosition();
+    const linvel = this.#rigidBody.linvel();
+    const velocity = new Vector3(linvel.x, linvel.y, linvel.z);
+
+    // Burst on dash start
+    if (this.#dashState.isDashing && !this.#hasDashBurst && position) {
+      this.#smokeSystem.spawnBurst(position, velocity, 5);
+      this.#hasDashBurst = true;
+    }
+
+    this.#smokeSystem.update(position, velocity, this.#dashState.isDashing);
+  }
+
   public update() {
     this.updateMovement();
     this.updateRotation();
     this.syncMeshWithPhysics();
+    this.#updateSmoke();
   }
 }

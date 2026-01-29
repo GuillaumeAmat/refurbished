@@ -1,8 +1,8 @@
 import { Group, type Mesh, MeshStandardMaterial, type PerspectiveCamera } from 'three';
 
 import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../util/Resources';
 import type { GamepadManager } from '../util/input/GamepadManager';
+import { Resources } from '../util/Resources';
 
 export class ControllersHUD {
   static readonly HUD_DISTANCE = 5;
