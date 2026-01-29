@@ -3,6 +3,7 @@ import type { Group } from 'three';
 import {
   isBlueWorkZone,
   isCrate,
+  isDeliveryZone,
   isRepairZone,
   isWalkable,
   isWorkbench,
@@ -10,6 +11,7 @@ import {
 } from '../levels';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
+import { DeliveryZone } from './object/DeliveryZone';
 import type { LevelObject } from './object/LevelObject';
 import { RepairZone } from './object/RepairZone';
 import { Wall, type WallSide } from './object/Wall';
@@ -36,6 +38,8 @@ export class LevelBuilder {
 
     const levelWidth = matrix[0].length;
     const levelDepth = matrix.length;
+
+    const builtDeliveryZones = new Set<string>();
 
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
       for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
@@ -74,6 +78,28 @@ export class LevelBuilder {
             levelWidth,
             levelDepth,
           });
+        } else if (isDeliveryZone(cellValue)) {
+          const key = `${xIndex}`;
+          if (builtDeliveryZones.has(key)) continue;
+
+          // Find the second tile (next row with same column)
+          let zIndex2 = zIndex + 1;
+          for (let z = zIndex + 1; z < levelDepth; z++) {
+            if (isDeliveryZone(matrix[z]?.[xIndex] ?? '')) {
+              zIndex2 = z;
+              break;
+            }
+          }
+
+          builtDeliveryZones.add(key);
+
+          obj = new DeliveryZone({
+            xIndex,
+            zIndex,
+            zIndex2,
+            levelWidth,
+            levelDepth,
+          });
         }
 
         if (obj) {
@@ -102,7 +128,7 @@ export class LevelBuilder {
     for (const { side, getCell, length } of sides) {
       for (let i = 0; i < length; i++) {
         const cellValue = getCell(i);
-        if (isWalkable(cellValue)) continue;
+        if (isWalkable(cellValue) || isDeliveryZone(cellValue)) continue;
 
         const wall = new Wall({
           index: i,

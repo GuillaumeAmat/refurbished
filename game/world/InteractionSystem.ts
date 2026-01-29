@@ -118,7 +118,7 @@ export class InteractionSystem {
     let bestScore = -Infinity;
 
     for (const obj of this.#interactables) {
-      const objPos = obj.getPosition();
+      const objPos = obj.getClosestPoint(playerPos);
       if (!objPos) continue;
 
       const dx = objPos.x - playerPos.x;

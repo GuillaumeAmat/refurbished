@@ -109,6 +109,11 @@ export class Stage {
         path: '/game/model/environment/repair_zone.glb',
         priority: 'low',
       },
+      deliveryZoneModel: {
+        type: 'gltf',
+        path: '/game/model/environment/delivery_zone.glb',
+        priority: 'low',
+      },
       crateModel: {
         type: 'gltf',
         path: '/game/model/environment/crate.glb',

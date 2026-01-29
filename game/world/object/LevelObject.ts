@@ -22,6 +22,14 @@ export abstract class LevelObject {
     return center;
   }
 
+  /**
+   * Returns the closest point on this object to the given position (XZ plane).
+   * Defaults to getPosition(). Override for multi-tile objects.
+   */
+  public getClosestPoint(from: Vector3): Vector3 | null {
+    return this.getPosition();
+  }
+
   public get isHighlighted(): boolean {
     return this.#isHighlighted;
   }

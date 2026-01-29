@@ -9,6 +9,7 @@ export const Cell = {
   WORKBENCH: '03',
   REPAIR_ZONE: '04',
   BLUE_WORK_ZONE: '05',
+  DELIVERY_ZONE: '06',
   CRATE_BATTERY: '10',
   CRATE_FRAME: '11',
   CRATE_SCREEN: '12',
@@ -25,6 +26,7 @@ export const isCrate = (c: string) => c === Cell.CRATE_BATTERY || c === Cell.CRA
 export const isWorkbench = (c: string) => c === Cell.WORKBENCH;
 export const isRepairZone = (c: string) => c === Cell.REPAIR_ZONE;
 export const isBlueWorkZone = (c: string) => c === Cell.BLUE_WORK_ZONE;
+export const isDeliveryZone = (c: string) => c === Cell.DELIVERY_ZONE;
 
 export interface LevelData {
   matrix: CellValue[][];
@@ -46,8 +48,8 @@ const LEVEL_1: LevelData = {
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
     ['03', '03', '03', '03', '03', '03', '04', '03', '03', '03', '00', '00', '03'],
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
-    ['00', '00', '00', '01', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
-    ['00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
+    ['06', '00', '00', '01', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
+    ['06', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
     ['03', '03', '03', '03', '04', '03', '03', '03', '04', '03', '03', '03', '03'],
   ],
 };
