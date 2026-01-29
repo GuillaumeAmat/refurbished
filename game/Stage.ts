@@ -84,9 +84,14 @@ export class Stage {
         path: '/game/audio/effect/select.opus',
         priority: 'low',
       },
-      duckModel: {
+      pigModel: {
         type: 'gltf',
-        path: '/game/Duck.gltf',
+        path: '/game/model/characters/pig.glb',
+        priority: 'low',
+      },
+      crocoModel: {
+        type: 'gltf',
+        path: '/game/model/characters/croco.glb',
         priority: 'low',
       },
       workbenchModel: {

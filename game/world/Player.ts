@@ -11,8 +11,8 @@ import { Time } from '../util/Time';
 import { Crate } from './object/Crate';
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
-  [1, 0x4488ff],
-  [2, 0xff8844],
+  [1, 0xffb6c1],
+  [2, 0x00ff00],
 ]);
 
 export class Player {
@@ -105,15 +105,17 @@ export class Player {
   }
 
   private createMesh() {
-    const duckModel = this.#resources.getGLTFAsset('duckModel');
+    const modelName = this.#playerId === 1 ? 'pigModel' : 'crocoModel';
+    const model = this.#resources.getGLTFAsset(modelName);
 
-    if (!duckModel) {
+    if (!model) {
       return;
     }
 
-    this.#mesh = duckModel.scene.clone();
+    this.#mesh = model.scene.clone();
     this.#mesh.scale.setScalar(1);
     this.#mesh.position.copy(this.#spawnPosition);
+    this.#mesh.rotation.y = Math.PI / 2;
 
     const playerColor = new Color(PLAYER_COLORS.get(this.#playerId)!);
 
@@ -124,7 +126,7 @@ export class Player {
 
         if (child.material instanceof MeshStandardMaterial) {
           child.material = child.material.clone();
-          child.material.color.multiply(playerColor);
+          child.material.color.add(playerColor);
         }
       }
     });
@@ -247,7 +249,7 @@ export class Player {
 
     this.#currentRotationY += angleDiff * 0.15;
 
-    this.#mesh.rotation.y = this.#currentRotationY;
+    this.#mesh.rotation.y = this.#currentRotationY + Math.PI / 2;
   }
 
   private syncMeshWithPhysics() {
