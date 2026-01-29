@@ -79,15 +79,33 @@ export class LevelBuilder {
             levelDepth,
           });
         } else if (isDeliveryZone(cellValue)) {
-          const key = `${xIndex}`;
+          // Detect edge orientation
+          const isTopEdge = zIndex === 0;
+          const isBottomEdge = zIndex === levelDepth - 1;
+          const isHorizontalEdge = isTopEdge || isBottomEdge;
+
+          // Track by zIndex for horizontal edges, xIndex for vertical
+          const key = isHorizontalEdge ? `h:${zIndex}` : `v:${xIndex}`;
           if (builtDeliveryZones.has(key)) continue;
 
-          // Find the second tile (next row with same column)
-          let zIndex2 = zIndex + 1;
-          for (let z = zIndex + 1; z < levelDepth; z++) {
-            if (isDeliveryZone(matrix[z]?.[xIndex] ?? '')) {
-              zIndex2 = z;
-              break;
+          let xIndex2 = xIndex;
+          let zIndex2 = zIndex;
+
+          if (isHorizontalEdge) {
+            // Find second tile in next column (same row)
+            for (let x = xIndex + 1; x < levelWidth; x++) {
+              if (isDeliveryZone(matrix[zIndex]?.[x] ?? '')) {
+                xIndex2 = x;
+                break;
+              }
+            }
+          } else {
+            // Find second tile in next row (same column)
+            for (let z = zIndex + 1; z < levelDepth; z++) {
+              if (isDeliveryZone(matrix[z]?.[xIndex] ?? '')) {
+                zIndex2 = z;
+                break;
+              }
             }
           }
 
@@ -96,6 +114,7 @@ export class LevelBuilder {
           obj = new DeliveryZone({
             xIndex,
             zIndex,
+            xIndex2,
             zIndex2,
             levelWidth,
             levelDepth,
