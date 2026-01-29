@@ -30,39 +30,41 @@ export class Wall extends LevelObject {
       return;
     }
 
+    const wallBox = new Box3().setFromObject(model.scene);
+    const wallSize = wallBox.getSize(new Vector3());
+
     const mesh = model.scene.clone();
 
     switch (side) {
       case 'top':
-        mesh.position.x = (index + 1) * TILE_SIZE;
+        mesh.position.x = index * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = 0;
+        mesh.position.z = -wallSize.z;
         mesh.rotation.y = 0;
         break;
       case 'bottom':
-        mesh.position.x = index * TILE_SIZE;
+        mesh.position.x = (index + 1) * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = levelDepth * TILE_SIZE;
+        mesh.position.z = levelDepth * TILE_SIZE + wallSize.z;
         mesh.rotation.y = Math.PI;
         break;
       case 'left':
-        mesh.position.x = 0;
+        mesh.position.x = -wallSize.z;
         mesh.position.y = 0;
-        mesh.position.z = index * TILE_SIZE;
+        mesh.position.z = (index + 1) * TILE_SIZE;
         mesh.rotation.y = Math.PI / 2;
         break;
       case 'right':
-        mesh.position.x = levelWidth * TILE_SIZE;
+        mesh.position.x = levelWidth * TILE_SIZE + wallSize.z;
         mesh.position.y = 0;
-        mesh.position.z = (index + 1) * TILE_SIZE;
+        mesh.position.z = index * TILE_SIZE;
         mesh.rotation.y = -Math.PI / 2;
         break;
     }
 
     this.setupShadows(mesh);
 
-    const wallTopModel =
-      Resources.getInstance().getGLTFAsset('wallTopRegularModel');
+    const wallTopModel = Resources.getInstance().getGLTFAsset('wallTopRegularModel');
 
     const container = new Group();
     container.add(mesh);
@@ -70,11 +72,6 @@ export class Wall extends LevelObject {
     if (wallTopModel) {
       const wallTop = wallTopModel.scene.clone();
 
-      // Compute wall size from its bounding box (before position/rotation)
-      const wallBox = new Box3().setFromObject(model.scene);
-      const wallSize = wallBox.getSize(new Vector3());
-
-      // Offset to center of wall top surface in local (unrotated) space
       const offset = new Vector3(wallSize.x / 2, 0, wallSize.z / 2);
       offset.applyEuler(mesh.rotation);
 
