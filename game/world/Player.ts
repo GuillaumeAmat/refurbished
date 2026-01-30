@@ -252,7 +252,7 @@ export class Player {
     if (!model) return;
 
     const resourceMesh = model.scene.clone();
-    resourceMesh.position.set(0, 1.8, 0);
+    resourceMesh.position.set(0, 0.3, 1.1);
 
     resourceMesh.traverse((child) => {
       if (child instanceof Mesh) {
