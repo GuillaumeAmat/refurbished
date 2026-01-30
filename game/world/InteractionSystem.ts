@@ -118,6 +118,9 @@ export class InteractionSystem {
     let bestScore = -Infinity;
 
     for (const obj of this.#interactables) {
+      // Skip objects that have a resource on top - player should target the resource instead
+      if (this.#objectResources.has(obj)) continue;
+
       const objPos = obj.getClosestPoint(playerPos);
       if (!objPos) continue;
 
@@ -130,7 +133,8 @@ export class InteractionSystem {
       const toObj = new Vector3(dx, 0, dz).normalize();
       const dot = playerDir.dot(toObj);
 
-      if (dot < INTERACTION_FACING_THRESHOLD) continue;
+      // Skip facing check when standing on top of object
+      if (distanceXZ > 0.1 && dot < INTERACTION_FACING_THRESHOLD) continue;
 
       let priorityBonus = 0;
       if (obj instanceof DroppedResource) priorityBonus = 10;

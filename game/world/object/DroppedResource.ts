@@ -56,7 +56,7 @@ export class DroppedResource extends LevelObject {
       mesh.position.z += TILE_SIZE / 2;
     } else {
       mesh.position.copy(position);
-      mesh.position.y = 0.5;
+      mesh.position.y = 0;
     }
 
     mesh.traverse((child) => {

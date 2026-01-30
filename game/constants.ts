@@ -30,7 +30,7 @@ export const DASH_SPEED = 15;
 export const DASH_DURATION = 0.2;
 export const DASH_COOLDOWN = 0.5;
 
-export const INTERACTION_DISTANCE = 1.0;
+export const INTERACTION_DISTANCE = 1.4;
 export const INTERACTION_FACING_THRESHOLD = 0.5;
 export const HIGHLIGHT_EMISSIVE = 0x444444;
 
