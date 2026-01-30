@@ -5,6 +5,7 @@ import type { ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { Crate } from './Crate';
 import { LevelObject } from './LevelObject';
+import { RepairZone } from './RepairZone';
 
 export interface DroppedResourceParams {
   resourceType: ResourceType;
@@ -50,12 +51,16 @@ export class DroppedResource extends LevelObject {
       const size = new Vector3();
       bbox.getSize(size);
 
-      const offset = new Vector3(TILE_SIZE / 2, 0, TILE_SIZE / 2);
+      const isRepairZone = onTopOf instanceof RepairZone;
+      const offset = isRepairZone
+        ? new Vector3(TILE_SIZE / 2, 0, (TILE_SIZE / 3) * 2)
+        : new Vector3(TILE_SIZE / 2, 0, TILE_SIZE / 2);
       offset.applyAxisAngle(new Vector3(0, 1, 0), parentMesh.rotation.y);
 
       mesh.position.copy(parentMesh.position);
       mesh.position.add(offset);
-      mesh.position.y = size.y;
+      mesh.position.y = 1.05;
+      mesh.position.y = isRepairZone ? 1.06 : size.y;
     } else {
       mesh.position.copy(position);
       mesh.position.y = 0;
