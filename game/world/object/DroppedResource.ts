@@ -50,10 +50,12 @@ export class DroppedResource extends LevelObject {
       const size = new Vector3();
       bbox.getSize(size);
 
+      const offset = new Vector3(TILE_SIZE / 2, 0, TILE_SIZE / 2);
+      offset.applyAxisAngle(new Vector3(0, 1, 0), parentMesh.rotation.y);
+
       mesh.position.copy(parentMesh.position);
-      mesh.position.x += TILE_SIZE / 2;
+      mesh.position.add(offset);
       mesh.position.y = size.y;
-      mesh.position.z += TILE_SIZE / 2;
     } else {
       mesh.position.copy(position);
       mesh.position.y = 0;
