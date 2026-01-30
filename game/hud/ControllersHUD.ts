@@ -2,6 +2,7 @@ import { Group } from 'three';
 
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import type { GamepadManager } from '../util/input/GamepadManager';
+import type { InputSource } from '../util/input/InputSource';
 import type { IHUDItem } from './IHUDItem';
 
 export class ControllersHUD implements IHUDItem {
@@ -58,7 +59,7 @@ export class ControllersHUD implements IHUDItem {
     const p1Source = this.#gamepadManager.getInputSource(1);
     const p2Source = this.#gamepadManager.getInputSource(2);
 
-    const getControllerInfo = (source: any) => {
+    const getControllerInfo = (source: InputSource | null) => {
       if (!source) return { type: 'None', status: '' };
       const type = source.constructor.name === 'KeyboardController' ? 'Keyboard' : 'Gamepad';
       const status = source.connected ? '' : ' (disconnected)';
