@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
-import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, PLAYER_SIZE } from '../constants';
+import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
 import type { ResourceType } from '../types';
 import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -30,8 +30,6 @@ export class Player {
   #targetRotationY = 0;
 
   #properties = {
-    width: PLAYER_SIZE,
-    height: PLAYER_SIZE,
     movementSpeed: MOVEMENT_SPEED,
   };
 
@@ -148,9 +146,7 @@ export class Player {
 
     this.#rigidBody = this.#physics.createDynamicRigidBody(this.#spawnPosition);
 
-    const radius = this.#properties.width / 2;
-    const halfHeight = this.#properties.height / 4;
-    this.#physics.createCapsuleCollider(this.#rigidBody, halfHeight, radius, 0.3);
+    this.#physics.createCapsuleCollider(this.#rigidBody, 0, 0.6, 0.3);
 
     this.#rigidBody.lockRotations(true, true);
     this.#rigidBody.setLinearDamping(8.0);
