@@ -4,6 +4,9 @@ import type { Actor, AnyActorLogic } from 'xstate';
 import { useRuntimeConfig } from '#app';
 
 import { ControllersHUD } from '../hud/ControllersHUD';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { PointsHUD } from '../hud/PointsHUD';
+import { TimeHUD } from '../hud/TimeHUD';
 import type { LevelInfo } from '../levels';
 import { GamepadManager } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
@@ -19,7 +22,7 @@ export class LevelScreen {
 
   #group: Group;
   #level: Level | null = null;
-  #hud: ControllersHUD;
+  #hudManager: HUDRegionManager;
   #levelInitialized = false;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera, levelInfo: LevelInfo) {
@@ -58,11 +61,14 @@ export class LevelScreen {
     this.#group = new Group();
     this.#scene.add(this.#group);
 
-    this.#hud = new ControllersHUD(this.#camera.camera, this.#gamepadManager);
+    this.#hudManager = new HUDRegionManager(this.#camera.camera);
+    this.#hudManager.add('topRight', new ControllersHUD(this.#gamepadManager));
+    this.#hudManager.add('bottomLeft', new PointsHUD());
+    this.#hudManager.add('bottomRight', new TimeHUD());
 
     const sizes = Sizes.getInstance();
     sizes.addEventListener('resize', () => {
-      this.#hud.updatePosition();
+      this.#hudManager.updatePositions();
     });
   }
 
@@ -77,13 +83,13 @@ export class LevelScreen {
 
   private show() {
     this.#group.visible = true;
-    this.#hud.show();
+    this.#hudManager.show();
     this.initLevel();
   }
 
   private hide() {
     this.#group.visible = false;
-    this.#hud.hide();
+    this.#hudManager.hide();
   }
 
   public update() {
@@ -92,6 +98,6 @@ export class LevelScreen {
 
     this.#gamepadManager.update();
     this.#level?.update();
-    this.#hud.update();
+    this.#hudManager.update();
   }
 }

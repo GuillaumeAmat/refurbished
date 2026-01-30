@@ -1,82 +1,43 @@
-import { Group, type PerspectiveCamera } from 'three';
+import { Group } from 'three';
 
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import type { GamepadManager } from '../util/input/GamepadManager';
+import type { IHUDItem } from './IHUDItem';
 
-export class ControllersHUD {
-  static readonly HUD_DISTANCE = 5;
-  static readonly HUD_PADDING = 0.15;
-  static readonly HUD_LINE_HEIGHT = 0.08;
+export class ControllersHUD implements IHUDItem {
+  static readonly LINE_HEIGHT = 0.08;
   static readonly TEXT_HEIGHT = 0.08;
 
-  #camera: PerspectiveCamera;
   #gamepadManager: GamepadManager;
 
   #group: Group;
   #player1Text: TextPlaneResult | null = null;
   #player2Text: TextPlaneResult | null = null;
 
-  constructor(camera: PerspectiveCamera, gamepadManager: GamepadManager) {
-    this.#camera = camera;
+  constructor(gamepadManager: GamepadManager) {
     this.#gamepadManager = gamepadManager;
 
     this.#group = new Group();
-    this.#camera.add(this.#group);
 
-    this.createText();
-    this.setupListeners();
+    this.#createText();
+    this.#setupListeners();
   }
 
-  private setupListeners() {
+  #setupListeners() {
     this.#gamepadManager.addEventListener('gamepadAssigned', () => {
-      this.updateText();
+      this.#updateText();
     });
 
     this.#gamepadManager.addEventListener('gamepadDisconnected', () => {
-      this.updateText();
+      this.#updateText();
     });
 
     this.#gamepadManager.addEventListener('controllersReadyChange', () => {
-      this.updateText();
+      this.#updateText();
     });
   }
 
-  #calculateFrustumBounds() {
-    const distance = ControllersHUD.HUD_DISTANCE;
-    const vFov = (this.#camera.fov * Math.PI) / 180;
-    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
-    const visibleWidth = visibleHeight * this.#camera.aspect;
-
-    return {
-      top: visibleHeight / 2,
-      left: -visibleWidth / 2,
-    };
-  }
-
-  #updateMeshPositions() {
-    const bounds = this.#calculateFrustumBounds();
-    const padding = ControllersHUD.HUD_PADDING;
-    const lineHeight = ControllersHUD.HUD_LINE_HEIGHT;
-
-    if (this.#player1Text) {
-      // Offset by width/2 to achieve left alignment (plane origin is center)
-      this.#player1Text.mesh.position.set(
-        bounds.left + padding + this.#player1Text.width / 2,
-        bounds.top - padding,
-        -ControllersHUD.HUD_DISTANCE,
-      );
-    }
-
-    if (this.#player2Text) {
-      this.#player2Text.mesh.position.set(
-        bounds.left + padding + this.#player2Text.width / 2,
-        bounds.top - padding - lineHeight,
-        -ControllersHUD.HUD_DISTANCE,
-      );
-    }
-  }
-
-  private createText() {
+  #createText() {
     const textOptions = {
       height: ControllersHUD.TEXT_HEIGHT,
       fontSize: 48,
@@ -87,13 +48,13 @@ export class ControllersHUD {
     this.#group.add(this.#player1Text.mesh);
 
     this.#player2Text = createTextPlane('', textOptions);
+    this.#player2Text.mesh.position.y = -ControllersHUD.LINE_HEIGHT;
     this.#group.add(this.#player2Text.mesh);
 
-    this.#updateMeshPositions();
-    this.updateText();
+    this.#updateText();
   }
 
-  private updateText() {
+  #updateText() {
     const p1Source = this.#gamepadManager.getInputSource(1);
     const p2Source = this.#gamepadManager.getInputSource(2);
 
@@ -109,29 +70,56 @@ export class ControllersHUD {
 
     if (this.#player1Text) {
       this.#player1Text.updateText(`P1: ${p1Info.type}${p1Info.status}`);
+      // Right-align: offset by width so text extends to the left
+      this.#player1Text.mesh.position.x = -this.#player1Text.width / 2;
     }
 
     if (this.#player2Text) {
       this.#player2Text.updateText(`P2: ${p2Info.type}${p2Info.status}`);
+      this.#player2Text.mesh.position.x = -this.#player2Text.width / 2;
     }
-
-    this.#updateMeshPositions();
   }
 
-  public show() {
+  // IHUDItem implementation
+
+  getGroup(): Group {
+    return this.#group;
+  }
+
+  getHeight(): number {
+    return ControllersHUD.LINE_HEIGHT * 2;
+  }
+
+  show() {
     this.#group.visible = true;
-    this.updateText();
+    this.#updateText();
   }
 
-  public hide() {
+  hide() {
     this.#group.visible = false;
   }
 
-  public update() {
-    // No animation needed for now
+  update() {
+    // No animation needed
   }
 
-  public updatePosition() {
-    this.#updateMeshPositions();
+  dispose() {
+    if (this.#player1Text) {
+      this.#player1Text.mesh.geometry.dispose();
+      if (Array.isArray(this.#player1Text.mesh.material)) {
+        this.#player1Text.mesh.material.forEach((m) => m.dispose());
+      } else {
+        this.#player1Text.mesh.material.dispose();
+      }
+    }
+
+    if (this.#player2Text) {
+      this.#player2Text.mesh.geometry.dispose();
+      if (Array.isArray(this.#player2Text.mesh.material)) {
+        this.#player2Text.mesh.material.forEach((m) => m.dispose());
+      } else {
+        this.#player2Text.mesh.material.dispose();
+      }
+    }
   }
 }
