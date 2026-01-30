@@ -54,6 +54,11 @@ export class InteractionSystem {
     const target = this.#currentTargets.get(playerId) ?? null;
 
     if (player.isCarrying()) {
+      // Prevent dropping when targeting a crate - resource stays in hand
+      if (target instanceof Crate) {
+        return;
+      }
+
       const resourceType = player.dropResource();
       if (!resourceType) return;
 
