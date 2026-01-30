@@ -14,9 +14,16 @@ type Asset =
       type: 'cubeTexture';
       path: string[];
       priority: 'low' | 'high';
+    }
+  | {
+      type: 'webFont';
+      path: string;
+      family: string;
+      weight?: number;
+      priority: 'low' | 'high';
     };
 
-type Assets = Record<AssetName, HTMLAudioElement | Font | GLTF | SVGResult | Texture | CubeTexture>;
+type Assets = Record<AssetName, HTMLAudioElement | Font | FontFace | GLTF | SVGResult | Texture | CubeTexture>;
 type AssetsToLoad = Record<AssetName, Asset>;
 
 type LoadedEvent = {
@@ -159,11 +166,19 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
         this.#cubeTextureLoader?.load(asset.path, (file) => {
           this.onAssetLoaded(assetName, file);
         });
+      } else if (asset.type === 'webFont') {
+        const fontFace = new FontFace(asset.family, `url(${asset.path})`, {
+          weight: String(asset.weight ?? 400),
+        });
+        fontFace.load().then((loadedFont) => {
+          document.fonts.add(loadedFont);
+          this.onAssetLoaded(assetName, loadedFont);
+        });
       }
     });
   }
 
-  private onAssetLoaded(name: AssetName, file: HTMLAudioElement | Font | GLTF | SVGResult | Texture | CubeTexture) {
+  private onAssetLoaded(name: AssetName, file: HTMLAudioElement | Font | FontFace | GLTF | SVGResult | Texture | CubeTexture) {
     this.#assets[name] = file;
 
     this.dispatchEvent({ type: 'loaded', name });
@@ -222,5 +237,10 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
   public getCubeTextureAsset(name: string) {
     if (!Object.hasOwn(this.#assets, name)) return null;
     return this.#assets[name] as CubeTexture;
+  }
+
+  public getWebFontAsset(name: string) {
+    if (!Object.hasOwn(this.#assets, name)) return null;
+    return this.#assets[name] as FontFace;
   }
 }

@@ -1,36 +1,27 @@
-import { Group, type Mesh, MeshStandardMaterial, type PerspectiveCamera } from 'three';
+import { Group, type PerspectiveCamera } from 'three';
 
-import { createTextMesh } from '../lib/createTextMesh';
+import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import type { GamepadManager } from '../util/input/GamepadManager';
-import { Resources } from '../util/Resources';
 
 export class ControllersHUD {
   static readonly HUD_DISTANCE = 5;
   static readonly HUD_PADDING = 0.15;
-  static readonly HUD_LINE_HEIGHT = 0.06;
+  static readonly HUD_LINE_HEIGHT = 0.08;
+  static readonly TEXT_HEIGHT = 0.08;
 
   #camera: PerspectiveCamera;
-  #resources: Resources;
   #gamepadManager: GamepadManager;
 
   #group: Group;
-  #player1Mesh: Mesh | null = null;
-  #player2Mesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #player1Text: TextPlaneResult | null = null;
+  #player2Text: TextPlaneResult | null = null;
 
   constructor(camera: PerspectiveCamera, gamepadManager: GamepadManager) {
     this.#camera = camera;
-    this.#resources = Resources.getInstance();
     this.#gamepadManager = gamepadManager;
 
     this.#group = new Group();
     this.#camera.add(this.#group);
-
-    this.#material = new MeshStandardMaterial({
-      color: '#FFFFFF',
-      metalness: 0.2,
-      roughness: 0.6,
-    });
 
     this.createText();
     this.setupListeners();
@@ -67,55 +58,42 @@ export class ControllersHUD {
     const padding = ControllersHUD.HUD_PADDING;
     const lineHeight = ControllersHUD.HUD_LINE_HEIGHT;
 
-    if (this.#player1Mesh) {
-      this.#player1Mesh.position.set(bounds.left + padding, bounds.top - padding, -ControllersHUD.HUD_DISTANCE);
+    if (this.#player1Text) {
+      // Offset by width/2 to achieve left alignment (plane origin is center)
+      this.#player1Text.mesh.position.set(
+        bounds.left + padding + this.#player1Text.width / 2,
+        bounds.top - padding,
+        -ControllersHUD.HUD_DISTANCE,
+      );
     }
 
-    if (this.#player2Mesh) {
-      this.#player2Mesh.position.set(
-        bounds.left + padding,
+    if (this.#player2Text) {
+      this.#player2Text.mesh.position.set(
+        bounds.left + padding + this.#player2Text.width / 2,
         bounds.top - padding - lineHeight,
         -ControllersHUD.HUD_DISTANCE,
       );
     }
   }
 
-  #alignTextLeft(mesh: Mesh) {
-    mesh.geometry.computeBoundingBox();
-    if (mesh.geometry.boundingBox) {
-      const width = mesh.geometry.boundingBox.max.x - mesh.geometry.boundingBox.min.x;
-      mesh.geometry.translate(width / 2, 0, 0);
-    }
-  }
-
   private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-    if (!font) return;
+    const textOptions = {
+      height: ControllersHUD.TEXT_HEIGHT,
+      fontSize: 48,
+      color: '#FFFFFF',
+    };
 
-    this.#player1Mesh = createTextMesh('', font, {
-      extrusionDepth: 0.005,
-      size: 0.0375,
-      material: this.#material,
-    });
-    this.#alignTextLeft(this.#player1Mesh);
-    this.#group.add(this.#player1Mesh);
+    this.#player1Text = createTextPlane('', textOptions);
+    this.#group.add(this.#player1Text.mesh);
 
-    this.#player2Mesh = createTextMesh('', font, {
-      extrusionDepth: 0.005,
-      size: 0.0375,
-      material: this.#material,
-    });
-    this.#alignTextLeft(this.#player2Mesh);
-    this.#group.add(this.#player2Mesh);
+    this.#player2Text = createTextPlane('', textOptions);
+    this.#group.add(this.#player2Text.mesh);
 
     this.#updateMeshPositions();
     this.updateText();
   }
 
   private updateText() {
-    const font = this.#resources.getFontAsset('interFont');
-    if (!font) return;
-
     const p1Source = this.#gamepadManager.getInputSource(1);
     const p2Source = this.#gamepadManager.getInputSource(2);
 
@@ -129,26 +107,12 @@ export class ControllersHUD {
     const p1Info = getControllerInfo(p1Source);
     const p2Info = getControllerInfo(p2Source);
 
-    if (this.#player1Mesh) {
-      this.#group.remove(this.#player1Mesh);
-      this.#player1Mesh = createTextMesh(`P1: ${p1Info.type}${p1Info.status}`, font, {
-        extrusionDepth: 0.005,
-        size: 0.0375,
-        material: this.#material,
-      });
-      this.#alignTextLeft(this.#player1Mesh);
-      this.#group.add(this.#player1Mesh);
+    if (this.#player1Text) {
+      this.#player1Text.updateText(`P1: ${p1Info.type}${p1Info.status}`);
     }
 
-    if (this.#player2Mesh) {
-      this.#group.remove(this.#player2Mesh);
-      this.#player2Mesh = createTextMesh(`P2: ${p2Info.type}${p2Info.status}`, font, {
-        extrusionDepth: 0.005,
-        size: 0.0375,
-        material: this.#material,
-      });
-      this.#alignTextLeft(this.#player2Mesh);
-      this.#group.add(this.#player2Mesh);
+    if (this.#player2Text) {
+      this.#player2Text.updateText(`P2: ${p2Info.type}${p2Info.status}`);
     }
 
     this.#updateMeshPositions();

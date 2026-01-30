@@ -67,6 +67,27 @@ export class Stage {
         path: 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
         priority: 'high',
       },
+      bmDupletDSP: {
+        type: 'webFont',
+        path: '/game/fonts/BMDupletDSP-Semibold.woff2',
+        family: 'BMDupletDSP',
+        weight: 600,
+        priority: 'high',
+      },
+      // bmDupletTXT: {
+      //   type: 'webFont',
+      //   path: '/game/fonts/BMDupletTXT-Regular.woff2',
+      //   family: 'BMDupletTXT',
+      //   weight: 400,
+      //   priority: 'high',
+      // },
+      // bmDupletTXTSemibold: {
+      //   type: 'webFont',
+      //   path: '/game/fonts/BMDupletTXT-Semibold.woff2',
+      //   family: 'BMDupletTXT',
+      //   weight: 600,
+      //   priority: 'high',
+      // },
 
       // Low priorities, `done` event will be emitted when loaded
       menuTrack: {
