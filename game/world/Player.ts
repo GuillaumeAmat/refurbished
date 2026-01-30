@@ -3,7 +3,6 @@ import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scen
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
 import type { ResourceType } from '../types';
-import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
@@ -47,13 +46,9 @@ export class Player {
 
   #interactCallback: (() => void) | null = null;
 
-  #debug: Debug;
   #gamepadManager: GamepadManager;
   #playerId: PlayerId;
   #time: Time;
-  #debugProperties = {
-    DisplayHelper: true,
-  };
 
   public get mesh() {
     return this.#mesh;
@@ -80,14 +75,12 @@ export class Player {
     this.#physics = Physics.getInstance();
     this.#spawnPosition = spawnPosition;
 
-    this.#debug = Debug.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
     this.#time = Time.getInstance();
     this.#playerId = playerId;
 
     this.createMesh();
     this.createPhysicsBody();
-    this.setupHelpers();
     this.#setupInputCallbacks();
     this.#setupSmokeSystem();
   }
@@ -151,30 +144,6 @@ export class Player {
     this.#rigidBody.lockRotations(true, true);
     this.#rigidBody.setLinearDamping(8.0);
     this.#rigidBody.setAngularDamping(1.0);
-  }
-
-  private async setupHelpers() {
-    if (this.#debug.active) {
-      const folderName = `Player ${this.#playerId}`;
-      const guiFolder = this.#debug.gui.addFolder(folderName);
-
-      this.#debugProperties = {
-        ...this.#debugProperties,
-        ...this.#debug.configFromLocaleStorage?.folders?.[folderName]?.controllers,
-      };
-
-      if (this.#mesh) {
-        const { BoxHelper } = await import('three');
-        const helper = new BoxHelper(this.#mesh, 0xffff00);
-        helper.visible = this.#debugProperties.DisplayHelper;
-        this.#scene.add(helper);
-
-        guiFolder.add(this.#debugProperties, 'DisplayHelper').onChange((value: boolean) => {
-          helper.visible = value;
-          this.#debug.save();
-        });
-      }
-    }
   }
 
   private updateMovement() {
