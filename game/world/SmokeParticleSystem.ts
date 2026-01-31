@@ -24,6 +24,11 @@ export class SmokeParticleSystem {
   #geometry: IcosahedronGeometry;
   #material: MeshStandardMaterial;
 
+  // Cached vectors to avoid allocations in spawn()
+  #tempBaseOffset = new Vector3();
+  #tempPerpendicular = new Vector3();
+  #tempSpawnPos = new Vector3();
+
   constructor(parent: Object3D) {
     this.#group = new Group();
     parent.add(this.#group);
@@ -66,14 +71,21 @@ export class SmokeParticleSystem {
     if (!particle) return;
 
     // Spawn behind player with randomized offset
-    const baseOffset = movementDirection.clone().normalize().multiplyScalar(-0.2 - Math.random() * 0.2);
-    const perpendicular = new Vector3(-movementDirection.z, 0, movementDirection.x).normalize();
-    const lateralOffset = perpendicular.multiplyScalar((Math.random() - 0.5) * 0.4);
-    const spawnOffset = baseOffset.add(lateralOffset);
-    const spawnPos = position.clone().add(spawnOffset);
-    spawnPos.y = 0.3 + Math.random() * 0.4;
+    this.#tempBaseOffset
+      .copy(movementDirection)
+      .normalize()
+      .multiplyScalar(-0.2 - Math.random() * 0.2);
+    this.#tempPerpendicular
+      .set(-movementDirection.z, 0, movementDirection.x)
+      .normalize()
+      .multiplyScalar((Math.random() - 0.5) * 0.4);
+    this.#tempSpawnPos
+      .copy(position)
+      .add(this.#tempBaseOffset)
+      .add(this.#tempPerpendicular);
+    this.#tempSpawnPos.y = 0.3 + Math.random() * 0.4;
 
-    particle.mesh.position.copy(spawnPos);
+    particle.mesh.position.copy(this.#tempSpawnPos);
     particle.mesh.scale.setScalar(0.3 + Math.random() * 0.4);
     particle.mesh.visible = true;
 

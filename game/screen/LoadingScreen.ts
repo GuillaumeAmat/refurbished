@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 // import { MOODS } from '../constants';
@@ -9,6 +9,7 @@ export class LoadingScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
+  #subscription: Subscription;
 
   #group: Group;
   #mesh: Mesh | null = null;
@@ -28,8 +29,7 @@ export class LoadingScreen {
 
     this.#scene.add(this.#group);
 
-    // TODO Improve this naive implementation
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Loading')) {
         this.show();
       } else {
@@ -73,7 +73,10 @@ export class LoadingScreen {
   }
 
   public update() {
-    // TODO Improve this naive implementation
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
   }
 }

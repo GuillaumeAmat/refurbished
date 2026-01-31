@@ -50,6 +50,11 @@ export class Player {
   #playerId: PlayerId;
   #time: Time;
 
+  // Cached vectors to avoid allocations
+  #cachedPosition = new Vector3();
+  #cachedFacingDirection = new Vector3();
+  #cachedVelocity = new Vector3();
+
   public get mesh() {
     return this.#mesh;
   }
@@ -57,11 +62,15 @@ export class Player {
   public getPosition(): Vector3 | null {
     if (!this.#rigidBody) return null;
     const t = this.#rigidBody.translation();
-    return new Vector3(t.x, t.y, t.z);
+    return this.#cachedPosition.set(t.x, t.y, t.z);
   }
 
   public getFacingDirection(): Vector3 {
-    return new Vector3(Math.cos(this.#currentRotationY), 0, -Math.sin(this.#currentRotationY));
+    return this.#cachedFacingDirection.set(
+      Math.cos(this.#currentRotationY),
+      0,
+      -Math.sin(this.#currentRotationY),
+    );
   }
 
   public getPlayerId(): PlayerId {
@@ -285,7 +294,7 @@ export class Player {
 
     const position = this.getPosition();
     const linvel = this.#rigidBody.linvel();
-    const velocity = new Vector3(linvel.x, linvel.y, linvel.z);
+    const velocity = this.#cachedVelocity.set(linvel.x, linvel.y, linvel.z);
 
     // Burst on dash start
     if (this.#dashState.isDashing && !this.#hasDashBurst && position) {

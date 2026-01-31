@@ -15,6 +15,11 @@ export class ControllersHUD implements IHUDItem {
   #player1Text: TextPlaneResult | null = null;
   #player2Text: TextPlaneResult | null = null;
 
+  // Bound listener references for cleanup
+  #onGamepadAssigned: () => void;
+  #onGamepadDisconnected: () => void;
+  #onControllersReadyChange: () => void;
+
   constructor(gamepadManager: GamepadManager) {
     this.#gamepadManager = gamepadManager;
 
@@ -25,17 +30,13 @@ export class ControllersHUD implements IHUDItem {
   }
 
   #setupListeners() {
-    this.#gamepadManager.addEventListener('gamepadAssigned', () => {
-      this.#updateText();
-    });
+    this.#onGamepadAssigned = () => this.#updateText();
+    this.#onGamepadDisconnected = () => this.#updateText();
+    this.#onControllersReadyChange = () => this.#updateText();
 
-    this.#gamepadManager.addEventListener('gamepadDisconnected', () => {
-      this.#updateText();
-    });
-
-    this.#gamepadManager.addEventListener('controllersReadyChange', () => {
-      this.#updateText();
-    });
+    this.#gamepadManager.addEventListener('gamepadAssigned', this.#onGamepadAssigned);
+    this.#gamepadManager.addEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
+    this.#gamepadManager.addEventListener('controllersReadyChange', this.#onControllersReadyChange);
   }
 
   #createText() {
@@ -105,6 +106,10 @@ export class ControllersHUD implements IHUDItem {
   }
 
   dispose() {
+    this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);
+    this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
+    this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
+
     if (this.#player1Text) {
       this.#player1Text.mesh.geometry.dispose();
       if (Array.isArray(this.#player1Text.mesh.material)) {

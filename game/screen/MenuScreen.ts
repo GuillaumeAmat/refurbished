@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 import { Debug } from '../util/Debug';
@@ -9,6 +9,7 @@ export class MenuScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
+  #subscription: Subscription;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -33,7 +34,7 @@ export class MenuScreen {
     this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Menu')) {
         this.show();
       } else {
@@ -132,5 +133,9 @@ export class MenuScreen {
 
   public update() {
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
   }
 }

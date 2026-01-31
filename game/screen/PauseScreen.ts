@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 import { Resources } from '../util/Resources';
@@ -8,6 +8,7 @@ export class PauseScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
+  #subscription: Subscription;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -24,7 +25,7 @@ export class PauseScreen {
     this.#group = new Group();
     this.#scene.add(this.#group);
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Pause')) {
         this.show();
       } else {
@@ -91,5 +92,9 @@ export class PauseScreen {
 
   public update() {
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
   }
 }

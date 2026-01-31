@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 import { GamepadManager } from '../util/input/GamepadManager';
@@ -10,6 +10,7 @@ export class WaitingScreen {
   #scene: Scene;
   #resources: Resources;
   #gamepadManager: GamepadManager;
+  #subscription: Subscription;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -18,6 +19,12 @@ export class WaitingScreen {
   #backMesh: Mesh | null = null;
   #material: MeshStandardMaterial;
   #connectedMaterial: MeshStandardMaterial;
+
+  // Bound listener references for cleanup
+  #onControllersReadyChange: () => void;
+  #onGamepadAssigned: () => void;
+  #onGamepadReconnected: () => void;
+  #onGamepadDisconnected: () => void;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
     this.#stageActor = stageActor;
@@ -29,7 +36,7 @@ export class WaitingScreen {
     this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('WaitingForControllers')) {
         this.show();
       } else {
@@ -49,16 +56,20 @@ export class WaitingScreen {
       roughness: 0.4,
     });
 
-    this.#gamepadManager.addEventListener('controllersReadyChange', () => {
+    this.#onControllersReadyChange = () => {
       this.updateStatus();
       if (this.#gamepadManager.areControllersReady()) {
         this.#stageActor.send({ type: 'controllersReady' });
       }
-    });
+    };
+    this.#onGamepadAssigned = () => this.updateStatus();
+    this.#onGamepadReconnected = () => this.updateStatus();
+    this.#onGamepadDisconnected = () => this.updateStatus();
 
-    this.#gamepadManager.addEventListener('gamepadAssigned', () => this.updateStatus());
-    this.#gamepadManager.addEventListener('gamepadReconnected', () => this.updateStatus());
-    this.#gamepadManager.addEventListener('gamepadDisconnected', () => this.updateStatus());
+    this.#gamepadManager.addEventListener('controllersReadyChange', this.#onControllersReadyChange);
+    this.#gamepadManager.addEventListener('gamepadAssigned', this.#onGamepadAssigned);
+    this.#gamepadManager.addEventListener('gamepadReconnected', this.#onGamepadReconnected);
+    this.#gamepadManager.addEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
 
     this.createText();
   }
@@ -152,5 +163,13 @@ export class WaitingScreen {
 
   public update() {
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
+    this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
+    this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);
+    this.#gamepadManager.removeEventListener('gamepadReconnected', this.#onGamepadReconnected);
+    this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
   }
 }

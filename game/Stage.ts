@@ -31,8 +31,12 @@ export class Stage {
   #camera: Camera;
   #resources: Resources;
   #time: Time;
+  #sizes: Sizes;
   #environment: Environment | null = null;
   #levelInfo = levelsInfo[0]!;
+
+  // Bound listener references for cleanup
+  #onResize: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
     if (!window) {
@@ -46,8 +50,8 @@ export class Stage {
     const renderer = new Renderer(this.#scene, canvas, this.#camera);
     const loadingOverlay = new LoadingOverlay(this.#scene);
 
-    const sizes = new Sizes();
-    sizes.addEventListener('resize', () => {
+    this.#sizes = new Sizes();
+    this.#onResize = () => {
       window.requestAnimationFrame(() => {
         this.#camera.setSizesAndRatio();
 
@@ -58,7 +62,8 @@ export class Stage {
          */
         renderer.setSizesAndRatio();
       });
-    });
+    };
+    this.#sizes.addEventListener('resize', this.#onResize);
 
     this.#resources = new Resources({
       // High priorities, `ready` event will be emitted when loaded
@@ -232,15 +237,6 @@ export class Stage {
       },
     );
 
-    // FIXME Debug only, to remove later
-    this.#actor.subscribe((state) => {
-      console.log({
-        state: state.value,
-        error: state.error,
-        context: state.context,
-      });
-    });
-
     this.#actor.start();
 
     this.#time = new Time();
@@ -318,5 +314,10 @@ export class Stage {
       scoreScreen.update();
       savingScoreScreen.update();
     });
+  }
+
+  public dispose() {
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#actor.stop();
   }
 }

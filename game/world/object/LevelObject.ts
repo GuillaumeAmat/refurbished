@@ -13,14 +13,18 @@ export abstract class LevelObject {
   #isHighlighted = false;
   #originalEmissive: Map<Mesh, Color> = new Map();
 
+  // Cached objects to avoid allocations in hot loops
+  #cachedBox = new Box3();
+  #cachedCenter = new Vector3();
+  #cachedClosestPoint = new Vector3();
+
   abstract create(group: Group): void;
 
   public getPosition(): Vector3 | null {
     if (!this.mesh) return null;
-    const box = new Box3().setFromObject(this.mesh);
-    const center = new Vector3();
-    box.getCenter(center);
-    return center;
+    this.#cachedBox.setFromObject(this.mesh);
+    this.#cachedBox.getCenter(this.#cachedCenter);
+    return this.#cachedCenter;
   }
 
   /**
@@ -28,11 +32,11 @@ export abstract class LevelObject {
    */
   public getClosestPoint(from: Vector3): Vector3 | null {
     if (!this.mesh) return null;
-    const box = new Box3().setFromObject(this.mesh);
-    return new Vector3(
-      Math.max(box.min.x, Math.min(from.x, box.max.x)),
+    this.#cachedBox.setFromObject(this.mesh);
+    return this.#cachedClosestPoint.set(
+      Math.max(this.#cachedBox.min.x, Math.min(from.x, this.#cachedBox.max.x)),
       from.y,
-      Math.max(box.min.z, Math.min(from.z, box.max.z)),
+      Math.max(this.#cachedBox.min.z, Math.min(from.z, this.#cachedBox.max.z)),
     );
   }
 

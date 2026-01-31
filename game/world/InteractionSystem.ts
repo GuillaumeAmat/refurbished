@@ -26,6 +26,11 @@ export class InteractionSystem {
   #gamepadManager: GamepadManager;
   #scoreManager: ScoreManager;
 
+  // Cached objects to avoid allocations in hot loops
+  #tempToObj = new Vector3();
+  #activeRepairTargets = new Set<DroppedResource>();
+  #activeAssemblyTargets = new Set<BlueWorkZone>();
+
   constructor(levelGroup: Group) {
     this.#levelGroup = levelGroup;
     this.#gamepadManager = GamepadManager.getInstance();
@@ -210,9 +215,9 @@ export class InteractionSystem {
   #updateHoldInteractions(): void {
     const deltaMs = Time.getInstance().delta;
 
-    // Track which objects are being actively worked on this frame
-    const activeRepairTargets = new Set<DroppedResource>();
-    const activeAssemblyTargets = new Set<BlueWorkZone>();
+    // Clear and reuse sets to track objects worked on this frame
+    this.#activeRepairTargets.clear();
+    this.#activeAssemblyTargets.clear();
 
     for (const player of this.#players) {
       const playerId = player.getPlayerId();
@@ -229,8 +234,8 @@ export class InteractionSystem {
         const parentObject = this.#getParentObject(target);
         if (parentObject instanceof RepairZone) {
           // Only add progress once per object per frame (no coop bonus)
-          if (!activeRepairTargets.has(target)) {
-            activeRepairTargets.add(target);
+          if (!this.#activeRepairTargets.has(target)) {
+            this.#activeRepairTargets.add(target);
             target.addRepairProgress(deltaMs);
           }
 
@@ -247,8 +252,8 @@ export class InteractionSystem {
       // Assembly interaction: X on BlueWorkZone when ready to assemble
       if (target instanceof BlueWorkZone && target.isReadyToAssemble()) {
         // Only add progress once per object per frame (no coop bonus)
-        if (!activeAssemblyTargets.has(target)) {
-          activeAssemblyTargets.add(target);
+        if (!this.#activeAssemblyTargets.has(target)) {
+          this.#activeAssemblyTargets.add(target);
           target.addAssemblyProgress(deltaMs);
         }
 
@@ -352,7 +357,7 @@ export class InteractionSystem {
 
       if (distanceXZ > INTERACTION_DISTANCE) continue;
 
-      const toObj = new Vector3(dx, 0, dz).normalize();
+      const toObj = this.#tempToObj.set(dx, 0, dz).normalize();
       const dot = playerDir.dot(toObj);
 
       // Skip facing check when standing on top of object

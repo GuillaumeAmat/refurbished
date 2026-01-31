@@ -1,5 +1,5 @@
 import { Group, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { useRuntimeConfig } from '#app';
 
@@ -19,11 +19,18 @@ export class LevelScreen {
   #camera: Camera;
   #levelInfo: LevelInfo;
   #gamepadManager: GamepadManager;
+  #subscription: Subscription;
+  #sizes: Sizes;
 
   #group: Group;
   #level: Level | null = null;
   #hudManager: HUDRegionManager;
   #levelInitialized = false;
+
+  // Bound listener references for cleanup
+  #onGamepadDisconnected: () => void;
+  #onControllersReadyChange: EventListener;
+  #onResize: () => void;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera, levelInfo: LevelInfo) {
     this.#stageActor = stageActor;
@@ -32,7 +39,7 @@ export class LevelScreen {
     this.#gamepadManager = GamepadManager.getInstance();
     this.#levelInfo = levelInfo;
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Level')) {
         this.show();
       } else {
@@ -40,23 +47,26 @@ export class LevelScreen {
       }
     });
 
-    this.#gamepadManager.addEventListener('gamepadDisconnected', () => {
+    this.#onGamepadDisconnected = () => {
       if (!this.#group.visible) return;
 
       const config = useRuntimeConfig();
       if (!config.public.keyboardFallbackEnabled) {
         this.#stageActor.send({ type: 'controllerDisconnected' });
       }
-    });
+    };
 
-    this.#gamepadManager.addEventListener('controllersReadyChange', ((event: CustomEvent) => {
+    this.#onControllersReadyChange = ((event: CustomEvent) => {
       const { ready } = event.detail;
       const currentState = this.#stageActor.getSnapshot();
 
       if (ready && currentState.matches('Pause')) {
         this.#stageActor.send({ type: 'resume' });
       }
-    }) as EventListener);
+    }) as EventListener;
+
+    this.#gamepadManager.addEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
+    this.#gamepadManager.addEventListener('controllersReadyChange', this.#onControllersReadyChange);
 
     this.#group = new Group();
     this.#scene.add(this.#group);
@@ -66,10 +76,9 @@ export class LevelScreen {
     this.#hudManager.add('bottomLeft', new PointsHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
 
-    const sizes = Sizes.getInstance();
-    sizes.addEventListener('resize', () => {
-      this.#hudManager.updatePositions();
-    });
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private async initLevel() {
@@ -99,5 +108,12 @@ export class LevelScreen {
     this.#gamepadManager.update();
     this.#level?.update();
     this.#hudManager.update();
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
+    this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
+    this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
+    this.#sizes.removeEventListener('resize', this.#onResize);
   }
 }

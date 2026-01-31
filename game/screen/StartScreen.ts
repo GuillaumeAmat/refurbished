@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 import { KeyboardController } from '../util/input/KeyboardController';
@@ -10,6 +10,7 @@ export class StartScreen {
   #scene: Scene;
   #resources: Resources;
   #inputController: KeyboardController;
+  #subscription: Subscription;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -26,7 +27,7 @@ export class StartScreen {
     this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Start')) {
         this.show();
       } else {
@@ -83,5 +84,9 @@ export class StartScreen {
 
   public update() {
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
   }
 }

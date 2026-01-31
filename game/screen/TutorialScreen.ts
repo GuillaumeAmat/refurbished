@@ -1,5 +1,5 @@
 import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
-import type { Actor, AnyActorLogic } from 'xstate';
+import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
 import { Resources } from '../util/Resources';
@@ -8,6 +8,7 @@ export class TutorialScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
+  #subscription: Subscription;
 
   #group: Group;
   #titleMesh: Mesh | null = null;
@@ -25,7 +26,7 @@ export class TutorialScreen {
     this.#group.position.set(0, 30, 0);
     this.#scene.add(this.#group);
 
-    this.#stageActor.subscribe((state) => {
+    this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Tutorial')) {
         this.show();
       } else {
@@ -96,5 +97,9 @@ export class TutorialScreen {
 
   public update() {
     if (!this.#group.visible) return;
+  }
+
+  public dispose() {
+    this.#subscription.unsubscribe();
   }
 }
