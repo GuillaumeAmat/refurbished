@@ -1,7 +1,7 @@
 import { Box3, type Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
-import type { ResourceType } from '../../types';
+import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { Crate } from './Crate';
 import { LevelObject } from './LevelObject';
@@ -11,16 +11,20 @@ export interface DroppedResourceParams {
   resourceType: ResourceType;
   position: Vector3;
   onTopOf?: LevelObject;
+  state?: ResourceState;
 }
 
 export class DroppedResource extends LevelObject {
   #params: DroppedResourceParams;
   #resourceType: ResourceType;
+  #state: ResourceState;
+  #group: Group | null = null;
 
   constructor(params: DroppedResourceParams) {
     super();
     this.#params = params;
     this.#resourceType = params.resourceType;
+    this.#state = params.state ?? 'broken';
     this.isInteractable = true;
   }
 
@@ -28,10 +32,61 @@ export class DroppedResource extends LevelObject {
     return this.#resourceType;
   }
 
+  public getState(): ResourceState {
+    return this.#state;
+  }
+
+  public setState(state: ResourceState): void {
+    this.#state = state;
+  }
+
+  public repair(): void {
+    if (this.#state === 'repaired') return;
+    this.#state = 'repaired';
+    this.swapModel();
+  }
+
+  public swapModel(): void {
+    if (!this.mesh || !this.#group) return;
+
+    const modelName = this.#state === 'repaired'
+      ? Crate.getRepairedModelName(this.#resourceType)
+      : Crate.getResourceModelName(this.#resourceType);
+
+    if (!modelName) return;
+
+    const model = Resources.getInstance().getGLTFAsset(modelName);
+    if (!model) return;
+
+    const oldPosition = this.mesh.position.clone();
+    const oldRotation = this.mesh.rotation.clone();
+
+    this.mesh.removeFromParent();
+
+    const newMesh = model.scene.clone();
+    newMesh.position.copy(oldPosition);
+    newMesh.rotation.copy(oldRotation);
+
+    newMesh.traverse((child) => {
+      if (child instanceof Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    this.cloneMaterials(newMesh);
+    this.mesh = newMesh;
+    this.#group.add(newMesh);
+  }
+
   create(group: Group): void {
     const { resourceType, position, onTopOf } = this.#params;
+    this.#group = group;
 
-    const modelName = Crate.getResourceModelName(resourceType);
+    const modelName = this.#state === 'repaired'
+      ? Crate.getRepairedModelName(resourceType)
+      : Crate.getResourceModelName(resourceType);
+
     if (!modelName) {
       console.error('Unknown resource type:', resourceType);
       return;

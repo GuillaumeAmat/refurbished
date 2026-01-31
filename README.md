@@ -8,6 +8,7 @@ Unofficial Back Market themed web video game.
 | --------- | ------- | ------------------ | ------------------ |
 | Dash      | `B`     | `AltLeft`          | `AltRight`         |
 | Grab/Drop | `A`     | `Space`            | `Enter`            |
+| Action    | `X`     | `ShiftLeft`        | `ShiftRight`       |
 
 ## Contributing
 

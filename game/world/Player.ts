@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
-import type { ResourceType } from '../types';
+import type { ResourceState, ResourceType } from '../types';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
@@ -39,7 +39,7 @@ export class Player {
     direction: { x: 0, z: 0 },
   };
 
-  #carriedResource: { type: ResourceType; mesh: Object3D } | null = null;
+  #carriedResource: { type: ResourceType; state: ResourceState; mesh: Object3D } | null = null;
 
   #smokeSystem: SmokeParticleSystem | null = null;
   #hasDashBurst = false;
@@ -242,10 +242,16 @@ export class Player {
     return this.#carriedResource?.type ?? null;
   }
 
-  public grabResource(type: ResourceType): void {
+  public getCarriedResourceState(): ResourceState | null {
+    return this.#carriedResource?.state ?? null;
+  }
+
+  public grabResource(type: ResourceType, state: ResourceState = 'broken'): void {
     if (this.#carriedResource || !this.#mesh) return;
 
-    const modelName = Crate.getResourceModelName(type);
+    const modelName = state === 'repaired'
+      ? Crate.getRepairedModelName(type)
+      : Crate.getResourceModelName(type);
     if (!modelName) return;
 
     const model = this.#resources.getGLTFAsset(modelName);
@@ -262,16 +268,16 @@ export class Player {
     });
 
     this.#mesh.add(resourceMesh);
-    this.#carriedResource = { type, mesh: resourceMesh };
+    this.#carriedResource = { type, state, mesh: resourceMesh };
   }
 
-  public dropResource(): ResourceType | null {
+  public dropResource(): { type: ResourceType; state: ResourceState } | null {
     if (!this.#carriedResource) return null;
 
-    const type = this.#carriedResource.type;
+    const { type, state } = this.#carriedResource;
     this.#carriedResource.mesh.removeFromParent();
     this.#carriedResource = null;
-    return type;
+    return { type, state };
   }
 
   #updateSmoke(): void {

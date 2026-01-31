@@ -6,6 +6,7 @@ export class KeyboardController implements InputSource {
   #boundKeyDownHandler: (event: KeyboardEvent) => void;
 
   #keysPressed = new Set<string>();
+  #keyHoldStart: Map<string, number> = new Map();
   #keySet?: 'player1' | 'player2';
 
   readonly connected = true;
@@ -47,7 +48,30 @@ export class KeyboardController implements InputSource {
       return this.#keysPressed.has('Space') || this.#keysPressed.has('Enter');
     }
 
+    if (button === 'x') {
+      if (this.#keySet === 'player1') {
+        return this.#keysPressed.has('ShiftLeft');
+      } else if (this.#keySet === 'player2') {
+        return this.#keysPressed.has('ShiftRight');
+      }
+      return this.#keysPressed.has('ShiftLeft') || this.#keysPressed.has('ShiftRight');
+    }
+
     return this.#keysPressed.has(button);
+  }
+
+  public getButtonHoldDuration(button: string): number {
+    if (!this.isButtonPressed(button)) {
+      this.#keyHoldStart.delete(button);
+      return 0;
+    }
+
+    const now = performance.now();
+    if (!this.#keyHoldStart.has(button)) {
+      this.#keyHoldStart.set(button, now);
+    }
+
+    return now - this.#keyHoldStart.get(button)!;
   }
 
   public getMovement(): InputVector {
@@ -105,6 +129,7 @@ export class KeyboardController implements InputSource {
     window.removeEventListener('keydown', this.#boundKeyDownHandler);
     this.#buttonUpCallback = null;
     this.#keysPressed.clear();
+    this.#keyHoldStart.clear();
   }
 
   #handleKeyUp(event: KeyboardEvent) {

@@ -2,6 +2,7 @@ import type { Group } from 'three';
 import { Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
+import type { ResourceType } from '../../types';
 import { Physics } from '../../util/Physics';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
@@ -23,6 +24,10 @@ export class DeliveryZone extends LevelObject {
   constructor(params: DeliveryZoneParams) {
     super();
     this.#params = params;
+  }
+
+  public canAcceptDelivery(resourceType: ResourceType): boolean {
+    return resourceType === 'phone';
   }
 
   create(group: Group): void {

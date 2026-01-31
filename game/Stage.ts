@@ -180,6 +180,11 @@ export class Stage {
         path: '/game/model/resource/screen_repaired.glb',
         priority: 'low',
       },
+      phoneAssembledModel: {
+        type: 'gltf',
+        path: '/game/model/resource/phone_assembled.glb',
+        priority: 'low',
+      },
       // bmLogo: {
       //   type: 'svg',
       //   path: '/game/svg/bmLogo.svg',

@@ -50,6 +50,23 @@ export class Crate extends LevelObject {
       case Cell.CRATE_SCREEN:
       case 'screen':
         return 'screenBrokenModel';
+      case 'phone':
+        return 'phoneAssembledModel';
+      default:
+        return null;
+    }
+  }
+
+  public static getRepairedModelName(type: ResourceType): string | null {
+    switch (type) {
+      case 'battery':
+        return 'batteryFullModel';
+      case 'frame':
+        return 'frameRepairedModel';
+      case 'screen':
+        return 'screenRepairedModel';
+      case 'phone':
+        return 'phoneAssembledModel';
       default:
         return null;
     }

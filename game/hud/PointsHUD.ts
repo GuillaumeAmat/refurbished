@@ -1,6 +1,7 @@
 import { Group } from 'three';
 
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
+import { ScoreManager } from '../state/ScoreManager';
 import type { IHUDItem } from './IHUDItem';
 
 export class PointsHUD implements IHUDItem {
@@ -8,14 +9,21 @@ export class PointsHUD implements IHUDItem {
 
   #group: Group;
   #text: TextPlaneResult | null = null;
+  #scoreManager: ScoreManager;
 
   constructor() {
     this.#group = new Group();
+    this.#scoreManager = ScoreManager.getInstance();
     this.#createText();
+
+    this.#scoreManager.addEventListener('scoreChanged', ((event: CustomEvent) => {
+      this.#updateScore(event.detail.score);
+    }) as EventListener);
   }
 
   #createText() {
-    this.#text = createTextPlane('Points: 0', {
+    const score = this.#scoreManager.getScore();
+    this.#text = createTextPlane(`Points: ${score}`, {
       height: PointsHUD.TEXT_HEIGHT,
       fontSize: 48,
       color: '#FFFFFF',
@@ -23,6 +31,13 @@ export class PointsHUD implements IHUDItem {
     // Left-align: offset by width/2 so text extends to the right
     this.#text.mesh.position.x = this.#text.width / 2;
     this.#group.add(this.#text.mesh);
+  }
+
+  #updateScore(score: number) {
+    if (this.#text) {
+      this.#text.updateText(`Points: ${score}`);
+      this.#text.mesh.position.x = this.#text.width / 2;
+    }
   }
 
   getGroup(): Group {

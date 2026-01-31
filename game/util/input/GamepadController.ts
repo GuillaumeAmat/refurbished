@@ -6,6 +6,7 @@ export class GamepadController implements InputSource {
   #profile: ControllerProfile;
   #buttonUpCallback: ((button: string) => void) | null = null;
   #previousButtonStates: boolean[] = [];
+  #buttonHoldStart: Map<string, number> = new Map();
   #connected = true;
 
   constructor(gamepadIndex: number, profile: ControllerProfile) {
@@ -53,6 +54,20 @@ export class GamepadController implements InputSource {
     return gamepad.buttons[buttonIndex]?.pressed ?? false;
   }
 
+  getButtonHoldDuration(button: string): number {
+    if (!this.isButtonPressed(button)) {
+      this.#buttonHoldStart.delete(button);
+      return 0;
+    }
+
+    const now = performance.now();
+    if (!this.#buttonHoldStart.has(button)) {
+      this.#buttonHoldStart.set(button, now);
+    }
+
+    return now - this.#buttonHoldStart.get(button)!;
+  }
+
   pollButtons(): void {
     const gamepad = navigator.getGamepads()[this.#gamepadIndex];
     if (!gamepad) return;
@@ -76,5 +91,6 @@ export class GamepadController implements InputSource {
   cleanup(): void {
     this.#buttonUpCallback = null;
     this.#previousButtonStates = [];
+    this.#buttonHoldStart.clear();
   }
 }
