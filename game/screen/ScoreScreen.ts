@@ -2,12 +2,14 @@ import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { createTextMesh } from '../lib/createTextMesh';
+import { ScoreManager } from '../state/ScoreManager';
 import { Resources } from '../util/Resources';
 
 export class ScoreScreen {
   #stageActor: Actor<AnyActorLogic>;
   #scene: Scene;
   #resources: Resources;
+  #scoreManager: ScoreManager;
   #subscription: Subscription;
 
   #group: Group;
@@ -23,6 +25,7 @@ export class ScoreScreen {
     this.#stageActor = stageActor;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
+    this.#scoreManager = ScoreManager.getInstance();
 
     this.#group = new Group();
     this.#group.position.set(0, 30, 0);
@@ -103,6 +106,27 @@ export class ScoreScreen {
 
   private show() {
     this.#group.visible = true;
+    this.#updateScoreMesh();
+  }
+
+  #updateScoreMesh() {
+    const font = this.#resources.getFontAsset('interFont');
+    if (!font || !this.#scoreMesh) return;
+
+    const score = this.#scoreManager.getScore();
+
+    // Dispose old geometry
+    this.#scoreMesh.geometry.dispose();
+
+    // Create new mesh with updated score
+    const newMesh = createTextMesh(`Your Score: ${score}`, font, {
+      extrusionDepth: 0.08,
+      size: 1.2,
+      material: this.#material,
+    });
+
+    // Copy geometry to existing mesh
+    this.#scoreMesh.geometry = newMesh.geometry;
   }
 
   private hide() {

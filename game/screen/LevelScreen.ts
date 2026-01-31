@@ -8,6 +8,8 @@ import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { PointsHUD } from '../hud/PointsHUD';
 import { TimeHUD } from '../hud/TimeHUD';
 import type { LevelInfo } from '../levels';
+import { ScoreManager } from '../state/ScoreManager';
+import { SessionManager } from '../state/SessionManager';
 import { GamepadManager } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 import type { Camera } from '../world/Camera';
@@ -26,11 +28,14 @@ export class LevelScreen {
   #level: Level | null = null;
   #hudManager: HUDRegionManager;
   #levelInitialized = false;
+  #sessionManager: SessionManager;
+  #scoreManager: ScoreManager;
 
   // Bound listener references for cleanup
   #onGamepadDisconnected: () => void;
   #onControllersReadyChange: EventListener;
   #onResize: () => void;
+  #onSessionEnded: () => void;
 
   constructor(stageActor: Actor<AnyActorLogic>, scene: Scene, camera: Camera, levelInfo: LevelInfo) {
     this.#stageActor = stageActor;
@@ -79,6 +84,14 @@ export class LevelScreen {
     this.#sizes = Sizes.getInstance();
     this.#onResize = () => this.#hudManager.updatePositions();
     this.#sizes.addEventListener('resize', this.#onResize);
+
+    this.#sessionManager = SessionManager.getInstance();
+    this.#scoreManager = ScoreManager.getInstance();
+    this.#onSessionEnded = () => {
+      if (!this.#group.visible) return;
+      this.#stageActor.send({ type: 'end', score: this.#scoreManager.getScore() });
+    };
+    this.#sessionManager.addEventListener('sessionEnded', this.#onSessionEnded);
   }
 
   private async initLevel() {
@@ -93,12 +106,16 @@ export class LevelScreen {
   private show() {
     this.#group.visible = true;
     this.#hudManager.show();
+    this.#scoreManager.reset();
+    this.#sessionManager.reset();
+    this.#sessionManager.start();
     this.initLevel();
   }
 
   private hide() {
     this.#group.visible = false;
     this.#hudManager.hide();
+    this.#sessionManager.stop();
   }
 
   public update() {
@@ -115,5 +132,6 @@ export class LevelScreen {
     this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
     this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
     this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#sessionManager.removeEventListener('sessionEnded', this.#onSessionEnded);
   }
 }
