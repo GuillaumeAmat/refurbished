@@ -276,13 +276,12 @@ export class InteractionSystem {
     const carriedState = player.getCarriedResourceState();
 
     for (const obj of this.#interactables) {
-      // Skip DroppedResources on BlueWorkZone when player carries a compatible resource
+      // Skip non-phone resources on BlueWorkZone - zone handles assembly
+      // Phone keeps priority so player can grab it
       if (obj instanceof DroppedResource) {
         const parent = this.#getParentObject(obj);
-        if (parent instanceof BlueWorkZone && carriedType && carriedState) {
-          if (parent.canAcceptResource(carriedType, carriedState)) {
-            continue; // Skip this resource, target the zone instead
-          }
+        if (parent instanceof BlueWorkZone && obj.getResourceType() !== 'phone') {
+          continue;
         }
       }
 
