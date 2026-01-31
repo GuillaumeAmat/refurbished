@@ -30,6 +30,8 @@ export class BlueWorkZone extends LevelObject {
   #letterIndicators: Map<AssemblyResourceType, TextPlaneResult> = new Map();
   #assemblyProgress: number = 0;
   #progressBar: ProgressBar | null = null;
+  #awaitingPackaging: boolean = false;
+  #phoneResource: DroppedResource | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
@@ -70,9 +72,30 @@ export class BlueWorkZone extends LevelObject {
 
   public canAcceptResource(type: ResourceType, state: ResourceState): boolean {
     if (type === 'phone') return false;
+    if (type === 'package') return false;
     if (state !== 'repaired') return false;
     if (!ASSEMBLY_RESOURCES.includes(type as AssemblyResourceType)) return false;
     return !this.#containedResources.has(type as AssemblyResourceType);
+  }
+
+  public isAwaitingPackaging(): boolean {
+    return this.#awaitingPackaging;
+  }
+
+  public setAwaitingPackaging(phone: DroppedResource): void {
+    this.#awaitingPackaging = true;
+    this.#phoneResource = phone;
+  }
+
+  public clearAwaitingPackaging(): DroppedResource | null {
+    const phone = this.#phoneResource;
+    this.#awaitingPackaging = false;
+    this.#phoneResource = null;
+    return phone;
+  }
+
+  public canAcceptPackage(type: ResourceType, state: ResourceState): boolean {
+    return this.#awaitingPackaging && type === 'package' && state === 'broken';
   }
 
   public isReadyToAssemble(): boolean {

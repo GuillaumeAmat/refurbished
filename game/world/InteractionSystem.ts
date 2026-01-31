@@ -90,14 +90,39 @@ export class InteractionSystem {
         return;
       }
 
-      // Delivery zone: only accept phones
-      if (target instanceof DeliveryZone && carriedType === 'phone') {
+      // Delivery zone: only accept closed packages
+      if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
         this.#scoreManager.addPoints(POINTS_PER_DELIVERY);
         return;
       }
 
-      // BlueWorkZone: only accept repaired resources (not phones)
+      // BlueWorkZone: accept open package when awaiting packaging
+      if (target instanceof BlueWorkZone && target.canAcceptPackage(carriedType!, carriedState!)) {
+        player.dropResource();
+
+        // Remove phone
+        const phone = target.clearAwaitingPackaging();
+        if (phone) {
+          this.removeDroppedResource(phone);
+        }
+
+        // Spawn closed package
+        const targetPos = target.getPosition();
+        if (targetPos) {
+          const closedPackage = new DroppedResource({
+            resourceType: 'package',
+            position: targetPos,
+            onTopOf: target,
+            state: 'repaired',
+          });
+          closedPackage.create(this.#levelGroup);
+          this.addDroppedResource(closedPackage, target);
+        }
+        return;
+      }
+
+      // BlueWorkZone: only accept repaired resources (not phones/packages)
       if (target instanceof BlueWorkZone && carriedType && carriedState) {
         if (target.canAcceptResource(carriedType, carriedState)) {
           const dropped = player.dropResource();
@@ -118,6 +143,10 @@ export class InteractionSystem {
           target.setResource(resource);
           return;
         }
+        // Prevent dropping packages on BlueWorkZone when not awaiting
+        if (carriedType === 'package') {
+          return;
+        }
       }
 
       const resourceData = player.dropResource();
@@ -131,6 +160,7 @@ export class InteractionSystem {
         !(target instanceof Crate) &&
         !(target instanceof DroppedResource) &&
         !(target instanceof DeliveryZone) &&
+        !(target instanceof BlueWorkZone) &&
         !this.#hasResourceOnTop(target);
 
       if (canDropOnTarget) {
@@ -231,7 +261,7 @@ export class InteractionSystem {
             this.removeDroppedResource(res);
           }
 
-          // Spawn phone
+          // Spawn phone (not grabbable, awaiting packaging)
           const targetPos = target.getPosition();
           if (targetPos) {
             const phone = new DroppedResource({
@@ -241,7 +271,9 @@ export class InteractionSystem {
               state: 'repaired',
             });
             phone.create(this.#levelGroup);
+            phone.isInteractable = false;
             this.addDroppedResource(phone, target);
+            target.setAwaitingPackaging(phone);
           }
         }
       }
@@ -277,16 +309,23 @@ export class InteractionSystem {
 
     for (const obj of this.#interactables) {
       // Skip non-phone resources on BlueWorkZone - zone handles assembly
-      // Phone keeps priority so player can grab it
+      // Skip phone when awaiting packaging (phone is not grabbable)
       if (obj instanceof DroppedResource) {
         const parent = this.#getParentObject(obj);
-        if (parent instanceof BlueWorkZone && obj.getResourceType() !== 'phone') {
-          continue;
+        if (parent instanceof BlueWorkZone) {
+          const resourceType = obj.getResourceType();
+          if (resourceType !== 'phone' && resourceType !== 'package') {
+            continue;
+          }
+          // Skip phone when awaiting packaging
+          if (resourceType === 'phone' && parent.isAwaitingPackaging()) {
+            continue;
+          }
         }
       }
 
       // Skip objects that have a resource on top - player should target the resource instead
-      // But allow BlueWorkZone if it can still accept resources or is ready to assemble
+      // But allow BlueWorkZone if it can still accept resources, ready to assemble, or awaiting packaging
       if (this.#hasResourceOnTop(obj)) {
         if (obj instanceof BlueWorkZone) {
           // Allow targeting if carrying a compatible resource or ready to assemble
@@ -294,6 +333,8 @@ export class InteractionSystem {
             // Allow targeting
           } else if (obj.isReadyToAssemble() && !player.isCarrying()) {
             // Allow targeting for assembly
+          } else if (carriedType && carriedState && obj.canAcceptPackage(carriedType, carriedState)) {
+            // Allow targeting for packaging
           } else {
             continue;
           }

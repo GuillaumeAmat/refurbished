@@ -185,6 +185,16 @@ export class Stage {
         path: '/game/model/resource/phone_assembled.glb',
         priority: 'low',
       },
+      packageOpenModel: {
+        type: 'gltf',
+        path: '/game/model/resource/package_open.glb',
+        priority: 'low',
+      },
+      packageClosedModel: {
+        type: 'gltf',
+        path: '/game/model/resource/package_closed.glb',
+        priority: 'low',
+      },
       // bmLogo: {
       //   type: 'svg',
       //   path: '/game/svg/bmLogo.svg',

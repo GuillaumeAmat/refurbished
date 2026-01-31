@@ -6,7 +6,11 @@ import type { ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
-export type CrateType = typeof Cell.CRATE_BATTERY | typeof Cell.CRATE_FRAME | typeof Cell.CRATE_SCREEN;
+export type CrateType =
+  | typeof Cell.CRATE_BATTERY
+  | typeof Cell.CRATE_FRAME
+  | typeof Cell.CRATE_SCREEN
+  | typeof Cell.CRATE_PACKAGE;
 
 export interface CrateParams {
   type: CrateType;
@@ -34,6 +38,8 @@ export class Crate extends LevelObject {
         return 'frame';
       case Cell.CRATE_SCREEN:
         return 'screen';
+      case Cell.CRATE_PACKAGE:
+        return 'package';
       default:
         return 'battery';
     }
@@ -52,6 +58,9 @@ export class Crate extends LevelObject {
         return 'screenBrokenModel';
       case 'phone':
         return 'phoneAssembledModel';
+      case Cell.CRATE_PACKAGE:
+      case 'package':
+        return 'packageOpenModel';
       default:
         return null;
     }
@@ -67,6 +76,8 @@ export class Crate extends LevelObject {
         return 'screenRepairedModel';
       case 'phone':
         return 'phoneAssembledModel';
+      case 'package':
+        return 'packageClosedModel';
       default:
         return null;
     }

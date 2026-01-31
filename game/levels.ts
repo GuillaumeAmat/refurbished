@@ -13,6 +13,7 @@ export const Cell = {
   CRATE_BATTERY: '10',
   CRATE_FRAME: '11',
   CRATE_SCREEN: '12',
+  CRATE_PACKAGE: '13',
 } as const;
 
 export type CellValue = string;
@@ -22,7 +23,9 @@ export const isWalkable = (c: string) => c === Cell.FLOOR || isSpawn(c);
 export const isBatteryCrate = (c: string) => c === Cell.CRATE_BATTERY;
 export const isFrameCrate = (c: string) => c === Cell.CRATE_FRAME;
 export const isScreenCrate = (c: string) => c === Cell.CRATE_SCREEN;
-export const isCrate = (c: string) => c === Cell.CRATE_BATTERY || c === Cell.CRATE_FRAME || c === Cell.CRATE_SCREEN;
+export const isPackageCrate = (c: string) => c === Cell.CRATE_PACKAGE;
+export const isCrate = (c: string) =>
+  c === Cell.CRATE_BATTERY || c === Cell.CRATE_FRAME || c === Cell.CRATE_SCREEN || c === Cell.CRATE_PACKAGE;
 export const isWorkbench = (c: string) => c === Cell.WORKBENCH;
 export const isRepairZone = (c: string) => c === Cell.REPAIR_ZONE;
 export const isBlueWorkZone = (c: string) => c === Cell.BLUE_WORK_ZONE;
@@ -44,7 +47,7 @@ const LEVEL_1: LevelData = {
   matrix: [
     ['03', '03', '03', '10', '03', '03', '03', '03', '05', '03', '03', '03', '03'],
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
-    ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '02', '00', '03'],
+    ['13', '00', '00', '00', '00', '00', '00', '00', '00', '00', '02', '00', '03'],
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
     ['03', '03', '03', '00', '03', '03', '03', '03', '00', '00', '03', '03', '03'],
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
