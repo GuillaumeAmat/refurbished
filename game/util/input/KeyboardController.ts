@@ -57,6 +57,10 @@ export class KeyboardController implements InputSource {
       return this.#keysPressed.has('ShiftLeft') || this.#keysPressed.has('ShiftRight');
     }
 
+    if (button === 'start') {
+      return this.#keysPressed.has('Escape');
+    }
+
     return this.#keysPressed.has(button);
   }
 

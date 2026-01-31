@@ -292,9 +292,9 @@ export class Stage {
     const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
     const waitingScreen = new WaitingScreen(this.#actor, this.#scene);
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#scene);
-    const pauseScreen = new PauseScreen(this.#actor, this.#scene);
-    const scoreScreen = new ScoreScreen(this.#actor, this.#scene);
-    const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#scene);
+    const pauseScreen = new PauseScreen(this.#actor, this.#camera.camera);
+    const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
+    const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#camera.camera);
 
     /**
      * Must be called after the meshes have been created,

@@ -28,6 +28,7 @@ export class Level {
   #debugProperties = {
     DisplayHelper: true,
   };
+  #interactive = true;
 
   constructor(screenGroup: Group, scene: Scene, levelInfo: LevelInfo) {
     this.#screenGroup = screenGroup;
@@ -101,6 +102,10 @@ export class Level {
     return this.#levelBuilder.getInteractables();
   }
 
+  public setInteractive(interactive: boolean): void {
+    this.#interactive = interactive;
+  }
+
   public dispose(): void {
     this.#floor.dispose();
     this.#outerFloor.dispose();
@@ -110,8 +115,10 @@ export class Level {
 
   public update() {
     this.#physics.update();
-    this.#player1?.update();
-    this.#player2?.update();
-    this.#interactionSystem.update();
+    if (this.#interactive) {
+      this.#player1?.update();
+      this.#player2?.update();
+      this.#interactionSystem.update();
+    }
   }
 }
