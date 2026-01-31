@@ -1,10 +1,10 @@
-import { Box3, type Group, Mesh, Vector3 } from 'three';
+import { type Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { ProgressBar } from '../../hud/ProgressBar';
+import { createTextPlane, type TextPlaneResult } from '../../lib/createTextPlane';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
-import { Crate } from './Crate';
 import type { DroppedResource } from './DroppedResource';
 import { LevelObject } from './LevelObject';
 
@@ -18,10 +18,16 @@ export interface BlueWorkZoneParams {
 type AssemblyResourceType = 'battery' | 'frame' | 'screen';
 const ASSEMBLY_RESOURCES: AssemblyResourceType[] = ['battery', 'frame', 'screen'];
 
+const LETTER_MAP: Record<AssemblyResourceType, string> = {
+  battery: 'B',
+  frame: 'F',
+  screen: 'S',
+};
+
 export class BlueWorkZone extends LevelObject {
   #params: BlueWorkZoneParams;
   #containedResources: Map<AssemblyResourceType, DroppedResource> = new Map();
-  #indicatorMeshes: Map<AssemblyResourceType, Mesh> = new Map();
+  #letterIndicators: Map<AssemblyResourceType, TextPlaneResult> = new Map();
   #assemblyProgress: number = 0;
   #progressBar: ProgressBar | null = null;
 
@@ -54,6 +60,11 @@ export class BlueWorkZone extends LevelObject {
       this.#containedResources.set(type, resource);
       this.#updateIndicators();
       this.resetAssemblyProgress();
+
+      // Hide dropped resource model
+      resource.getMesh()?.traverse((child) => {
+        if (child instanceof Mesh) child.visible = false;
+      });
     }
   }
 
@@ -114,9 +125,10 @@ export class BlueWorkZone extends LevelObject {
 
   #updateIndicators(): void {
     for (const type of ASSEMBLY_RESOURCES) {
-      const indicator = this.#indicatorMeshes.get(type);
+      const indicator = this.#letterIndicators.get(type);
       if (indicator) {
-        indicator.visible = !this.#containedResources.has(type);
+        const hasResource = this.#containedResources.has(type);
+        indicator.updateColor(hasResource ? '#00FF88' : '#FFFFFF');
       }
     }
   }
@@ -149,39 +161,33 @@ export class BlueWorkZone extends LevelObject {
   }
 
   #createIndicators(parentMesh: Group): void {
-    const resources = Resources.getInstance();
-    const bbox = new Box3().setFromObject(parentMesh);
-    const size = new Vector3();
-    bbox.getSize(size);
-    const topY = size.y + 0.1;
+    const spacing = 0.4;
+    const totalWidth = spacing * (ASSEMBLY_RESOURCES.length - 1);
+    const startX = TILE_SIZE * 0.5 - totalWidth / 2;
 
-    const positions: Record<AssemblyResourceType, Vector3> = {
-      battery: new Vector3(TILE_SIZE * 0.25, topY, TILE_SIZE * 0.5),
-      frame: new Vector3(TILE_SIZE * 0.5, topY, TILE_SIZE * 0.5),
-      screen: new Vector3(TILE_SIZE * 0.75, topY, TILE_SIZE * 0.5),
-    };
+    for (let i = 0; i < ASSEMBLY_RESOURCES.length; i++) {
+      const type = ASSEMBLY_RESOURCES[i];
+      const letter = LETTER_MAP[type];
 
-    for (const type of ASSEMBLY_RESOURCES) {
-      const modelName = Crate.getRepairedModelName(type);
-      if (!modelName) continue;
-
-      const indicatorModel = resources.getGLTFAsset(modelName);
-      if (!indicatorModel) continue;
-
-      const indicator = indicatorModel.scene.clone();
-      indicator.scale.setScalar(0.5);
-      indicator.position.copy(positions[type]);
-
-      indicator.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.material = child.material.clone();
-          child.material.transparent = true;
-          child.material.opacity = 0.4;
-        }
+      const textPlane = createTextPlane(letter, {
+        height: 0.3,
+        color: '#FFFFFF',
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
       });
 
-      parentMesh.add(indicator);
-      this.#indicatorMeshes.set(type, indicator as unknown as Mesh);
+      textPlane.mesh.position.set(startX + i * spacing, 2.8, TILE_SIZE * 0.5);
+
+      parentMesh.add(textPlane.mesh);
+      this.#letterIndicators.set(type, textPlane);
     }
+  }
+
+  dispose(): void {
+    for (const indicator of this.#letterIndicators.values()) {
+      indicator.dispose();
+    }
+    this.#letterIndicators.clear();
+    this.#progressBar?.dispose();
   }
 }
