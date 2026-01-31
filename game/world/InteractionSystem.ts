@@ -112,18 +112,8 @@ export class InteractionSystem {
           this.removeDroppedResource(phone);
         }
 
-        // Spawn closed package
-        const targetPos = target.getPosition();
-        if (targetPos) {
-          const closedPackage = new DroppedResource({
-            resourceType: 'package',
-            position: targetPos,
-            onTopOf: target,
-            state: 'repaired',
-          });
-          closedPackage.create(this.#levelGroup);
-          this.addDroppedResource(closedPackage, target);
-        }
+        // Auto-grab closed package
+        player.grabResource('package', 'repaired');
         return;
       }
 
