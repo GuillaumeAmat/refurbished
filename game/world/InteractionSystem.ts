@@ -1,9 +1,9 @@
 import { type Group, Vector3 } from 'three';
 
 import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
-import { ProgressBar } from '../hud/ProgressBar';
 import { ScoreManager } from '../state/ScoreManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Time } from '../util/Time';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import { DeliveryZone } from './object/DeliveryZone';
@@ -16,12 +16,6 @@ const REPAIR_HOLD_DURATION = 2000;
 const ASSEMBLE_HOLD_DURATION = 2000;
 const POINTS_PER_DELIVERY = 10;
 
-interface HoldInteraction {
-  target: LevelObject;
-  type: 'repair' | 'assemble';
-  progressBar: ProgressBar;
-}
-
 export class InteractionSystem {
   #interactables: LevelObject[] = [];
   #players: Player[] = [];
@@ -29,7 +23,6 @@ export class InteractionSystem {
   #droppedResources: DroppedResource[] = [];
   #resourceParents: Map<DroppedResource, LevelObject> = new Map();
   #levelGroup: Group;
-  #holdInteractions: Map<PlayerId, HoldInteraction> = new Map();
   #gamepadManager: GamepadManager;
   #scoreManager: ScoreManager;
 
@@ -185,114 +178,73 @@ export class InteractionSystem {
   }
 
   #updateHoldInteractions(): void {
+    const deltaMs = Time.getInstance().delta;
+
+    // Track which objects are being actively worked on this frame
+    const activeRepairTargets = new Set<DroppedResource>();
+    const activeAssemblyTargets = new Set<BlueWorkZone>();
+
     for (const player of this.#players) {
       const playerId = player.getPlayerId();
       const inputSource = this.#gamepadManager.getInputSource(playerId);
       if (!inputSource) continue;
 
-      const holdDuration = inputSource.getButtonHoldDuration('x');
+      const isHoldingX = inputSource.getButtonHoldDuration('x') > 0;
       const target = this.#currentTargets.get(playerId) ?? null;
 
-      // Check if we should start or continue a hold interaction
-      if (holdDuration > 0 && target) {
-        const existingHold = this.#holdInteractions.get(playerId);
+      if (!isHoldingX || !target) continue;
 
-        // Repair interaction: X on broken resource sitting on a RepairZone
-        if (target instanceof DroppedResource && target.getState() === 'broken') {
-          const parentObject = this.#getParentObject(target);
-          if (parentObject instanceof RepairZone) {
-            if (!existingHold || existingHold.target !== target) {
-              existingHold?.progressBar.dispose();
+      // Repair interaction: X on broken resource sitting on a RepairZone
+      if (target instanceof DroppedResource && target.getState() === 'broken') {
+        const parentObject = this.#getParentObject(target);
+        if (parentObject instanceof RepairZone) {
+          // Only add progress once per object per frame (no coop bonus)
+          if (!activeRepairTargets.has(target)) {
+            activeRepairTargets.add(target);
+            target.addRepairProgress(deltaMs);
+          }
 
-              const progressBar = new ProgressBar(1.2, 0.15);
-              const targetPos = target.getPosition();
-              if (targetPos) {
-                progressBar.setPosition(new Vector3(targetPos.x, 2.5, targetPos.z));
-              }
-              this.#levelGroup.add(progressBar.getGroup());
-              progressBar.show();
+          target.getOrCreateProgressBar(this.#levelGroup);
+          target.updateProgressBar(target.getRepairProgress() / REPAIR_HOLD_DURATION);
 
-              this.#holdInteractions.set(playerId, {
-                target,
-                type: 'repair',
-                progressBar,
-              });
-            }
-
-            const hold = this.#holdInteractions.get(playerId)!;
-            const progress = holdDuration / REPAIR_HOLD_DURATION;
-            hold.progressBar.setProgress(progress);
-
-            if (holdDuration >= REPAIR_HOLD_DURATION) {
-              target.repair();
-              this.#cleanupHoldInteraction(playerId);
-            }
-            continue;
+          if (target.isRepairComplete(REPAIR_HOLD_DURATION)) {
+            target.repair();
+            target.resetRepairProgress();
           }
         }
+      }
 
-        // Assembly interaction: X on BlueWorkZone when ready to assemble
-        if (target instanceof BlueWorkZone && target.isReadyToAssemble()) {
-          if (!existingHold || existingHold.target !== target) {
-            existingHold?.progressBar.dispose();
+      // Assembly interaction: X on BlueWorkZone when ready to assemble
+      if (target instanceof BlueWorkZone && target.isReadyToAssemble()) {
+        // Only add progress once per object per frame (no coop bonus)
+        if (!activeAssemblyTargets.has(target)) {
+          activeAssemblyTargets.add(target);
+          target.addAssemblyProgress(deltaMs);
+        }
 
-            const progressBar = new ProgressBar(1.2, 0.15);
-            const targetPos = target.getPosition();
-            if (targetPos) {
-              progressBar.setPosition(new Vector3(targetPos.x, 2.5, targetPos.z));
-            }
-            this.#levelGroup.add(progressBar.getGroup());
-            progressBar.show();
+        target.getOrCreateProgressBar(this.#levelGroup);
+        target.updateProgressBar(target.getAssemblyProgress() / ASSEMBLE_HOLD_DURATION);
 
-            this.#holdInteractions.set(playerId, {
-              target,
-              type: 'assemble',
-              progressBar,
+        if (target.isAssemblyComplete(ASSEMBLE_HOLD_DURATION)) {
+          const removedResources = target.assemble();
+          for (const res of removedResources) {
+            this.removeDroppedResource(res);
+          }
+
+          // Spawn phone
+          const targetPos = target.getPosition();
+          if (targetPos) {
+            const phone = new DroppedResource({
+              resourceType: 'phone',
+              position: targetPos,
+              onTopOf: target,
+              state: 'repaired',
             });
+            phone.create(this.#levelGroup);
+            this.addDroppedResource(phone, target);
           }
-
-          const hold = this.#holdInteractions.get(playerId)!;
-          const progress = holdDuration / ASSEMBLE_HOLD_DURATION;
-          hold.progressBar.setProgress(progress);
-
-          if (holdDuration >= ASSEMBLE_HOLD_DURATION) {
-            const removedResources = target.assemble();
-            for (const res of removedResources) {
-              this.removeDroppedResource(res);
-            }
-
-            // Spawn phone
-            const targetPos = target.getPosition();
-            if (targetPos) {
-              const phone = new DroppedResource({
-                resourceType: 'phone',
-                position: targetPos,
-                onTopOf: target,
-                state: 'repaired',
-              });
-              phone.create(this.#levelGroup);
-              this.addDroppedResource(phone, target);
-            }
-
-            this.#cleanupHoldInteraction(playerId);
-          }
-          continue;
         }
       }
-
-      // Clean up hold interaction if X not pressed or target changed
-      const existingHold = this.#holdInteractions.get(playerId);
-      if (existingHold && (holdDuration === 0 || existingHold.target !== target)) {
-        this.#cleanupHoldInteraction(playerId);
-      }
-    }
-  }
-
-  #cleanupHoldInteraction(playerId: PlayerId): void {
-    const hold = this.#holdInteractions.get(playerId);
-    if (hold) {
-      hold.progressBar.dispose();
-      this.#holdInteractions.delete(playerId);
     }
   }
 

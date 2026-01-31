@@ -1,6 +1,7 @@
 import { Box3, type Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
+import { ProgressBar } from '../../hud/ProgressBar';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { Crate } from './Crate';
@@ -21,6 +22,8 @@ export class BlueWorkZone extends LevelObject {
   #params: BlueWorkZoneParams;
   #containedResources: Map<AssemblyResourceType, DroppedResource> = new Map();
   #indicatorMeshes: Map<AssemblyResourceType, Mesh> = new Map();
+  #assemblyProgress: number = 0;
+  #progressBar: ProgressBar | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
@@ -43,12 +46,14 @@ export class BlueWorkZone extends LevelObject {
   public setResource(resource: DroppedResource | null): void {
     if (!resource) {
       this.#containedResources.clear();
+      this.resetAssemblyProgress();
       return;
     }
     const type = resource.getResourceType() as AssemblyResourceType;
     if (ASSEMBLY_RESOURCES.includes(type)) {
       this.#containedResources.set(type, resource);
       this.#updateIndicators();
+      this.resetAssemblyProgress();
     }
   }
 
@@ -67,7 +72,44 @@ export class BlueWorkZone extends LevelObject {
     const removed = Array.from(this.#containedResources.values());
     this.#containedResources.clear();
     this.#updateIndicators();
+    this.#progressBar?.dispose();
+    this.#progressBar = null;
     return removed;
+  }
+
+  public getAssemblyProgress(): number {
+    return this.#assemblyProgress;
+  }
+
+  public addAssemblyProgress(deltaMs: number): void {
+    this.#assemblyProgress += deltaMs;
+  }
+
+  public resetAssemblyProgress(): void {
+    this.#assemblyProgress = 0;
+    this.#progressBar?.dispose();
+    this.#progressBar = null;
+  }
+
+  public isAssemblyComplete(requiredDuration: number): boolean {
+    return this.#assemblyProgress >= requiredDuration;
+  }
+
+  public getOrCreateProgressBar(levelGroup: Group): ProgressBar {
+    if (!this.#progressBar) {
+      this.#progressBar = new ProgressBar(1.2, 0.15);
+      const pos = this.getPosition();
+      if (pos) {
+        this.#progressBar.setPosition(new Vector3(pos.x, 2.5, pos.z));
+      }
+      levelGroup.add(this.#progressBar.getGroup());
+      this.#progressBar.show();
+    }
+    return this.#progressBar;
+  }
+
+  public updateProgressBar(progress: number): void {
+    this.#progressBar?.setProgress(progress);
   }
 
   #updateIndicators(): void {

@@ -1,6 +1,7 @@
 import { Box3, type Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
+import { ProgressBar } from '../../hud/ProgressBar';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { Crate } from './Crate';
@@ -19,6 +20,8 @@ export class DroppedResource extends LevelObject {
   #resourceType: ResourceType;
   #state: ResourceState;
   #group: Group | null = null;
+  #repairProgress: number = 0;
+  #progressBar: ProgressBar | null = null;
 
   constructor(params: DroppedResourceParams) {
     super();
@@ -44,6 +47,47 @@ export class DroppedResource extends LevelObject {
     if (this.#state === 'repaired') return;
     this.#state = 'repaired';
     this.swapModel();
+  }
+
+  public getRepairProgress(): number {
+    return this.#repairProgress;
+  }
+
+  public addRepairProgress(deltaMs: number): void {
+    this.#repairProgress += deltaMs;
+  }
+
+  public resetRepairProgress(): void {
+    this.#repairProgress = 0;
+    this.#progressBar?.dispose();
+    this.#progressBar = null;
+  }
+
+  public isRepairComplete(requiredDuration: number): boolean {
+    return this.#repairProgress >= requiredDuration;
+  }
+
+  public getOrCreateProgressBar(levelGroup: Group): ProgressBar {
+    if (!this.#progressBar) {
+      this.#progressBar = new ProgressBar(1.2, 0.15);
+      const pos = this.getPosition();
+      if (pos) {
+        this.#progressBar.setPosition(new Vector3(pos.x, 2.5, pos.z));
+      }
+      levelGroup.add(this.#progressBar.getGroup());
+      this.#progressBar.show();
+    }
+    return this.#progressBar;
+  }
+
+  public updateProgressBar(progress: number): void {
+    this.#progressBar?.setProgress(progress);
+  }
+
+  public override dispose(): void {
+    this.#progressBar?.dispose();
+    this.#progressBar = null;
+    super.dispose();
   }
 
   public swapModel(): void {
