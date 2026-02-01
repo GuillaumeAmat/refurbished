@@ -23,7 +23,7 @@ export class Environment {
   #debug: Debug;
   #debugProperties = {
     DisplayAxesHelper: true,
-    DisplayGridHelper: true,
+    DisplayGridHelper: false,
     DisplayLightsHelpers: true,
   };
 
