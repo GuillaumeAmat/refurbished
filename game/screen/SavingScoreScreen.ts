@@ -1,92 +1,91 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { SavingScoreOverlayHUD } from '../hud/SavingScoreOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
 
 export class SavingScoreScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #statusMesh: Mesh | null = null;
-  #continueMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #savingOverlay: SavingScoreOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  #visible = false;
+  #canContinue = false;
+
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#savingOverlay = new SavingScoreOverlayHUD();
+    this.#hudManager.add('center', this.#savingOverlay);
+    this.#hudManager.hide();
+
+    this.#savingOverlay.onContinue(() => {
+      this.#stageActor.send({ type: 'continue' });
+    });
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Saving score')) {
         this.show();
+        // Simulate save completion (in real impl, this would be async)
+        setTimeout(() => {
+          this.#savingOverlay.showSaved();
+          this.#canContinue = true;
+        }, 500);
       } else {
         this.hide();
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Saving Score...', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 2, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#statusMesh = createTextMesh('Score saved successfully!', font, {
-      extrusionDepth: 0.05,
-      size: 1,
-      material: this.#material,
-    });
-    this.#statusMesh.position.set(0, 0, 0);
-    this.#group.add(this.#statusMesh);
-
-    this.#continueMesh = createTextMesh('> Continue to Leaderboard', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#continueMesh.position.set(0, -2, 0);
-    this.#group.add(this.#continueMesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#canContinue = false;
+    this.#hudManager.show();
+    this.#savingOverlay.reset();
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#canContinue = false;
+    this.#hudManager.hide();
+  }
+
+  #handleInput() {
+    if (!this.#canContinue) return;
+
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (input.isButtonJustPressed('a')) {
+        this.#savingOverlay.triggerContinue();
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

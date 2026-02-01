@@ -10,10 +10,15 @@ import { TimeHUD } from '../hud/TimeHUD';
 import type { LevelInfo } from '../levels';
 import { ScoreManager } from '../state/ScoreManager';
 import { SessionManager } from '../state/SessionManager';
-import { GamepadManager } from '../util/input/GamepadManager';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 import type { Camera } from '../world/Camera';
 import { Level } from '../world/Level';
+
+// States where level background remains visible
+const LEVEL_BACKGROUND_STATES = ['Level', 'Score', 'Saving score', 'Pause'];
+// States where player interaction is enabled
+const INTERACTIVE_STATES = ['Level'];
 
 export class LevelScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -30,6 +35,7 @@ export class LevelScreen {
   #levelInitialized = false;
   #sessionManager: SessionManager;
   #scoreManager: ScoreManager;
+  #isInteractive = false;
 
   // Bound listener references for cleanup
   #onGamepadDisconnected: () => void;
@@ -45,8 +51,11 @@ export class LevelScreen {
     this.#levelInfo = levelInfo;
 
     this.#subscription = this.#stageActor.subscribe((state) => {
-      if (state.matches('Level')) {
-        this.show();
+      const isBackgroundVisible = LEVEL_BACKGROUND_STATES.some((s) => state.matches(s));
+      const isInteractive = INTERACTIVE_STATES.some((s) => state.matches(s));
+
+      if (isBackgroundVisible) {
+        this.show(isInteractive);
       } else {
         this.hide();
       }
@@ -54,6 +63,7 @@ export class LevelScreen {
 
     this.#onGamepadDisconnected = () => {
       if (!this.#group.visible) return;
+      if (!this.#isInteractive) return;
 
       const config = useRuntimeConfig();
       if (!config.public.keyboardFallbackEnabled) {
@@ -74,12 +84,14 @@ export class LevelScreen {
     this.#gamepadManager.addEventListener('controllersReadyChange', this.#onControllersReadyChange);
 
     this.#group = new Group();
+    this.#group.visible = false;
     this.#scene.add(this.#group);
 
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
     this.#hudManager.add('topRight', new ControllersHUD(this.#gamepadManager));
     this.#hudManager.add('bottomLeft', new PointsHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
+    this.#hudManager.hide();
 
     this.#sizes = Sizes.getInstance();
     this.#onResize = () => this.#hudManager.updatePositions();
@@ -103,26 +115,56 @@ export class LevelScreen {
     this.#levelInitialized = true;
   }
 
-  private show() {
+  private show(interactive: boolean) {
+    const wasHidden = !this.#group.visible;
+
     this.#group.visible = true;
-    this.#hudManager.show();
-    this.#scoreManager.reset();
-    this.#sessionManager.reset();
-    this.#sessionManager.start();
-    this.initLevel();
+    this.#isInteractive = interactive;
+    this.#level?.setInteractive(interactive);
+
+    // Show game HUD only in interactive mode
+    if (interactive) {
+      this.#hudManager.show();
+    } else {
+      this.#hudManager.hide();
+    }
+
+    // Only reset/start session when freshly entering from hidden state
+    if (wasHidden) {
+      this.#scoreManager.reset();
+      this.#sessionManager.reset();
+      this.#sessionManager.start();
+      this.initLevel();
+    }
   }
 
   private hide() {
     this.#group.visible = false;
+    this.#isInteractive = false;
     this.#hudManager.hide();
     this.#sessionManager.stop();
+  }
+
+  #checkPauseInput() {
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (input.isButtonJustPressed('start')) {
+        this.#stageActor.send({ type: 'pause' });
+        return;
+      }
+    }
   }
 
   public update() {
     if (!this.#group.visible) return;
     if (!this.#levelInitialized) return;
 
-    this.#gamepadManager.update();
+    if (this.#isInteractive) {
+      this.#checkPauseInput();
+    }
+
     this.#level?.update();
     this.#hudManager.update();
   }

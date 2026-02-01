@@ -1,29 +1,42 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { PauseOverlayHUD } from '../hud/PauseOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
 
 export class PauseScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #commandsMesh: Mesh | null = null;
-  #resumeMesh: Mesh | null = null;
-  #quitMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #pauseOverlay: PauseOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  #visible = false;
+  #justBecameVisible = false;
+  #movementDebounceTime = 0;
+  static readonly MOVEMENT_DEBOUNCE_MS = 150;
+
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#pauseOverlay = new PauseOverlayHUD();
+    this.#hudManager.add('center', this.#pauseOverlay);
+    this.#hudManager.hide();
+
+    this.#pauseOverlay.onResume(() => {
+      this.#stageActor.send({ type: 'resume' });
+    });
+
+    this.#pauseOverlay.onQuit(() => {
+      this.#stageActor.send({ type: 'quit' });
+    });
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Pause')) {
@@ -33,68 +46,71 @@ export class PauseScreen {
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Paused', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 4, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#commandsMesh = createTextMesh('Controls:\nGamepad - Move vehicle\nPause button - Resume/Pause', font, {
-      extrusionDepth: 0.05,
-      size: 0.7,
-      material: this.#material,
-    });
-    this.#commandsMesh.position.set(0, 1.5, 0);
-    this.#group.add(this.#commandsMesh);
-
-    this.#resumeMesh = createTextMesh('> Resume', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#resumeMesh.position.set(-1, -1, 0);
-    this.#group.add(this.#resumeMesh);
-
-    this.#quitMesh = createTextMesh('  Quit to Menu', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#quitMesh.position.set(-1, -2.5, 0);
-    this.#group.add(this.#quitMesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#justBecameVisible = true;
+    this.#hudManager.show();
+    this.#pauseOverlay.reset();
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
+  }
+
+  #handleInput() {
+    const now = Date.now();
+
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      const movement = input.getMovement();
+
+      // Left/Right to switch between resume/quit (debounced for analog input)
+      if (Math.abs(movement.x) > 0.5 && now - this.#movementDebounceTime >= PauseScreen.MOVEMENT_DEBOUNCE_MS) {
+        this.#movementDebounceTime = now;
+        const current = this.#pauseOverlay.getSelectedOption();
+        this.#pauseOverlay.setSelectedOption(current === 'resume' ? 'quit' : 'resume');
+      }
+
+      // Primary button to confirm
+      if (input.isButtonJustPressed('a')) {
+        const option = this.#pauseOverlay.getSelectedOption();
+        if (option === 'resume') {
+          this.#pauseOverlay.triggerResume();
+        } else {
+          this.#pauseOverlay.triggerQuit();
+        }
+      }
+
+      // Start button to quick-resume
+      if (input.isButtonJustPressed('start')) {
+        this.#pauseOverlay.triggerResume();
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    // Skip input on the frame we became visible (same justPressed state as trigger)
+    if (this.#justBecameVisible) {
+      this.#justBecameVisible = false;
+    } else {
+      this.#handleInput();
+    }
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

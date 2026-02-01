@@ -6,6 +6,7 @@ export class KeyboardController implements InputSource {
   #boundKeyDownHandler: (event: KeyboardEvent) => void;
 
   #keysPressed = new Set<string>();
+  #keysJustPressed = new Set<string>();
   #keyHoldStart: Map<string, number> = new Map();
   #keySet?: 'player1' | 'player2';
 
@@ -29,35 +30,51 @@ export class KeyboardController implements InputSource {
   }
 
   public isButtonPressed(button: string): boolean {
+    return this.#isButtonInSet(button, this.#keysPressed);
+  }
+
+  public isButtonJustPressed(button: string): boolean {
+    return this.#isButtonInSet(button, this.#keysJustPressed);
+  }
+
+  #isButtonInSet(button: string, set: Set<string>): boolean {
     if (button === 'b') {
       if (this.#keySet === 'player1') {
-        return this.#keysPressed.has('AltLeft');
+        return set.has('AltLeft');
       } else if (this.#keySet === 'player2') {
-        return this.#keysPressed.has('AltRight');
+        return set.has('AltRight');
       }
       // No keySet: accept both (backward compat)
-      return this.#keysPressed.has('AltLeft') || this.#keysPressed.has('AltRight');
+      return set.has('AltLeft') || set.has('AltRight');
     }
 
     if (button === 'a') {
       if (this.#keySet === 'player1') {
-        return this.#keysPressed.has('Space');
+        return set.has('Space');
       } else if (this.#keySet === 'player2') {
-        return this.#keysPressed.has('Enter');
+        return set.has('Enter');
       }
-      return this.#keysPressed.has('Space') || this.#keysPressed.has('Enter');
+      return set.has('Space') || set.has('Enter');
     }
 
     if (button === 'x') {
       if (this.#keySet === 'player1') {
-        return this.#keysPressed.has('ShiftLeft');
+        return set.has('ShiftLeft');
       } else if (this.#keySet === 'player2') {
-        return this.#keysPressed.has('ShiftRight');
+        return set.has('ShiftRight');
       }
-      return this.#keysPressed.has('ShiftLeft') || this.#keysPressed.has('ShiftRight');
+      return set.has('ShiftLeft') || set.has('ShiftRight');
     }
 
-    return this.#keysPressed.has(button);
+    if (button === 'start') {
+      return set.has('Escape');
+    }
+
+    return set.has(button);
+  }
+
+  public update(): void {
+    this.#keysJustPressed.clear();
   }
 
   public getButtonHoldDuration(button: string): number {
@@ -129,6 +146,7 @@ export class KeyboardController implements InputSource {
     window.removeEventListener('keydown', this.#boundKeyDownHandler);
     this.#buttonUpCallback = null;
     this.#keysPressed.clear();
+    this.#keysJustPressed.clear();
     this.#keyHoldStart.clear();
   }
 
@@ -163,6 +181,9 @@ export class KeyboardController implements InputSource {
   }
 
   #handleKeyDown(event: KeyboardEvent) {
+    if (!this.#keysPressed.has(event.code)) {
+      this.#keysJustPressed.add(event.code);
+    }
     this.#keysPressed.add(event.code);
   }
 }

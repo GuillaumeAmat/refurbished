@@ -197,6 +197,11 @@ export class GamepadManager extends EventTarget {
     }
   }
 
+  updateKeyboards(): void {
+    this.#keyboardPlayer1?.update();
+    this.#keyboardPlayer2?.update();
+  }
+
   cleanup(): void {
     if (this.#rafId) {
       cancelAnimationFrame(this.#rafId);

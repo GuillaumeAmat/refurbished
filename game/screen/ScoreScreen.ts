@@ -1,35 +1,45 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { ScoreManager } from '../state/ScoreManager';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { ScoreOverlayHUD } from '../hud/ScoreOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
+
+const ALLOWED_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_';
+const MAX_NAME_LENGTH = 12;
 
 export class ScoreScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
-  #scoreManager: ScoreManager;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #scoreMesh: Mesh | null = null;
-  #promptMesh: Mesh | null = null;
-  #nameInputMesh: Mesh | null = null;
-  #saveMesh: Mesh | null = null;
-  #skipMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #scoreOverlay: ScoreOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  #visible = false;
+  #charIndex = 0;
+  #movementDebounceTime = 0;
+  static readonly MOVEMENT_DEBOUNCE_MS = 150;
+
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
-    this.#scoreManager = ScoreManager.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#scoreOverlay = new ScoreOverlayHUD();
+    this.#hudManager.add('center', this.#scoreOverlay);
+    this.#hudManager.hide();
+
+    this.#scoreOverlay.onSave((name) => {
+      this.#stageActor.send({ type: 'save', playerName: name || 'Anonymous' });
+    });
+
+    this.#scoreOverlay.onSkip(() => {
+      this.#stageActor.send({ type: 'skip' });
+    });
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Score')) {
@@ -39,105 +49,102 @@ export class ScoreScreen {
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Game Over', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 4, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#scoreMesh = createTextMesh('Your Score: 1000', font, {
-      extrusionDepth: 0.08,
-      size: 1.2,
-      material: this.#material,
-    });
-    this.#scoreMesh.position.set(0, 2.5, 0);
-    this.#group.add(this.#scoreMesh);
-
-    this.#promptMesh = createTextMesh('Enter your name:', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#promptMesh.position.set(0, 1, 0);
-    this.#group.add(this.#promptMesh);
-
-    this.#nameInputMesh = createTextMesh('Player_', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#nameInputMesh.position.set(0, 0, 0);
-    this.#group.add(this.#nameInputMesh);
-
-    this.#saveMesh = createTextMesh('> Save Score', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#saveMesh.position.set(-1, -1.5, 0);
-    this.#group.add(this.#saveMesh);
-
-    this.#skipMesh = createTextMesh('  Skip', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#skipMesh.position.set(2, -1.5, 0);
-    this.#group.add(this.#skipMesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private show() {
-    this.#group.visible = true;
-    this.#updateScoreMesh();
-  }
-
-  #updateScoreMesh() {
-    const font = this.#resources.getFontAsset('interFont');
-    if (!font || !this.#scoreMesh) return;
-
-    const score = this.#scoreManager.getScore();
-
-    // Dispose old geometry
-    this.#scoreMesh.geometry.dispose();
-
-    // Create new mesh with updated score
-    const newMesh = createTextMesh(`Your Score: ${score}`, font, {
-      extrusionDepth: 0.08,
-      size: 1.2,
-      material: this.#material,
-    });
-
-    // Copy geometry to existing mesh
-    this.#scoreMesh.geometry = newMesh.geometry;
+    this.#visible = true;
+    this.#hudManager.show();
+    this.#scoreOverlay.reset();
+    this.#charIndex = 0;
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
+  }
+
+  #handleInput() {
+    const now = Date.now();
+    const canMove = now - this.#movementDebounceTime >= ScoreScreen.MOVEMENT_DEBOUNCE_MS;
+
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      const movement = input.getMovement();
+
+      // Left/Right to switch between save/skip (debounced for analog input)
+      if (canMove && Math.abs(movement.x) > 0.5) {
+        this.#movementDebounceTime = now;
+        const current = this.#scoreOverlay.getSelectedOption();
+        this.#scoreOverlay.setSelectedOption(current === 'save' ? 'skip' : 'save');
+      }
+
+      // Up/Down to cycle through characters (debounced for analog input)
+      if (canMove && Math.abs(movement.z) > 0.5) {
+        this.#movementDebounceTime = now;
+        const name = this.#scoreOverlay.getPlayerName();
+        const chars = name.split('');
+        const currentChar = chars[this.#charIndex] || 'A';
+        const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
+
+        let newIdx: number;
+        if (movement.z < -0.5) {
+          // Up - next char
+          newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
+        } else {
+          // Down - prev char
+          newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
+        }
+
+        chars[this.#charIndex] = ALLOWED_CHARS[newIdx]!;
+        this.#scoreOverlay.setPlayerName(chars.join(''));
+      }
+
+      // Primary button to confirm character / select option
+      if (input.isButtonJustPressed('a')) {
+        const option = this.#scoreOverlay.getSelectedOption();
+        if (option === 'save') {
+          const name = this.#scoreOverlay.getPlayerName();
+          if (name.length < MAX_NAME_LENGTH) {
+            // Add cursor and move to next char
+            this.#charIndex++;
+            if (this.#charIndex >= name.length) {
+              this.#scoreOverlay.setPlayerName(name + 'A');
+            }
+          } else {
+            // Max length reached, trigger save
+            this.#scoreOverlay.triggerSave();
+          }
+        } else {
+          this.#scoreOverlay.triggerSkip();
+        }
+      }
+
+      // Secondary button to delete character or go back
+      if (input.isButtonJustPressed('b')) {
+        const name = this.#scoreOverlay.getPlayerName();
+        if (name.length > 0 && this.#charIndex > 0) {
+          this.#charIndex--;
+          this.#scoreOverlay.setPlayerName(name.slice(0, -1));
+        }
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }
