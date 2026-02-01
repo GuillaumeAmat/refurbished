@@ -3,6 +3,7 @@ import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scen
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
 import type { ResourceState, ResourceType } from '../types';
+import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
@@ -24,6 +25,28 @@ export class Player {
 
   #mesh: Object3D | null = null;
   #rigidBody: RAPIER.RigidBody | null = null;
+
+  // Body parts for procedural animation (pig only)
+  #body: Object3D | null = null;
+  #head: Object3D | null = null;
+  #handLeft: Object3D | null = null;
+  #handRight: Object3D | null = null;
+
+  // Animation parameters (tunable via debug GUI)
+  #animParams = {
+    headBobFreq: 9,
+    headBobAmp: 0.06,
+    headSwayFreq: 14,
+    headSwayAmp: 0.16,
+    handsFreq: 32,
+    handsAmp: 0.2,
+    bodyTilt: 0.5,
+    bodyTwistFreq: 16,
+    bodyTwistAmp: 0.41,
+  };
+
+  // Current tilt values for smooth interpolation
+  #currentBodyTilt = 0;
 
   #currentRotationY = 0;
   #targetRotationY = 0;
@@ -92,6 +115,8 @@ export class Player {
     this.createPhysicsBody();
     this.#setupInputCallbacks();
     this.#setupSmokeSystem();
+
+    this.#setupAnimationDebug();
   }
 
   #setupInputCallbacks(): void {
@@ -111,6 +136,31 @@ export class Player {
 
   #setupSmokeSystem(): void {
     this.#smokeSystem = new SmokeParticleSystem(this.#scene);
+  }
+
+  #setupAnimationDebug(): void {
+    const debug = Debug.getInstance();
+    if (!debug?.active) return;
+
+    const characterName = this.#playerId === 1 ? 'Pig' : 'Croco';
+    const folder = debug.gui.addFolder(`${characterName} Animation`);
+
+    const headFolder = folder.addFolder('Head');
+    headFolder.add(this.#animParams, 'headBobFreq', 1, 50, 1).name('Bob Freq');
+    headFolder.add(this.#animParams, 'headBobAmp', 0, 0.5, 0.01).name('Bob Amp');
+    headFolder.add(this.#animParams, 'headSwayFreq', 1, 50, 1).name('Sway Freq');
+    headFolder.add(this.#animParams, 'headSwayAmp', 0, 0.5, 0.01).name('Sway Amp');
+
+    const handsFolder = folder.addFolder('Hands');
+    handsFolder.add(this.#animParams, 'handsFreq', 1, 50, 1).name('Frequency');
+    handsFolder.add(this.#animParams, 'handsAmp', 0, 1, 0.01).name('Amplitude');
+
+    const bodyFolder = folder.addFolder('Body');
+    bodyFolder.add(this.#animParams, 'bodyTilt', 0, 0.5, 0.01).name('Forward Tilt');
+    bodyFolder.add(this.#animParams, 'bodyTwistFreq', 1, 30, 1).name('Twist Freq');
+    bodyFolder.add(this.#animParams, 'bodyTwistAmp', 0, 0.5, 0.01).name('Twist Amp');
+
+    folder.open();
   }
 
   private createMesh() {
@@ -139,6 +189,32 @@ export class Player {
         }
       }
     });
+
+    // Get references to body parts for procedural animation
+    if (this.#playerId === 1) {
+      // Pig
+      this.#body = this.#mesh.getObjectByName('Sphere') ?? null;
+      this.#head = this.#mesh.getObjectByName('Sphere002') ?? null;
+      this.#handLeft = this.#mesh.getObjectByName('Cylinder') ?? null;
+      this.#handRight = this.#mesh.getObjectByName('Cylinder001') ?? null;
+    } else {
+      // Croco
+      this.#body = this.#mesh.getObjectByName('Sphere006') ?? null;
+      this.#head = this.#mesh.getObjectByName('Sphere005') ?? null;
+      this.#handLeft = this.#mesh.getObjectByName('Cylinder003') ?? null;
+      this.#handRight = this.#mesh.getObjectByName('Cylinder002') ?? null;
+    }
+
+    // Reparent hands under body so they rotate with body twist
+    if (this.#body && this.#handLeft && this.#handRight) {
+      const bodyPos = this.#body.position;
+      const leftPos = this.#handLeft.position.clone().sub(bodyPos);
+      const rightPos = this.#handRight.position.clone().sub(bodyPos);
+      this.#body.add(this.#handLeft);
+      this.#body.add(this.#handRight);
+      this.#handLeft.position.copy(leftPos);
+      this.#handRight.position.copy(rightPos);
+    }
 
     this.#screenGroup.add(this.#mesh);
   }
@@ -289,6 +365,64 @@ export class Player {
     return { type, state };
   }
 
+  #updateAnimation(): void {
+    if (!this.#rigidBody) return;
+
+    const velocity = this.#rigidBody.linvel();
+    const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
+    const isMoving = speed > 0.1;
+
+    const time = this.#time.elapsed * 0.001;
+    const { headBobFreq, headBobAmp, headSwayFreq, headSwayAmp, handsFreq, handsAmp, bodyTilt, bodyTwistFreq, bodyTwistAmp } =
+      this.#animParams;
+    const lerpFactor = isMoving ? 0.1 : 0.25;
+
+    // Body & Head: tilt forward when moving
+    const targetTilt = isMoving ? bodyTilt : 0;
+    this.#currentBodyTilt += (targetTilt - this.#currentBodyTilt) * lerpFactor;
+
+    if (this.#body) {
+      this.#body.rotation.x = this.#currentBodyTilt;
+      if (isMoving) {
+        const twistWave = Math.sin(time * bodyTwistFreq);
+        this.#body.rotation.y = twistWave * bodyTwistAmp;
+      } else {
+        this.#body.rotation.y *= 1 - lerpFactor;
+      }
+    }
+
+    if (isMoving) {
+      // Head: bobbing up-down and left-right, plus forward tilt
+      if (this.#head) {
+        const headBobWave = Math.sin(time * headBobFreq);
+        const headSwayWave = Math.sin(time * headSwayFreq);
+        this.#head.rotation.x = this.#currentBodyTilt + headBobWave * headBobAmp;
+        this.#head.rotation.y = headSwayWave * headSwayAmp;
+      }
+
+      // Hands: opposite swinging motion
+      const handsWave = Math.sin(time * handsFreq);
+      if (this.#handLeft) {
+        this.#handLeft.rotation.x = handsWave * handsAmp;
+      }
+      if (this.#handRight) {
+        this.#handRight.rotation.x = -handsWave * handsAmp;
+      }
+    } else {
+      // Smoothly return to neutral position
+      if (this.#head) {
+        this.#head.rotation.x += (this.#currentBodyTilt - this.#head.rotation.x) * lerpFactor;
+        this.#head.rotation.y *= 1 - lerpFactor;
+      }
+      if (this.#handLeft) {
+        this.#handLeft.rotation.x *= 1 - lerpFactor;
+      }
+      if (this.#handRight) {
+        this.#handRight.rotation.x *= 1 - lerpFactor;
+      }
+    }
+  }
+
   #updateSmoke(): void {
     if (!this.#smokeSystem || !this.#rigidBody) return;
 
@@ -309,6 +443,7 @@ export class Player {
     this.updateMovement();
     this.updateRotation();
     this.syncMeshWithPhysics();
+    this.#updateAnimation();
     this.#updateSmoke();
   }
 }
