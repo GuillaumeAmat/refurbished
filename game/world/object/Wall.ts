@@ -45,7 +45,7 @@ export class Wall extends LevelObject {
       case 'bottom':
         mesh.position.x = (index + 1) * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = levelDepth * TILE_SIZE + wallSize.z;
+        mesh.position.z = levelDepth * TILE_SIZE + wallSize.z + 0.5;
         mesh.rotation.y = Math.PI;
         break;
       case 'left':
