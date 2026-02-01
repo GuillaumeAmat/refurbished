@@ -336,6 +336,7 @@ export class Stage {
   }
 
   public dispose() {
+    this.#time.dispose();
     this.#sizes.removeEventListener('resize', this.#onResize);
     this.#actor.stop();
   }
