@@ -1,6 +1,8 @@
-import { Box3, Group, Vector3 } from 'three';
+import type { MeshStandardMaterial } from 'three';
+import { Box3, Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
+import { Debug } from '../../util/Debug';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -66,6 +68,33 @@ export class NeonWall extends LevelObject {
     }
 
     this.setupShadows(mesh);
+    this.setupNeonMaterials(mesh);
+
+    // Boost blue neon emissive intensity and add debug slider
+    if (variant === 'blue') {
+      const neonMaterials: MeshStandardMaterial[] = [];
+      mesh.traverse((child) => {
+        if (child instanceof Mesh && child.name.toLowerCase().includes('neon')) {
+          const mat = child.material as MeshStandardMaterial;
+          child.material = mat.clone();
+          neonMaterials.push(child.material as MeshStandardMaterial);
+        }
+      });
+
+      const debug = Debug.getInstance();
+      const firstMat = neonMaterials[0];
+      if (debug.active && firstMat) {
+        const params = { blueNeonIntensity: firstMat.emissiveIntensity };
+        debug.gui
+          .add(params, 'blueNeonIntensity', 0, 10, 0.1)
+          .name('Blue Neon Intensity')
+          .onChange((value: number) => {
+            neonMaterials.forEach((mat) => {
+              mat.emissiveIntensity = value;
+            });
+          });
+      }
+    }
 
     const container = new Group();
     container.add(mesh);
