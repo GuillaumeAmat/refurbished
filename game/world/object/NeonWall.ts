@@ -50,7 +50,7 @@ export class NeonWall extends LevelObject {
       case 'bottom':
         mesh.position.x = (index + 2) * TILE_SIZE;
         mesh.position.y = 0;
-        mesh.position.z = levelDepth * TILE_SIZE + wallSize.z;
+        mesh.position.z = levelDepth * TILE_SIZE + wallSize.z + 0.5;
         mesh.rotation.y = Math.PI;
         break;
       case 'left':
