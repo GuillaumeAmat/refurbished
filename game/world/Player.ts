@@ -275,14 +275,24 @@ export class Player {
     let desiredVelX: number;
     let desiredVelZ: number;
 
+    // Normalize movement vector to prevent faster diagonal movement
+    const magnitude = Math.sqrt(x * x + z * z);
+    const normalizedX = magnitude > 0 ? x / magnitude : 0;
+    const normalizedZ = magnitude > 0 ? z / magnitude : 0;
+    // Use original magnitude clamped to 1 for analog stick sensitivity
+    const inputMagnitude = Math.min(magnitude, 1);
+
     if (this.#dashState.isDashing) {
-      // Apply dash velocity
-      desiredVelX = this.#dashState.direction.x * DASH_SPEED;
-      desiredVelZ = this.#dashState.direction.z * DASH_SPEED;
+      // Apply dash velocity (also normalize dash direction)
+      const dashMag = Math.sqrt(this.#dashState.direction.x ** 2 + this.#dashState.direction.z ** 2);
+      const dashNormX = dashMag > 0 ? this.#dashState.direction.x / dashMag : 0;
+      const dashNormZ = dashMag > 0 ? this.#dashState.direction.z / dashMag : 0;
+      desiredVelX = dashNormX * DASH_SPEED;
+      desiredVelZ = dashNormZ * DASH_SPEED;
     } else {
-      // Apply normal movement velocity
-      desiredVelX = x * movementSpeed;
-      desiredVelZ = z * movementSpeed;
+      // Apply normal movement velocity with normalized direction
+      desiredVelX = normalizedX * inputMagnitude * movementSpeed;
+      desiredVelZ = normalizedZ * inputMagnitude * movementSpeed;
     }
 
     const forceVector = new RAPIER.Vector3(desiredVelX, currentVel.y, desiredVelZ);
