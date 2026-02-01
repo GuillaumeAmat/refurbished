@@ -54,7 +54,7 @@ export class Floor extends LevelObject {
     const planeSize = 200;
     const geometry = new PlaneGeometry(planeSize, planeSize);
     const material = new MeshStandardMaterial({
-      color: 0x1a1a1a,
+      color: 0xfffffe,
       roughness: 1,
       metalness: 0,
     });
