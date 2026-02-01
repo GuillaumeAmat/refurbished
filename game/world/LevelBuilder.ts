@@ -150,7 +150,7 @@ export class LevelBuilder {
         const cellValue = getCell(i);
         if (isWalkable(cellValue) || isDeliveryZone(cellValue)) continue;
 
-        // Replace walls 2-3 and 9-10 on top side with yellow neon walls
+        // Replace walls 2-3 and 9-10 on top side with neon walls
         if (side === 'top' && (i === 2 || i === 9)) {
           const neonWall = new NeonWall({
             index: i,
