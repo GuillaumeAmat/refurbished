@@ -135,6 +135,16 @@ export class Stage {
         path: '/game/model/environment/wall_top_regular.glb',
         priority: 'low',
       },
+      neonWallModel: {
+        type: 'gltf',
+        path: '/game/model/environment/neon_wall.glb',
+        priority: 'low',
+      },
+      neonWallBlueModel: {
+        type: 'gltf',
+        path: '/game/model/environment/neon_wall_blue.glb',
+        priority: 'low',
+      },
       blueWorkZoneModel: {
         type: 'gltf',
         path: '/game/model/environment/blue_work_zone.glb',
@@ -183,6 +193,11 @@ export class Stage {
       screenRepairedModel: {
         type: 'gltf',
         path: '/game/model/resource/screen_repaired.glb',
+        priority: 'low',
+      },
+      groundModel: {
+        type: 'gltf',
+        path: '/game/model/environment/ground.glb',
         priority: 'low',
       },
       phoneAssembledModel: {
