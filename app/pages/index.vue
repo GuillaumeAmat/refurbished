@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { definePageMeta, useSimpleHead } from '#imports';
 import { BACKGROUND_COLOR } from '~~/game/constants';
@@ -22,11 +22,16 @@ useSimpleHead({
 });
 
 const canvas = ref<HTMLCanvasElement>();
+let stage: Stage | null = null;
 
 onMounted(() => {
   if (!canvas.value) return;
 
-  new Stage(canvas.value);
+  stage = new Stage(canvas.value);
+});
+
+onBeforeUnmount(() => {
+  stage?.dispose();
 });
 </script>
 
