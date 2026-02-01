@@ -7,7 +7,6 @@ import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
 import { Floor } from './object/Floor';
 import type { LevelObject } from './object/LevelObject';
-import { OuterFloor } from './object/OuterFloor';
 import { Player } from './Player';
 
 export class Level {
@@ -17,7 +16,6 @@ export class Level {
   #levelInfo: LevelInfo;
 
   #floor!: Floor;
-  #outerFloor!: OuterFloor;
   #levelBuilder!: LevelBuilder;
   #player1: Player | null = null;
   #player2: Player | null = null;
@@ -42,9 +40,6 @@ export class Level {
 
   public async init(): Promise<void> {
     await this.#physics.init(this.#scene);
-
-    this.#outerFloor = new OuterFloor(this.#levelInfo);
-    this.#outerFloor.create(this.#group);
 
     this.#floor = new Floor(this.#levelInfo);
     this.#floor.create(this.#group);
@@ -103,7 +98,6 @@ export class Level {
 
   public dispose(): void {
     this.#floor.dispose();
-    this.#outerFloor.dispose();
     this.#levelBuilder.dispose();
     this.#group.removeFromParent();
   }
