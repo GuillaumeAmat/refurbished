@@ -31,7 +31,7 @@ export class Camera {
     const { center } = this.#levelInfo;
 
     this.#camera = new PerspectiveCamera(35, aspect, 0.1, 100);
-    this.#camera.position.set(center.x, center.y + 30, center.z + 18);
+    this.#camera.position.set(center.x, center.y + 30, center.z + 18.5);
     this.#camera.lookAt(center);
     this.#scene.add(this.#camera);
 

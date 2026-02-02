@@ -111,13 +111,7 @@ export class DroppedResource extends LevelObject {
     newMesh.position.copy(oldPosition);
     newMesh.rotation.copy(oldRotation);
 
-    newMesh.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-
+    this.setupShadows(newMesh);
     this.cloneMaterials(newMesh);
     this.mesh = newMesh;
     this.#group.add(newMesh);
@@ -165,13 +159,7 @@ export class DroppedResource extends LevelObject {
       mesh.position.y = 0;
     }
 
-    mesh.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-
+    this.setupShadows(mesh);
     this.cloneMaterials(mesh);
 
     this.mesh = mesh;

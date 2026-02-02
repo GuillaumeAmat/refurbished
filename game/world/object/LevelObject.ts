@@ -131,4 +131,17 @@ export abstract class LevelObject {
       }
     });
   }
+
+  protected setupNeonMaterials(mesh: Group): void {
+    mesh.traverse((child) => {
+      if (!(child instanceof Mesh)) return;
+
+      const isNeon = child.name.toLowerCase().includes('neon');
+
+      // Fix neon bloom disappearing at certain angles
+      if (isNeon) {
+        child.frustumCulled = false;
+      }
+    });
+  }
 }

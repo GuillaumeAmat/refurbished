@@ -2,7 +2,8 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
-import type { ResourceState, ResourceType } from '../types';
+import type { GripConfig, ResourceState, ResourceType } from '../types';
+import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
@@ -15,6 +16,14 @@ const PLAYER_COLORS = new Map<PlayerId, number>([
   [2, 0x00ff00],
 ]);
 
+const GRIP_CONFIGS: Record<ResourceType, GripConfig> = {
+  battery: { objectOffsetX: 0, objectOffsetY: 0.71, objectOffsetZ: 1.09, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.82, handOffsetY: 0.82, handOffsetZ: 0.62, handRotationX: 0.2, handRotationY: -0.01, handRotationZ: -0.62 },
+  frame: { objectOffsetX: -0.03, objectOffsetY: 0.98, objectOffsetZ: 1.09, objectRotationX: -0.7, objectRotationY: 0.24, objectRotationZ: 0.07, handOffsetX: 0.67, handOffsetY: 0.69, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  screen: { objectOffsetX: -0.03, objectOffsetY: 0.98, objectOffsetZ: 1.09, objectRotationX: -0.7, objectRotationY: 0.24, objectRotationZ: 0.07, handOffsetX: 0.67, handOffsetY: 0.69, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  phone: { objectOffsetX: 0, objectOffsetY: 0.15, objectOffsetZ: 0.35, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.12, handOffsetY: 0.15, handOffsetZ: 0.35, handRotationX: 0.35, handRotationY: 0, handRotationZ: 0 },
+  package: { objectOffsetX: 0, objectOffsetY: 0.05, objectOffsetZ: 0.5, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.3, handOffsetY: 0.05, handOffsetZ: 0.5, handRotationX: 0.5, handRotationY: 0, handRotationZ: 0 },
+};
+
 export class Player {
   #screenGroup: Group;
   #scene: Scene;
@@ -24,6 +33,36 @@ export class Player {
 
   #mesh: Object3D | null = null;
   #rigidBody: RAPIER.RigidBody | null = null;
+
+  // Body parts for procedural animation (pig only)
+  #body: Object3D | null = null;
+  #head: Object3D | null = null;
+  #handLeft: Object3D | null = null;
+  #handRight: Object3D | null = null;
+
+  // Hand rest positions for grip animation
+  #handLeftRestPos: Vector3 | null = null;
+  #handRightRestPos: Vector3 | null = null;
+
+  // Animation parameters (tunable via debug GUI)
+  #animParams = {
+    headBobFreq: 9,
+    headBobAmp: 0.06,
+    headSwayFreq: 14,
+    headSwayAmp: 0.16,
+    handsFreq: 32,
+    handsAmp: 0.2,
+    bodyTilt: 0.5,
+    bodyTwistFreq: 16,
+    bodyTwistAmp: 0.41,
+    // Body params when holding an object
+    holdingBodyTilt: 0.4,
+    holdingBodyTwistFreq: 14,
+    holdingBodyTwistAmp: 0.19,
+  };
+
+  // Current tilt values for smooth interpolation
+  #currentBodyTilt = 0;
 
   #currentRotationY = 0;
   #targetRotationY = 0;
@@ -92,6 +131,8 @@ export class Player {
     this.createPhysicsBody();
     this.#setupInputCallbacks();
     this.#setupSmokeSystem();
+
+    this.#setupAnimationDebug();
   }
 
   #setupInputCallbacks(): void {
@@ -111,6 +152,46 @@ export class Player {
 
   #setupSmokeSystem(): void {
     this.#smokeSystem = new SmokeParticleSystem(this.#scene);
+  }
+
+  #setupAnimationDebug(): void {
+    const debug = Debug.getInstance();
+    if (!debug?.active) return;
+
+    const characterName = this.#playerId === 1 ? 'Pig' : 'Croco';
+    const folder = debug.gui.addFolder(`${characterName} Animation`);
+
+    const headFolder = folder.addFolder('Head');
+    headFolder.add(this.#animParams, 'headBobFreq', 1, 50, 1).name('Bob Freq');
+    headFolder.add(this.#animParams, 'headBobAmp', 0, 0.5, 0.01).name('Bob Amp');
+    headFolder.add(this.#animParams, 'headSwayFreq', 1, 50, 1).name('Sway Freq');
+    headFolder.add(this.#animParams, 'headSwayAmp', 0, 0.5, 0.01).name('Sway Amp');
+
+    const handsFolder = folder.addFolder('Hands');
+    handsFolder.add(this.#animParams, 'handsFreq', 1, 50, 1).name('Frequency');
+    handsFolder.add(this.#animParams, 'handsAmp', 0, 1, 0.01).name('Amplitude');
+
+    const bodyFolder = folder.addFolder('Body');
+    bodyFolder.add(this.#animParams, 'bodyTilt', 0, 0.5, 0.01).name('Forward Tilt');
+    bodyFolder.add(this.#animParams, 'bodyTwistFreq', 1, 30, 1).name('Twist Freq');
+    bodyFolder.add(this.#animParams, 'bodyTwistAmp', 0, 0.5, 0.01).name('Twist Amp');
+
+    const gripFolder = folder.addFolder('Grip (Screen)');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetX', -0.5, 0.5, 0.01).name('Object X');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetY', -0.5, 1, 0.01).name('Object Y');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetZ', 0, 1.5, 0.01).name('Object Z');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationX', -3.14, 3.14, 0.01).name('Object Rot X');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationY', -3.14, 3.14, 0.01).name('Object Rot Y');
+    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationZ', -3.14, 3.14, 0.01).name('Object Rot Z');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetX', 0, 1, 0.01).name('Hand X (width)');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetY', -0.5, 1, 0.01).name('Hand Y');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetZ', 0, 1.5, 0.01).name('Hand Z');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationX', -1.5, 1.5, 0.01).name('Hand Rot X');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationY', -1.5, 1.5, 0.01).name('Hand Rot Y');
+    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationZ', -1.5, 1.5, 0.01).name('Hand Rot Z');
+    gripFolder.open();
+
+    folder.open();
   }
 
   private createMesh() {
@@ -139,6 +220,36 @@ export class Player {
         }
       }
     });
+
+    // Get references to body parts for procedural animation
+    if (this.#playerId === 1) {
+      // Pig
+      this.#body = this.#mesh.getObjectByName('Sphere') ?? null;
+      this.#head = this.#mesh.getObjectByName('Sphere002') ?? null;
+      this.#handLeft = this.#mesh.getObjectByName('Cylinder') ?? null;
+      this.#handRight = this.#mesh.getObjectByName('Cylinder001') ?? null;
+    } else {
+      // Croco
+      this.#body = this.#mesh.getObjectByName('Sphere006') ?? null;
+      this.#head = this.#mesh.getObjectByName('Sphere005') ?? null;
+      this.#handLeft = this.#mesh.getObjectByName('Cylinder003') ?? null;
+      this.#handRight = this.#mesh.getObjectByName('Cylinder002') ?? null;
+    }
+
+    // Reparent hands under body so they rotate with body twist
+    if (this.#body && this.#handLeft && this.#handRight) {
+      const bodyPos = this.#body.position;
+      const leftPos = this.#handLeft.position.clone().sub(bodyPos);
+      const rightPos = this.#handRight.position.clone().sub(bodyPos);
+      this.#body.add(this.#handLeft);
+      this.#body.add(this.#handRight);
+      this.#handLeft.position.copy(leftPos);
+      this.#handRight.position.copy(rightPos);
+
+      // Store rest positions for grip animation
+      this.#handLeftRestPos = this.#handLeft.position.clone();
+      this.#handRightRestPos = this.#handRight.position.clone();
+    }
 
     this.#screenGroup.add(this.#mesh);
   }
@@ -199,14 +310,24 @@ export class Player {
     let desiredVelX: number;
     let desiredVelZ: number;
 
+    // Normalize movement vector to prevent faster diagonal movement
+    const magnitude = Math.sqrt(x * x + z * z);
+    const normalizedX = magnitude > 0 ? x / magnitude : 0;
+    const normalizedZ = magnitude > 0 ? z / magnitude : 0;
+    // Use original magnitude clamped to 1 for analog stick sensitivity
+    const inputMagnitude = Math.min(magnitude, 1);
+
     if (this.#dashState.isDashing) {
-      // Apply dash velocity
-      desiredVelX = this.#dashState.direction.x * DASH_SPEED;
-      desiredVelZ = this.#dashState.direction.z * DASH_SPEED;
+      // Apply dash velocity (also normalize dash direction)
+      const dashMag = Math.sqrt(this.#dashState.direction.x ** 2 + this.#dashState.direction.z ** 2);
+      const dashNormX = dashMag > 0 ? this.#dashState.direction.x / dashMag : 0;
+      const dashNormZ = dashMag > 0 ? this.#dashState.direction.z / dashMag : 0;
+      desiredVelX = dashNormX * DASH_SPEED;
+      desiredVelZ = dashNormZ * DASH_SPEED;
     } else {
-      // Apply normal movement velocity
-      desiredVelX = x * movementSpeed;
-      desiredVelZ = z * movementSpeed;
+      // Apply normal movement velocity with normalized direction
+      desiredVelX = normalizedX * inputMagnitude * movementSpeed;
+      desiredVelZ = normalizedZ * inputMagnitude * movementSpeed;
     }
 
     const forceVector = new RAPIER.Vector3(desiredVelX, currentVel.y, desiredVelZ);
@@ -256,7 +377,7 @@ export class Player {
   }
 
   public grabResource(type: ResourceType, state: ResourceState = 'broken'): void {
-    if (this.#carriedResource || !this.#mesh) return;
+    if (this.#carriedResource || !this.#mesh || !this.#body) return;
 
     const modelName = state === 'repaired'
       ? Crate.getRepairedModelName(type)
@@ -266,8 +387,9 @@ export class Player {
     const model = this.#resources.getGLTFAsset(modelName);
     if (!model) return;
 
+    const grip = GRIP_CONFIGS[type];
     const resourceMesh = model.scene.clone();
-    resourceMesh.position.set(0, 0.3, 1.1);
+    resourceMesh.position.set(grip.objectOffsetX, grip.objectOffsetY, grip.objectOffsetZ);
 
     resourceMesh.traverse((child) => {
       if (child instanceof Mesh) {
@@ -276,7 +398,8 @@ export class Player {
       }
     });
 
-    this.#mesh.add(resourceMesh);
+    // Parent to body so object follows body twist
+    this.#body.add(resourceMesh);
     this.#carriedResource = { type, state, mesh: resourceMesh };
   }
 
@@ -287,6 +410,122 @@ export class Player {
     this.#carriedResource.mesh.removeFromParent();
     this.#carriedResource = null;
     return { type, state };
+  }
+
+  #updateAnimation(): void {
+    if (!this.#rigidBody) return;
+
+    const velocity = this.#rigidBody.linvel();
+    const speed = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
+    const isMoving = speed > 0.1;
+
+    const time = this.#time.elapsed * 0.001;
+    const { headBobFreq, headBobAmp, headSwayFreq, headSwayAmp, handsFreq, handsAmp, bodyTilt, bodyTwistFreq, bodyTwistAmp, holdingBodyTilt, holdingBodyTwistFreq, holdingBodyTwistAmp } =
+      this.#animParams;
+    const lerpFactor = isMoving ? 0.1 : 0.25;
+    const isHolding = this.#carriedResource !== null;
+
+    // Use different body params when holding
+    const currentBodyTilt = isHolding ? holdingBodyTilt : bodyTilt;
+    const currentTwistFreq = isHolding ? holdingBodyTwistFreq : bodyTwistFreq;
+    const currentTwistAmp = isHolding ? holdingBodyTwistAmp : bodyTwistAmp;
+
+    // Body & Head: tilt forward when moving
+    const targetTilt = isMoving ? currentBodyTilt : 0;
+    this.#currentBodyTilt += (targetTilt - this.#currentBodyTilt) * lerpFactor;
+
+    if (this.#body) {
+      this.#body.rotation.x = this.#currentBodyTilt;
+      if (isMoving) {
+        const twistWave = Math.sin(time * currentTwistFreq);
+        this.#body.rotation.y = twistWave * currentTwistAmp;
+      } else {
+        this.#body.rotation.y *= 1 - lerpFactor;
+      }
+    }
+
+    // Head animation (independent of holding state)
+    if (isMoving) {
+      if (this.#head) {
+        const headBobWave = Math.sin(time * headBobFreq);
+        const headSwayWave = Math.sin(time * headSwayFreq);
+        this.#head.rotation.x = this.#currentBodyTilt + headBobWave * headBobAmp;
+        this.#head.rotation.y = headSwayWave * headSwayAmp;
+      }
+    } else {
+      if (this.#head) {
+        this.#head.rotation.x += (this.#currentBodyTilt - this.#head.rotation.x) * lerpFactor;
+        this.#head.rotation.y *= 1 - lerpFactor;
+      }
+    }
+
+    // Hands animation - different behavior when holding
+    const handLerpFactor = 0.8;
+
+    if (isHolding && this.#carriedResource) {
+      // When holding: hands move to grip position, no swing
+      // Read grip config dynamically for real-time debug adjustments
+      const grip = GRIP_CONFIGS[this.#carriedResource.type];
+
+      // Update carried resource position and rotation from current grip config
+      this.#carriedResource.mesh.position.set(grip.objectOffsetX, grip.objectOffsetY, grip.objectOffsetZ);
+      this.#carriedResource.mesh.rotation.set(grip.objectRotationX, grip.objectRotationY, grip.objectRotationZ);
+
+      // Calculate hand target positions from independent hand offsets
+      const leftTarget = new Vector3(-grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
+      const rightTarget = new Vector3(grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
+
+      if (this.#handLeft) {
+        this.#handLeft.position.lerp(leftTarget, handLerpFactor);
+        this.#handLeft.rotation.x += (grip.handRotationX - this.#handLeft.rotation.x) * handLerpFactor;
+        this.#handLeft.rotation.y += (grip.handRotationY - this.#handLeft.rotation.y) * handLerpFactor;
+        this.#handLeft.rotation.z += (grip.handRotationZ - this.#handLeft.rotation.z) * handLerpFactor;
+      }
+      if (this.#handRight) {
+        this.#handRight.position.lerp(rightTarget, handLerpFactor);
+        this.#handRight.rotation.x += (grip.handRotationX - this.#handRight.rotation.x) * handLerpFactor;
+        this.#handRight.rotation.y += (-grip.handRotationY - this.#handRight.rotation.y) * handLerpFactor;
+        this.#handRight.rotation.z += (-grip.handRotationZ - this.#handRight.rotation.z) * handLerpFactor;
+      }
+    } else {
+      // When not holding: normal swing animation + return to rest position
+      if (isMoving) {
+        const handsWave = Math.sin(time * handsFreq);
+        if (this.#handLeft) {
+          this.#handLeft.rotation.x = handsWave * handsAmp;
+          this.#handLeft.rotation.y *= 1 - handLerpFactor;
+          this.#handLeft.rotation.z *= 1 - handLerpFactor;
+          if (this.#handLeftRestPos) {
+            this.#handLeft.position.lerp(this.#handLeftRestPos, handLerpFactor);
+          }
+        }
+        if (this.#handRight) {
+          this.#handRight.rotation.x = -handsWave * handsAmp;
+          this.#handRight.rotation.y *= 1 - handLerpFactor;
+          this.#handRight.rotation.z *= 1 - handLerpFactor;
+          if (this.#handRightRestPos) {
+            this.#handRight.position.lerp(this.#handRightRestPos, handLerpFactor);
+          }
+        }
+      } else {
+        if (this.#handLeft) {
+          this.#handLeft.rotation.x *= 1 - lerpFactor;
+          this.#handLeft.rotation.y *= 1 - lerpFactor;
+          this.#handLeft.rotation.z *= 1 - lerpFactor;
+          if (this.#handLeftRestPos) {
+            this.#handLeft.position.lerp(this.#handLeftRestPos, handLerpFactor);
+          }
+        }
+        if (this.#handRight) {
+          this.#handRight.rotation.x *= 1 - lerpFactor;
+          this.#handRight.rotation.y *= 1 - lerpFactor;
+          this.#handRight.rotation.z *= 1 - lerpFactor;
+          if (this.#handRightRestPos) {
+            this.#handRight.position.lerp(this.#handRightRestPos, handLerpFactor);
+          }
+        }
+      }
+    }
   }
 
   #updateSmoke(): void {
@@ -309,6 +548,7 @@ export class Player {
     this.updateMovement();
     this.updateRotation();
     this.syncMeshWithPhysics();
+    this.#updateAnimation();
     this.#updateSmoke();
   }
 }
