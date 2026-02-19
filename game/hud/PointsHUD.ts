@@ -26,7 +26,7 @@ export class PointsHUD implements IHUDItem {
     this.#text = createTextPlane(`Points: ${score}`, {
       height: PointsHUD.TEXT_HEIGHT,
       fontSize: 48,
-      color: '#FFFFFF',
+      color: '#000000',
     });
     // Left-align: offset by width/2 so text extends to the right
     this.#text.mesh.position.x = this.#text.width / 2;

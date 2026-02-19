@@ -43,7 +43,7 @@ export class ControllersHUD implements IHUDItem {
     const textOptions = {
       height: ControllersHUD.TEXT_HEIGHT,
       fontSize: 48,
-      color: '#FFFFFF',
+      color: '#000000',
     };
 
     this.#player1Text = createTextPlane('', textOptions);

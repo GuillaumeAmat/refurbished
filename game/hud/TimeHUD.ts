@@ -34,7 +34,7 @@ export class TimeHUD implements IHUDItem {
     this.#text = createTextPlane(this.#formatTime(seconds), {
       height: TimeHUD.TEXT_HEIGHT,
       fontSize: 48,
-      color: '#FFFFFF',
+      color: '#000000',
     });
     // Right-align: offset by -width/2 so text extends to the left
     this.#text.mesh.position.x = -this.#text.width / 2;
