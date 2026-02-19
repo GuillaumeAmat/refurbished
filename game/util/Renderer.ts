@@ -1,5 +1,5 @@
 import type { Scene } from 'three';
-import { CineonToneMapping, PCFSoftShadowMap, SRGBColorSpace, WebGLRenderer } from 'three';
+import { CineonToneMapping, PCFSoftShadowMap, SRGBColorSpace, Vector2, WebGLRenderer } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -45,7 +45,7 @@ export class Renderer {
     this.#composer.addPass(renderPass);
 
     this.#bloomPass = new UnrealBloomPass(
-      { x: this.#sizes.width, y: this.#sizes.height },
+      new Vector2(this.#sizes.width, this.#sizes.height),
       0.46, // strength
       0.01, // radius
       0.93, // threshold

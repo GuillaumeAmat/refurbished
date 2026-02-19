@@ -189,7 +189,7 @@ export class BlueWorkZone extends LevelObject {
     const startX = TILE_SIZE * 0.5 - totalWidth / 2;
 
     for (let i = 0; i < ASSEMBLY_RESOURCES.length; i++) {
-      const type = ASSEMBLY_RESOURCES[i];
+      const type = ASSEMBLY_RESOURCES[i]!;
       const letter = LETTER_MAP[type];
 
       const textPlane = createTextPlane(letter, {
@@ -206,7 +206,7 @@ export class BlueWorkZone extends LevelObject {
     }
   }
 
-  dispose(): void {
+  override dispose(): void {
     for (const indicator of this.#letterIndicators.values()) {
       indicator.dispose();
     }

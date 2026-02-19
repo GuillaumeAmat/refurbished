@@ -16,9 +16,9 @@ export class ControllersHUD implements IHUDItem {
   #player2Text: TextPlaneResult | null = null;
 
   // Bound listener references for cleanup
-  #onGamepadAssigned: () => void;
-  #onGamepadDisconnected: () => void;
-  #onControllersReadyChange: () => void;
+  #onGamepadAssigned!: () => void;
+  #onGamepadDisconnected!: () => void;
+  #onControllersReadyChange!: () => void;
 
   constructor(gamepadManager: GamepadManager) {
     this.#gamepadManager = gamepadManager;
@@ -110,22 +110,7 @@ export class ControllersHUD implements IHUDItem {
     this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
     this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
 
-    if (this.#player1Text) {
-      this.#player1Text.mesh.geometry.dispose();
-      if (Array.isArray(this.#player1Text.mesh.material)) {
-        this.#player1Text.mesh.material.forEach((m) => m.dispose());
-      } else {
-        this.#player1Text.mesh.material.dispose();
-      }
-    }
-
-    if (this.#player2Text) {
-      this.#player2Text.mesh.geometry.dispose();
-      if (Array.isArray(this.#player2Text.mesh.material)) {
-        this.#player2Text.mesh.material.forEach((m) => m.dispose());
-      } else {
-        this.#player2Text.mesh.material.dispose();
-      }
-    }
+    this.#player1Text?.dispose();
+    this.#player2Text?.dispose();
   }
 }

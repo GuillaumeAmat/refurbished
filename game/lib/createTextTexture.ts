@@ -4,6 +4,7 @@ export interface TextTextureOptions {
   text: string;
   fontSize?: number;
   fontFamily?: string;
+  fontWeight?: string;
   color?: string;
   padding?: number;
 }
@@ -20,6 +21,7 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
     text,
     fontSize = 48,
     fontFamily = 'BMDupletDSP, system-ui, sans-serif',
+    fontWeight = '',
     color = '#FFFFFF',
     padding = 4,
   } = options;
@@ -34,7 +36,7 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
     throw new Error('Failed to get 2D context');
   }
 
-  const fontString = `${scaledFontSize}px ${fontFamily}`;
+  const fontString = `${fontWeight ? fontWeight + ' ' : ''}${scaledFontSize}px ${fontFamily}`;
   ctx.font = fontString;
   const metrics = ctx.measureText(text || ' ');
   const textWidth = Math.max(metrics.width, 1);
