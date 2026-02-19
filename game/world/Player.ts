@@ -93,6 +93,8 @@ export class Player {
   #cachedPosition = new Vector3();
   #cachedFacingDirection = new Vector3();
   #cachedVelocity = new Vector3();
+  #cachedLeftGripTarget = new Vector3();
+  #cachedRightGripTarget = new Vector3();
 
   public get mesh() {
     return this.#mesh;
@@ -330,8 +332,7 @@ export class Player {
       desiredVelZ = normalizedZ * inputMagnitude * movementSpeed;
     }
 
-    const forceVector = new RAPIER.Vector3(desiredVelX, currentVel.y, desiredVelZ);
-    this.#rigidBody.setLinvel(forceVector, true);
+    this.#rigidBody.setLinvel({ x: desiredVelX, y: currentVel.y, z: desiredVelZ }, true);
   }
 
   private updateRotation() {
@@ -352,7 +353,8 @@ export class Player {
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    this.#currentRotationY += angleDiff * 0.15;
+    const dt60 = this.#time.delta * 0.001 * 60;
+    this.#currentRotationY += angleDiff * (1 - Math.pow(1 - 0.15, dt60));
 
     this.#mesh.rotation.y = this.#currentRotationY + Math.PI / 2;
   }
@@ -422,7 +424,8 @@ export class Player {
     const time = this.#time.elapsed * 0.001;
     const { headBobFreq, headBobAmp, headSwayFreq, headSwayAmp, handsFreq, handsAmp, bodyTilt, bodyTwistFreq, bodyTwistAmp, holdingBodyTilt, holdingBodyTwistFreq, holdingBodyTwistAmp } =
       this.#animParams;
-    const lerpFactor = isMoving ? 0.1 : 0.25;
+    const dt60 = this.#time.delta * 0.001 * 60;
+    const lerpFactor = 1 - Math.pow(1 - (isMoving ? 0.1 : 0.25), dt60);
     const isHolding = this.#carriedResource !== null;
 
     // Use different body params when holding
@@ -460,7 +463,7 @@ export class Player {
     }
 
     // Hands animation - different behavior when holding
-    const handLerpFactor = 0.8;
+    const handLerpFactor = 1 - Math.pow(1 - 0.8, dt60);
 
     if (isHolding && this.#carriedResource) {
       // When holding: hands move to grip position, no swing
@@ -472,8 +475,8 @@ export class Player {
       this.#carriedResource.mesh.rotation.set(grip.objectRotationX, grip.objectRotationY, grip.objectRotationZ);
 
       // Calculate hand target positions from independent hand offsets
-      const leftTarget = new Vector3(-grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
-      const rightTarget = new Vector3(grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
+      const leftTarget = this.#cachedLeftGripTarget.set(-grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
+      const rightTarget = this.#cachedRightGripTarget.set(grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
 
       if (this.#handLeft) {
         this.#handLeft.position.lerp(leftTarget, handLerpFactor);

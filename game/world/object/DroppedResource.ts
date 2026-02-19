@@ -114,6 +114,7 @@ export class DroppedResource extends LevelObject {
     this.setupShadows(newMesh);
     this.cloneMaterials(newMesh);
     this.mesh = newMesh;
+    this.invalidateBox();
     this.#group.add(newMesh);
   }
 

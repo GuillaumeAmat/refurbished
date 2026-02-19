@@ -28,8 +28,10 @@ export class InteractionSystem {
 
   // Cached objects to avoid allocations in hot loops
   #tempToObj = new Vector3();
+  #tempDropPos = new Vector3();
   #activeRepairTargets = new Set<DroppedResource>();
   #activeAssemblyTargets = new Set<BlueWorkZone>();
+  #objectsWithResources = new Set<LevelObject>();
 
   constructor(levelGroup: Group) {
     this.#levelGroup = levelGroup;
@@ -55,6 +57,7 @@ export class InteractionSystem {
     this.#interactables.push(resource);
     if (parent) {
       this.#resourceParents.set(resource, parent);
+      this.#objectsWithResources.add(parent);
     }
   }
 
@@ -65,15 +68,23 @@ export class InteractionSystem {
     const interactIdx = this.#interactables.indexOf(resource);
     if (interactIdx >= 0) this.#interactables.splice(interactIdx, 1);
 
+    const parent = this.#resourceParents.get(resource);
     this.#resourceParents.delete(resource);
+
+    // Remove parent from set only if no other resource references it
+    if (parent) {
+      let stillHasResource = false;
+      for (const p of this.#resourceParents.values()) {
+        if (p === parent) { stillHasResource = true; break; }
+      }
+      if (!stillHasResource) this.#objectsWithResources.delete(parent);
+    }
+
     resource.dispose();
   }
 
   #hasResourceOnTop(obj: LevelObject): boolean {
-    for (const parent of this.#resourceParents.values()) {
-      if (parent === obj) return true;
-    }
-    return false;
+    return this.#objectsWithResources.has(obj);
   }
 
   #getParentObject(resource: DroppedResource): LevelObject | null {
@@ -170,7 +181,7 @@ export class InteractionSystem {
         this.addDroppedResource(dropped, target);
       } else {
         const facing = player.getFacingDirection();
-        const dropPos = playerPos.clone().add(facing.multiplyScalar(1.0));
+        const dropPos = this.#tempDropPos.copy(playerPos).addScaledVector(facing, 1.0);
         const dropped = new DroppedResource({
           resourceType: resourceData.type,
           position: dropPos,

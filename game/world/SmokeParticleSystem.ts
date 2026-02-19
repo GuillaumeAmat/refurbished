@@ -28,6 +28,7 @@ export class SmokeParticleSystem {
   #tempBaseOffset = new Vector3();
   #tempPerpendicular = new Vector3();
   #tempSpawnPos = new Vector3();
+  #freeList: number[] = [];
 
   constructor(parent: Object3D) {
     this.#group = new Group();
@@ -59,11 +60,13 @@ export class SmokeParticleSystem {
         maxAge: SMOKE_PARTICLE_LIFETIME,
         active: false,
       });
+      this.#freeList.push(i);
     }
   }
 
   #getInactiveParticle(): SmokeParticle | null {
-    return this.#particles.find((p) => !p.active) ?? null;
+    if (this.#freeList.length === 0) return null;
+    return this.#particles[this.#freeList.pop()!]!;
   }
 
   spawn(position: Vector3, movementDirection: Vector3): void {
@@ -107,7 +110,8 @@ export class SmokeParticleSystem {
     const deltaTime = this.#time.delta * 0.001;
 
     // Update existing particles
-    for (const particle of this.#particles) {
+    for (let i = 0; i < this.#particles.length; i++) {
+      const particle = this.#particles[i]!;
       if (!particle.active) continue;
 
       particle.age += deltaTime;
@@ -115,6 +119,7 @@ export class SmokeParticleSystem {
       if (particle.age >= particle.maxAge) {
         particle.active = false;
         particle.mesh.visible = false;
+        this.#freeList.push(i);
         continue;
       }
 

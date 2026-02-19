@@ -253,9 +253,6 @@ export class Stage {
     );
 
     this.#actor.start();
-    this.#actor.subscribe((state) => {
-      console.log('[Stage] state:', state.value);
-    });
 
     this.#time = new Time();
     this.#time.addEventListener('tick', () => {

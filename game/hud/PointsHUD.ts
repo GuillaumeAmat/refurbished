@@ -10,15 +10,17 @@ export class PointsHUD implements IHUDItem {
   #group: Group;
   #text: TextPlaneResult | null = null;
   #scoreManager: ScoreManager;
+  #onScoreChanged: EventListener;
 
   constructor() {
     this.#group = new Group();
     this.#scoreManager = ScoreManager.getInstance();
     this.#createText();
 
-    this.#scoreManager.addEventListener('scoreChanged', ((event: CustomEvent) => {
+    this.#onScoreChanged = ((event: CustomEvent) => {
       this.#updateScore(event.detail.score);
-    }) as EventListener);
+    }) as EventListener;
+    this.#scoreManager.addEventListener('scoreChanged', this.#onScoreChanged);
   }
 
   #createText() {
@@ -59,13 +61,7 @@ export class PointsHUD implements IHUDItem {
   update() {}
 
   dispose() {
-    if (this.#text) {
-      this.#text.mesh.geometry.dispose();
-      if (Array.isArray(this.#text.mesh.material)) {
-        this.#text.mesh.material.forEach((m) => m.dispose());
-      } else {
-        this.#text.mesh.material.dispose();
-      }
-    }
+    this.#scoreManager.removeEventListener('scoreChanged', this.#onScoreChanged);
+    this.#text?.dispose();
   }
 }

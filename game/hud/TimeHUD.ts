@@ -43,15 +43,9 @@ export class TimeHUD implements IHUDItem {
 
   #updateText(seconds: number) {
     if (this.#text) {
-      this.#text.mesh.geometry.dispose();
-      if (Array.isArray(this.#text.mesh.material)) {
-        this.#text.mesh.material.forEach((m) => m.dispose());
-      } else {
-        this.#text.mesh.material.dispose();
-      }
-      this.#group.remove(this.#text.mesh);
+      this.#text.updateText(this.#formatTime(seconds));
+      this.#text.mesh.position.x = -this.#text.width / 2;
     }
-    this.#createText(seconds);
   }
 
   getGroup(): Group {
@@ -74,13 +68,6 @@ export class TimeHUD implements IHUDItem {
 
   dispose() {
     this.#sessionManager.removeEventListener('timeChanged', this.#onTimeChanged);
-    if (this.#text) {
-      this.#text.mesh.geometry.dispose();
-      if (Array.isArray(this.#text.mesh.material)) {
-        this.#text.mesh.material.forEach((m) => m.dispose());
-      } else {
-        this.#text.mesh.material.dispose();
-      }
-    }
+    this.#text?.dispose();
   }
 }

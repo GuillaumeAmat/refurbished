@@ -1,9 +1,13 @@
+import { Time } from '../util/Time';
+
 export class SessionManager extends EventTarget {
   static readonly DURATION = 150; // 2:30
   static #instance: SessionManager | null = null;
 
   #remaining = SessionManager.DURATION;
-  #intervalId: number | null = null;
+  #accumulator = 0;
+  #running = false;
+  #onTick: (() => void) | null = null;
 
   private constructor() {
     super();
@@ -17,23 +21,37 @@ export class SessionManager extends EventTarget {
   }
 
   public start(): void {
-    if (this.#intervalId !== null) return;
+    if (this.#running) return;
+    this.#running = true;
+    this.#accumulator = 0;
 
-    this.#intervalId = window.setInterval(() => {
-      this.#remaining--;
-      this.dispatchEvent(new CustomEvent('timeChanged', { detail: { remaining: this.#remaining } }));
+    const time = Time.getInstance();
+    this.#onTick = () => {
+      this.#accumulator += time.delta;
 
-      if (this.#remaining <= 0) {
-        this.stop();
-        this.dispatchEvent(new CustomEvent('sessionEnded'));
+      while (this.#accumulator >= 1000) {
+        this.#accumulator -= 1000;
+        this.#remaining--;
+        this.dispatchEvent(new CustomEvent('timeChanged', { detail: { remaining: this.#remaining } }));
+
+        if (this.#remaining <= 0) {
+          this.stop();
+          this.dispatchEvent(new CustomEvent('sessionEnded'));
+          return;
+        }
       }
-    }, 1000);
+    };
+
+    time.addEventListener('tick', this.#onTick);
   }
 
   public stop(): void {
-    if (this.#intervalId !== null) {
-      window.clearInterval(this.#intervalId);
-      this.#intervalId = null;
+    if (!this.#running) return;
+    this.#running = false;
+
+    if (this.#onTick) {
+      Time.getInstance().removeEventListener('tick', this.#onTick);
+      this.#onTick = null;
     }
   }
 

@@ -17,12 +17,25 @@ export abstract class LevelObject {
   #cachedBox = new Box3();
   #cachedCenter = new Vector3();
   #cachedClosestPoint = new Vector3();
+  #boxCached = false;
 
   abstract create(group: Group): void;
 
+  #ensureBox(): void {
+    if (!this.#boxCached && this.mesh) {
+      this.#cachedBox.setFromObject(this.mesh);
+      this.#boxCached = true;
+    }
+  }
+
+  /** Mark bounding box as stale so it gets recomputed next access. */
+  protected invalidateBox(): void {
+    this.#boxCached = false;
+  }
+
   public getPosition(): Vector3 | null {
     if (!this.mesh) return null;
-    this.#cachedBox.setFromObject(this.mesh);
+    this.#ensureBox();
     this.#cachedBox.getCenter(this.#cachedCenter);
     return this.#cachedCenter;
   }
@@ -32,7 +45,7 @@ export abstract class LevelObject {
    */
   public getClosestPoint(from: Vector3): Vector3 | null {
     if (!this.mesh) return null;
-    this.#cachedBox.setFromObject(this.mesh);
+    this.#ensureBox();
     return this.#cachedClosestPoint.set(
       Math.max(this.#cachedBox.min.x, Math.min(from.x, this.#cachedBox.max.x)),
       from.y,

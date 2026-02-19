@@ -42,11 +42,23 @@ export class GamepadManager extends EventTarget {
   }
 
   #startPolling(): void {
+    if (this.#rafId !== null) return;
     const poll = () => {
       this.#scanConnectedGamepads();
       this.#rafId = requestAnimationFrame(poll);
     };
     poll();
+  }
+
+  #stopPolling(): void {
+    if (this.#rafId !== null) {
+      cancelAnimationFrame(this.#rafId);
+      this.#rafId = null;
+    }
+  }
+
+  #bothSlotsFilled(): boolean {
+    return this.#assignments.has(1) && this.#assignments.has(2);
   }
 
   #scanConnectedGamepads(): void {
@@ -95,6 +107,10 @@ export class GamepadManager extends EventTarget {
       );
     }
 
+    if (this.#bothSlotsFilled()) {
+      this.#stopPolling();
+    }
+
     this.#checkControllersReady();
   }
 
@@ -113,6 +129,8 @@ export class GamepadManager extends EventTarget {
             detail: { playerId, gamepad },
           }),
         );
+        // Restart polling to detect replacement gamepad
+        this.#startPolling();
         break;
       }
     }
@@ -203,10 +221,7 @@ export class GamepadManager extends EventTarget {
   }
 
   cleanup(): void {
-    if (this.#rafId) {
-      cancelAnimationFrame(this.#rafId);
-      this.#rafId = null;
-    }
+    this.#stopPolling();
     this.#assignments.forEach((a) => a.controller.cleanup());
     this.#keyboardPlayer1?.cleanup();
     this.#keyboardPlayer2?.cleanup();
