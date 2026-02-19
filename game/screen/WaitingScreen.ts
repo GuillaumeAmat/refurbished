@@ -1,24 +1,22 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { GamepadManager } from '../util/input/GamepadManager';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { WaitingOverlayHUD } from '../hud/WaitingOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
 
 export class WaitingScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
-  #gamepadManager: GamepadManager;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #player1Mesh: Mesh | null = null;
-  #player2Mesh: Mesh | null = null;
-  #backMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
-  #connectedMaterial: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #overlay: WaitingOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
+
+  #visible = false;
 
   // Bound listener references for cleanup
   #onControllersReadyChange: () => void;
@@ -26,15 +24,14 @@ export class WaitingScreen {
   #onGamepadReconnected: () => void;
   #onGamepadDisconnected: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
     this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#overlay = new WaitingOverlayHUD();
+    this.#hudManager.add('center', this.#overlay);
+    this.#hudManager.hide();
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('WaitingForControllers')) {
@@ -42,18 +39,6 @@ export class WaitingScreen {
       } else {
         this.hide();
       }
-    });
-
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.#connectedMaterial = new MeshStandardMaterial({
-      color: '#54FB7D',
-      metalness: 0.3,
-      roughness: 0.4,
     });
 
     this.#onControllersReadyChange = () => {
@@ -71,85 +56,19 @@ export class WaitingScreen {
     this.#gamepadManager.addEventListener('gamepadReconnected', this.#onGamepadReconnected);
     this.#gamepadManager.addEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
 
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Connect Controllers', font, {
-      extrusionDepth: 0.1,
-      size: 1.2,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 4, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#player1Mesh = createTextMesh('Player 1: Waiting...', font, {
-      extrusionDepth: 0.05,
-      size: 0.7,
-      material: this.#material,
-    });
-    this.#player1Mesh.position.set(0, 1.5, 0);
-    this.#group.add(this.#player1Mesh);
-
-    this.#player2Mesh = createTextMesh('Player 2: Waiting...', font, {
-      extrusionDepth: 0.05,
-      size: 0.7,
-      material: this.#material,
-    });
-    this.#player2Mesh.position.set(0, 0, 0);
-    this.#group.add(this.#player2Mesh);
-
-    this.#backMesh = createTextMesh('Back', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#backMesh.position.set(0, -2, 0);
-    this.#group.add(this.#backMesh);
-
-    this.updateStatus();
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private updateStatus() {
     const status = this.#gamepadManager.getConnectionStatus();
-    this.updatePlayerMesh(this.#player1Mesh, 1, status.player1);
-    this.updatePlayerMesh(this.#player2Mesh, 2, status.player2);
-  }
-
-  private updatePlayerMesh(mesh: Mesh | null, playerId: number, connected: boolean) {
-    if (!mesh) return;
-
-    const font = this.#resources.getFontAsset('interFont');
-    if (!font) return;
-
-    const text = connected ? `Player ${playerId}: Connected` : `Player ${playerId}: Waiting...`;
-    const material = connected ? this.#connectedMaterial : this.#material;
-
-    this.#group.remove(mesh);
-
-    const newMesh = createTextMesh(text, font, {
-      extrusionDepth: 0.05,
-      size: 0.7,
-      material,
-    });
-    newMesh.position.copy(mesh.position);
-    this.#group.add(newMesh);
-
-    if (playerId === 1) {
-      this.#player1Mesh = newMesh;
-    } else {
-      this.#player2Mesh = newMesh;
-    }
+    this.#overlay.updateStatus(status.player1, status.player2);
   }
 
   private show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#hudManager.show();
     this.updateStatus();
 
     if (this.#gamepadManager.areControllersReady()) {
@@ -158,11 +77,27 @@ export class WaitingScreen {
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
+  }
+
+  #handleInput() {
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
+        this.#stageActor.send({ type: 'back' });
+        return;
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
@@ -171,5 +106,7 @@ export class WaitingScreen {
     this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);
     this.#gamepadManager.removeEventListener('gamepadReconnected', this.#onGamepadReconnected);
     this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

@@ -34,11 +34,11 @@ export class ScoreScreen {
     this.#hudManager.hide();
 
     this.#scoreOverlay.onSave((name) => {
-      this.#stageActor.send({ type: 'save', playerName: name || 'Anonymous' });
+      this.#stageActor.send({ type: 'save', name: name || 'Anonymous' });
     });
 
     this.#scoreOverlay.onSkip(() => {
-      this.#stageActor.send({ type: 'skip' });
+      this.#stageActor.send({ type: 'next' });
     });
 
     this.#subscription = this.#stageActor.subscribe((state) => {

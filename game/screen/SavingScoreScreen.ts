@@ -29,7 +29,7 @@ export class SavingScoreScreen {
     this.#hudManager.hide();
 
     this.#savingOverlay.onContinue(() => {
-      this.#stageActor.send({ type: 'continue' });
+      this.#stageActor.send({ type: 'next' });
     });
 
     this.#subscription = this.#stageActor.subscribe((state) => {

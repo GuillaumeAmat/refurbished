@@ -1,30 +1,33 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { TutorialOverlayHUD } from '../hud/TutorialOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
 
 export class TutorialScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #commandsMesh: Mesh | null = null;
-  #backMesh: Mesh | null = null;
-  #playMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #overlay: TutorialOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  #visible = false;
+  #shownAt = 0;
+  static readonly INPUT_COOLDOWN_MS = 200;
+
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#overlay = new TutorialOverlayHUD();
+    this.#hudManager.add('center', this.#overlay);
+    this.#hudManager.hide();
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Tutorial')) {
@@ -34,72 +37,50 @@ export class TutorialScreen {
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Tutorial', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 4, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#commandsMesh = createTextMesh(
-      'Use gamepad to control vehicle\nCooperative 2-player game\nAvoid obstacles, collect points',
-      font,
-      {
-        extrusionDepth: 0.05,
-        size: 0.7,
-        material: this.#material,
-      },
-    );
-    this.#commandsMesh.position.set(0, 1, 0);
-    this.#group.add(this.#commandsMesh);
-
-    this.#backMesh = createTextMesh('Back', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#backMesh.position.set(-2, -2, 0);
-    this.#group.add(this.#backMesh);
-
-    this.#playMesh = createTextMesh('> Start Game', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#playMesh.position.set(1, -2, 0);
-    this.#group.add(this.#playMesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#shownAt = Date.now();
+    this.#hudManager.show();
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
+  }
+
+  #handleInput() {
+    if (Date.now() - this.#shownAt < TutorialScreen.INPUT_COOLDOWN_MS) return;
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
+        this.#stageActor.send({ type: 'back' });
+        return;
+      }
+
+      if (input.isButtonJustPressed('a')) {
+        this.#stageActor.send({ type: 'play' });
+        return;
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

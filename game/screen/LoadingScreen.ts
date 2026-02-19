@@ -1,33 +1,28 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-// import { MOODS } from '../constants';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { LoadingOverlayHUD } from '../hud/LoadingOverlayHUD';
+import { Sizes } from '../util/Sizes';
 
 export class LoadingScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
   #subscription: Subscription;
 
-  #group: Group;
-  #mesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #overlay: LoadingOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  public get mesh() {
-    return this.#mesh;
-  }
+  #visible = false;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#overlay = new LoadingOverlayHUD();
+    this.#hudManager.add('center', this.#overlay);
+    this.#hudManager.hide();
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Loading')) {
@@ -37,46 +32,30 @@ export class LoadingScreen {
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      // color: MOODS['mindaro-94'].value,
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    // FIXME Temporary workaround for font loading issue
-    if (!font) {
-      return;
-    }
-
-    this.#mesh = createTextMesh('Loading...', font, {
-      extrusionDepth: 0.05,
-      size: 1.2,
-      material: this.#material,
-    });
-    this.#mesh.position.set(0, 0, 0);
-    this.#group.add(this.#mesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   public show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#hudManager.show();
   }
 
   public hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

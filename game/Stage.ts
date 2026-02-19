@@ -253,6 +253,9 @@ export class Stage {
     );
 
     this.#actor.start();
+    this.#actor.subscribe((state) => {
+      console.log('[Stage] state:', state.value);
+    });
 
     this.#time = new Time();
     this.#time.addEventListener('tick', () => {
@@ -289,7 +292,7 @@ export class Stage {
   private setupLoadingScreen() {
     this.#environment = new Environment(this.#scene, this.#levelInfo);
 
-    const loadingScreen = new LoadingScreen(this.#actor, this.#scene);
+    const loadingScreen = new LoadingScreen(this.#actor, this.#camera.camera);
 
     this.#time.addEventListener('tick', () => {
       loadingScreen.update();
@@ -301,12 +304,12 @@ export class Stage {
       throw new Error('Environment must be initialized before setting up the screens.');
     }
 
-    const startScreen = new StartScreen(this.#actor, this.#scene);
+    const startScreen = new StartScreen(this.#actor, this.#camera.camera);
     const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera, this.#levelInfo);
-    const menuScreen = new MenuScreen(this.#actor, this.#scene);
-    const tutorialScreen = new TutorialScreen(this.#actor, this.#scene);
-    const waitingScreen = new WaitingScreen(this.#actor, this.#scene);
-    const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#scene);
+    const menuScreen = new MenuScreen(this.#actor, this.#camera.camera);
+    const tutorialScreen = new TutorialScreen(this.#actor, this.#camera.camera);
+    const waitingScreen = new WaitingScreen(this.#actor, this.#camera.camera);
+    const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#camera.camera);
     const pauseScreen = new PauseScreen(this.#actor, this.#camera.camera);
     const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
     const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#camera.camera);
@@ -317,6 +320,15 @@ export class Stage {
      * If called before, it won't find any meshes to update.
      */
     this.#environment.updateMeshesMaterial();
+
+    if (Debug.getInstance().active) {
+      const sub = this.#actor.subscribe((state) => {
+        if (state.matches('Start')) {
+          this.#actor.send({ type: 'debugStart' });
+          sub.unsubscribe();
+        }
+      });
+    }
 
     const gamepadManager = GamepadManager.getInstance();
 

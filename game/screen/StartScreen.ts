@@ -1,31 +1,31 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
-import { KeyboardController } from '../util/input/KeyboardController';
-import { Resources } from '../util/Resources';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { StartOverlayHUD } from '../hud/StartOverlayHUD';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Sizes } from '../util/Sizes';
 
 export class StartScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
-  #inputController: KeyboardController;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #promptMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #overlay: StartOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  #visible = false;
+
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
-    this.#inputController = new KeyboardController();
+    this.#gamepadManager = GamepadManager.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#overlay = new StartOverlayHUD();
+    this.#hudManager.add('center', this.#overlay);
+    this.#hudManager.hide();
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Start')) {
@@ -35,58 +35,43 @@ export class StartScreen {
       }
     });
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
-
-    this.createText();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Refurbished!', font, {
-      extrusionDepth: 0.1,
-      size: 2,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 2, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#promptMesh = createTextMesh('Press any button to start', font, {
-      extrusionDepth: 0.05,
-      size: 0.8,
-      material: this.#material,
-    });
-    this.#promptMesh.position.set(0, -1, 0);
-    this.#group.add(this.#promptMesh);
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
   }
 
   private show() {
-    this.#inputController.onButtonUp(() => this.onButtonUp());
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#hudManager.show();
   }
 
   private hide() {
-    this.#inputController.cleanup();
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
   }
 
-  private onButtonUp() {
-    this.#stageActor.send({ type: 'start' });
+  #handleInput() {
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (input.isButtonJustPressed('a') || input.isButtonJustPressed('start')) {
+        this.#stageActor.send({ type: 'start' });
+        return;
+      }
+    }
   }
 
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

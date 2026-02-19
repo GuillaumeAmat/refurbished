@@ -1,38 +1,45 @@
-import { Group, type Mesh, MeshStandardMaterial, type Scene } from 'three';
+import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { createTextMesh } from '../lib/createTextMesh';
+import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { MenuOverlayHUD } from '../hud/MenuOverlayHUD';
 import { Debug } from '../util/Debug';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Resources } from '../util/Resources';
+import { Sizes } from '../util/Sizes';
 
 export class MenuScreen {
   #stageActor: Actor<AnyActorLogic>;
-  #scene: Scene;
-  #resources: Resources;
   #subscription: Subscription;
+  #gamepadManager: GamepadManager;
 
-  #group: Group;
-  #titleMesh: Mesh | null = null;
-  #playMesh: Mesh | null = null;
-  #leaderboardMesh: Mesh | null = null;
-  #material: MeshStandardMaterial;
+  #hudManager: HUDRegionManager;
+  #overlay: MenuOverlayHUD;
+  #sizes: Sizes;
+  #onResize: () => void;
 
   #menuTrack: HTMLAudioElement | null = null;
+
+  #visible = false;
+  #shownAt = 0;
+  #movementDebounceTime = 0;
+  static readonly MOVEMENT_DEBOUNCE_MS = 200;
+  static readonly INPUT_COOLDOWN_MS = 200;
 
   #debug: Debug;
   #debugProperties = {
     DisableMenuTrack: false,
   };
 
-  constructor(stageActor: Actor<AnyActorLogic>, scene: Scene) {
+  constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
-    this.#scene = scene;
-    this.#resources = Resources.getInstance();
+    this.#gamepadManager = GamepadManager.getInstance();
     this.#debug = Debug.getInstance();
 
-    this.#group = new Group();
-    this.#group.position.set(0, 30, 0);
-    this.#scene.add(this.#group);
+    this.#hudManager = new HUDRegionManager(camera);
+    this.#overlay = new MenuOverlayHUD();
+    this.#hudManager.add('center', this.#overlay);
+    this.#hudManager.hide();
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Menu')) {
@@ -42,48 +49,14 @@ export class MenuScreen {
       }
     });
 
-    this.#menuTrack = this.#resources.getAudioAsset('menuTrack');
+    const resources = Resources.getInstance();
+    this.#menuTrack = resources.getAudioAsset('menuTrack');
 
-    this.#material = new MeshStandardMaterial({
-      color: '#FBD954',
-      metalness: 0.3,
-      roughness: 0.4,
-    });
+    this.#sizes = Sizes.getInstance();
+    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#sizes.addEventListener('resize', this.#onResize);
 
-    this.createText();
     this.setupHelpers();
-  }
-
-  private createText() {
-    const font = this.#resources.getFontAsset('interFont');
-
-    if (!font) {
-      return;
-    }
-
-    this.#titleMesh = createTextMesh('Main Menu', font, {
-      extrusionDepth: 0.1,
-      size: 1.5,
-      material: this.#material,
-    });
-    this.#titleMesh.position.set(0, 3, 0);
-    this.#group.add(this.#titleMesh);
-
-    this.#playMesh = createTextMesh('> Play', font, {
-      extrusionDepth: 0.05,
-      size: 1,
-      material: this.#material,
-    });
-    this.#playMesh.position.set(0, 1, 0);
-    this.#group.add(this.#playMesh);
-
-    this.#leaderboardMesh = createTextMesh('  Leaderboard', font, {
-      extrusionDepth: 0.05,
-      size: 1,
-      material: this.#material,
-    });
-    this.#leaderboardMesh.position.set(0, -1, 0);
-    this.#group.add(this.#leaderboardMesh);
   }
 
   private playMenuTrack() {
@@ -102,12 +75,15 @@ export class MenuScreen {
   }
 
   private show() {
-    this.#group.visible = true;
+    this.#visible = true;
+    this.#shownAt = Date.now();
+    this.#hudManager.show();
     this.playMenuTrack();
   }
 
   private hide() {
-    this.#group.visible = false;
+    this.#visible = false;
+    this.#hudManager.hide();
     this.pauseMenuTrack();
   }
 
@@ -131,11 +107,41 @@ export class MenuScreen {
     }
   }
 
+  #handleInput() {
+    const now = Date.now();
+    if (now - this.#shownAt < MenuScreen.INPUT_COOLDOWN_MS) return;
+    const canMove = now - this.#movementDebounceTime >= MenuScreen.MOVEMENT_DEBOUNCE_MS;
+
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const input = this.#gamepadManager.getInputSource(playerId);
+      if (!input?.connected) continue;
+
+      if (canMove) {
+        const movement = input.getMovement();
+        if (Math.abs(movement.x) > 0.5 || Math.abs(movement.z) > 0.5) {
+          this.#movementDebounceTime = now;
+          const next = this.#overlay.getSelectedOption() === 'play' ? 'leaderboard' : 'play';
+          this.#overlay.setSelectedOption(next);
+        }
+      }
+
+      if (input.isButtonJustPressed('a')) {
+        this.#stageActor.send({ type: this.#overlay.getSelectedOption() });
+        return;
+      }
+    }
+  }
+
   public update() {
-    if (!this.#group.visible) return;
+    if (!this.#visible) return;
+
+    this.#handleInput();
+    this.#hudManager.update();
   }
 
   public dispose() {
     this.#subscription.unsubscribe();
+    this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#hudManager.dispose();
   }
 }

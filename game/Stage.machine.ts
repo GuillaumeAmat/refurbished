@@ -19,7 +19,8 @@ export const stageMachine = setup({
       | { type: 'resume' }
       | { type: 'leaderboard' }
       | { type: 'controllersReady' }
-      | { type: 'controllerDisconnected' },
+      | { type: 'controllerDisconnected' }
+      | { type: 'debugStart' },
   },
   actions: {
     hideLoadingOverlay: () => {},
@@ -47,6 +48,9 @@ export const stageMachine = setup({
           target: 'Menu',
           description: 'Very first user interaction,\\\nrequired to be able to start the music.',
           reenter: true,
+        },
+        debugStart: {
+          target: 'Level',
         },
       },
     },
@@ -167,9 +171,7 @@ export const stageMachine = setup({
     Loading: {
       invoke: {
         src: 'waitForLowPriorityResources',
-        // FIXME
-        // onDone: 'Start',
-        onDone: 'Level',
+        onDone: 'Start',
         onError: 'Loading error',
       },
 
