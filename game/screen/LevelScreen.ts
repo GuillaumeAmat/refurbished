@@ -10,6 +10,7 @@ import { TimeHUD } from '../hud/TimeHUD';
 import type { LevelInfo } from '../levels';
 import { ScoreManager } from '../state/ScoreManager';
 import { SessionManager } from '../state/SessionManager';
+import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 import type { Camera } from '../world/Camera';
@@ -133,7 +134,9 @@ export class LevelScreen {
     if (wasHidden) {
       this.#scoreManager.reset();
       this.#sessionManager.reset();
-      this.#sessionManager.start();
+      if (!Debug.getInstance().active) {
+        this.#sessionManager.start();
+      }
       this.initLevel();
     }
   }
