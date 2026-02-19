@@ -108,11 +108,10 @@ export class Level {
   }
 
   public update() {
+    if (!this.#interactive) return;
     this.#physics.update();
-    if (this.#interactive) {
-      this.#player1?.update();
-      this.#player2?.update();
-      this.#interactionSystem.update();
-    }
+    this.#player1?.update();
+    this.#player2?.update();
+    this.#interactionSystem.update();
   }
 }

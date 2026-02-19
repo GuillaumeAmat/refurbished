@@ -138,6 +138,12 @@ export class LevelScreen {
         this.#sessionManager.start();
       }
       this.initLevel();
+    } else if (!Debug.getInstance().active) {
+      if (interactive) {
+        this.#sessionManager.start();
+      } else {
+        this.#sessionManager.stop();
+      }
     }
   }
 
