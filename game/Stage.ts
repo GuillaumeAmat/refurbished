@@ -21,6 +21,7 @@ import { GamepadManager } from './util/input/GamepadManager';
 import { Renderer } from './util/Renderer';
 import { Resources } from './util/Resources';
 import { Sizes } from './util/Sizes';
+import { SoundManager } from './util/SoundManager';
 import { Time } from './util/Time';
 import { Camera } from './world/Camera';
 import { Environment } from './world/Environment';
@@ -105,7 +106,7 @@ export class Stage {
         path: '/game/audio/track/level.opus',
         priority: 'low',
       },
-      selectEffect: {
+      selectSound: {
         type: 'audio',
         path: '/game/audio/effect/select.opus',
         priority: 'low',
@@ -220,6 +221,8 @@ export class Stage {
       //   path: '/game/svg/bmLogo.svg',
       // },
     });
+
+    new SoundManager();
 
     // Initialize keyboard fallback based on runtime config
     const config = useRuntimeConfig();

@@ -5,8 +5,8 @@ import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { MenuOverlayHUD } from '../hud/MenuOverlayHUD';
 import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
-import { Resources } from '../util/Resources';
 import { Sizes } from '../util/Sizes';
+import { SoundManager } from '../util/SoundManager';
 
 export class MenuScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -17,8 +17,6 @@ export class MenuScreen {
   #overlay: MenuOverlayHUD;
   #sizes: Sizes;
   #onResize: () => void;
-
-  #menuTrack: HTMLAudioElement | null = null;
 
   #visible = false;
   #shownAt = 0;
@@ -49,9 +47,6 @@ export class MenuScreen {
       }
     });
 
-    const resources = Resources.getInstance();
-    this.#menuTrack = resources.getAudioAsset('menuTrack');
-
     this.#sizes = Sizes.getInstance();
     this.#onResize = () => this.#hudManager.updatePositions();
     this.#sizes.addEventListener('resize', this.#onResize);
@@ -60,18 +55,13 @@ export class MenuScreen {
   }
 
   private playMenuTrack() {
-    if (!this.#menuTrack || this.#debugProperties.DisableMenuTrack) return;
+    if (this.#debugProperties.DisableMenuTrack) return;
 
-    this.#menuTrack.loop = true;
-    this.#menuTrack.volume = 0.6;
-    this.#menuTrack.currentTime = 0;
-    this.#menuTrack.play();
+    SoundManager.getInstance().playTrack('menuTrack', 0.6);
   }
 
   private pauseMenuTrack() {
-    if (!this.#menuTrack) return;
-
-    this.#menuTrack.pause();
+    SoundManager.getInstance().stopTrack('menuTrack');
   }
 
   private show() {
@@ -100,7 +90,7 @@ export class MenuScreen {
       guiFolder.add(this.#debugProperties, 'DisableMenuTrack').onChange((value: boolean) => {
         this.#debug.save();
 
-        if (value && this.#menuTrack && !this.#menuTrack.paused) {
+        if (value) {
           this.pauseMenuTrack();
         }
       });
@@ -126,7 +116,9 @@ export class MenuScreen {
       }
 
       if (input.isButtonJustPressed('a')) {
-        this.#stageActor.send({ type: this.#overlay.getSelectedOption() });
+        const selected = this.#overlay.getSelectedOption();
+        if (selected === 'play') SoundManager.getInstance().playSound('selectSound');
+        this.#stageActor.send({ type: selected });
         return;
       }
     }
