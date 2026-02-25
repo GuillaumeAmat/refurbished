@@ -6,7 +6,7 @@ import type { SVGLoader, SVGResult } from 'three/examples/jsm/loaders/SVGLoader.
 type AssetName = string;
 type Asset =
   | {
-      type: 'audio' | 'font' | 'gltf' | 'svg' | 'texture';
+      type: 'font' | 'gltf' | 'svg' | 'texture';
       path: string;
       priority: 'low' | 'high';
     }
@@ -23,7 +23,7 @@ type Asset =
       priority: 'low' | 'high';
     };
 
-type Assets = Record<AssetName, HTMLAudioElement | Font | FontFace | GLTF | SVGResult | Texture | CubeTexture>;
+type Assets = Record<AssetName, Font | FontFace | GLTF | SVGResult | Texture | CubeTexture>;
 type AssetsToLoad = Record<AssetName, Asset>;
 
 type LoadedEvent = {
@@ -144,9 +144,7 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
     }
 
     Object.entries(this.#assetsToLoad).forEach(([assetName, asset]) => {
-      if (asset.type === 'audio') {
-        this.onAssetLoaded(assetName, new Audio(asset.path));
-      } else if (asset.type === 'font') {
+      if (asset.type === 'font') {
         this.#fontLoader?.load(asset.path, (file) => {
           this.onAssetLoaded(assetName, file);
         });
@@ -178,7 +176,7 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
     });
   }
 
-  private onAssetLoaded(name: AssetName, file: HTMLAudioElement | Font | FontFace | GLTF | SVGResult | Texture | CubeTexture) {
+  private onAssetLoaded(name: AssetName, file: Font | FontFace | GLTF | SVGResult | Texture | CubeTexture) {
     this.#assets[name] = file;
 
     this.dispatchEvent({ type: 'loaded', name });
@@ -207,11 +205,6 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
         this.dispatchEvent({ type: 'done' });
       }, 0);
     }
-  }
-
-  public getAudioAsset(name: string) {
-    if (!Object.hasOwn(this.#assets, name)) return null;
-    return this.#assets[name] as HTMLAudioElement;
   }
 
   public getFontAsset(name: string) {

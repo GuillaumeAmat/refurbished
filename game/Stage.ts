@@ -97,21 +97,6 @@ export class Stage {
       // },
 
       // Low priorities, `done` event will be emitted when loaded
-      menuTrack: {
-        type: 'audio',
-        path: '/game/audio/track/menu.opus',
-        priority: 'low',
-      },
-      levelTrack: {
-        type: 'audio',
-        path: '/game/audio/track/level.opus',
-        priority: 'low',
-      },
-      selectSound: {
-        type: 'audio',
-        path: '/game/audio/effect/select.opus',
-        priority: 'low',
-      },
       pigModel: {
         type: 'gltf',
         path: '/game/model/characters/pig.glb',
@@ -282,12 +267,15 @@ export class Stage {
    * and transition to the next state.
    */
   private async waitForLowPriorityResources() {
-    return new Promise<void>((resolve) => {
-      if (this.#resources.isDone) resolve();
-      this.#resources.addEventListener('done', () => resolve());
+    await Promise.all([
+      new Promise<void>((resolve) => {
+        if (this.#resources.isDone) resolve();
+        this.#resources.addEventListener('done', () => resolve());
 
-      // setTimeout(() => resolve(), 4_000);
-    });
+        // setTimeout(() => resolve(), 4_000);
+      }),
+      SoundManager.getInstance().waitForLoad(),
+    ]);
   }
 
   private setupLoadingScreen() {
@@ -323,10 +311,9 @@ export class Stage {
     this.#environment.updateMeshesMaterial();
 
     // Sync level duration with track length
-    const levelTrackAudio = Resources.getInstance().getAudioAsset('levelTrack');
-    if (levelTrackAudio) {
-      SessionManager.getInstance().setDuration(Math.round(levelTrackAudio.duration));
-    }
+    SoundManager.getInstance().getTrackDuration('levelTrack').then((duration) => {
+      if (duration > 0) SessionManager.getInstance().setDuration(Math.round(duration));
+    });
 
     // Centralized audio lifecycle
     const MENU_TRACK_STATES = ['Menu', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
@@ -338,12 +325,12 @@ export class Stage {
 
       if (MENU_TRACK_STATES.some((s) => state.matches(s))) {
         sm.stopTrack('levelTrack');
-        sm.resumeTrack('menuTrack', 1.0, true, true);
+        sm.resumeTrack('menuTrack', true, true);
       } else if (state.matches('WaitingForControllers')) {
         sm.stopTrack('menuTrack');
       } else if (state.matches('Level')) {
         sm.stopTrack('menuTrack');
-        sm.resumeTrack('levelTrack', 1.0, false, !previousState.matches('Pause'));
+        sm.resumeTrack('levelTrack', false, !previousState.matches('Pause'));
       } else if (state.matches('Pause')) {
         sm.stopTrack('levelTrack');
       } else {

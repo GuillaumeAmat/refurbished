@@ -2946,6 +2946,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/howler@npm:^2":
+  version: 2.2.12
+  resolution: "@types/howler@npm:2.2.12"
+  checksum: 10/94597cf283cdacb4edecd161161ca78b585d3abf342e57f86093ad0eec86d94b7de644fb902a11a6cd1d1bf5225ffd07c336a04a5ba9bdc1cc14c26ff57cb678
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:^7.0.15":
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
@@ -6384,6 +6391,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"howler@npm:^2.2.4":
+  version: 2.2.4
+  resolution: "howler@npm:2.2.4"
+  checksum: 10/e4177f6581ede99fdec68c2dc16a01e74ed3e4f3b28d4804030246f74f15a50311bd3d4d332a6e968a296e6bae1d0a8c8703e8e22d98ef8f5a3299e545e2fe55
+  languageName: node
+  linkType: hard
+
 "html-validate@npm:~9.4.0":
   version: 9.4.2
   resolution: "html-validate@npm:9.4.2"
@@ -9266,6 +9280,7 @@ __metadata:
     "@nuxtjs/sitemap": "npm:^7.4.3"
     "@paralleldrive/cuid2": "npm:^2.2.2"
     "@tailwindcss/typography": "npm:^0.5.16"
+    "@types/howler": "npm:^2"
     "@types/qrcode": "npm:^1"
     "@types/three": "npm:^0.178.1"
     "@unhead/vue": "npm:^2.0.14"
@@ -9274,6 +9289,7 @@ __metadata:
     eslint-config-prettier: "npm:^10.1.8"
     eslint-plugin-simple-import-sort: "npm:^12.1.1"
     gsap: "npm:^3.13.0"
+    howler: "npm:^2.2.4"
     lil-gui: "npm:^0.20.0"
     nuxt: "npm:^4.1.0"
     qrcode: "npm:^1.5.4"
