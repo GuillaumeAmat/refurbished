@@ -1,4 +1,6 @@
-import type { Group } from 'three';
+import type { BufferGeometry, Group, Material, Object3D } from 'three';
+import { Mesh } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 import {
   isBlueWorkZone,
@@ -9,6 +11,7 @@ import {
   isWorkbench,
   type LevelData,
 } from '../levels';
+import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import { DeliveryZone } from './object/DeliveryZone';
@@ -16,11 +19,13 @@ import type { LevelObject } from './object/LevelObject';
 import { NeonWall } from './object/NeonWall';
 import { RepairZone } from './object/RepairZone';
 import { Wall, type WallSide } from './object/Wall';
-import { Workbench } from './object/Workbench';
+import { Workbench, type WorkbenchParams } from './object/Workbench';
+import { WorkbenchBatch } from './object/WorkbenchBatch';
 
 export class LevelBuilder {
   #data: LevelData;
   #objects: LevelObject[] = [];
+  #workbenchBatch: WorkbenchBatch | null = null;
 
   constructor(data: LevelData) {
     this.#data = data;
@@ -41,6 +46,7 @@ export class LevelBuilder {
     const levelDepth = matrix.length;
 
     const builtDeliveryZones = new Set<string>();
+    const workbenchParamsList: WorkbenchParams[] = [];
 
     for (let xIndex = 0; xIndex < levelWidth; xIndex++) {
       for (let zIndex = 0; zIndex < levelDepth; zIndex++) {
@@ -51,12 +57,8 @@ export class LevelBuilder {
         let obj: LevelObject | null = null;
 
         if (isWorkbench(cellValue)) {
-          obj = new Workbench({
-            xIndex,
-            zIndex,
-            levelWidth,
-            levelDepth,
-          });
+          workbenchParamsList.push({ xIndex, zIndex, levelWidth, levelDepth });
+          continue;
         } else if (isBlueWorkZone(cellValue)) {
           obj = new BlueWorkZone({
             xIndex,
@@ -128,6 +130,30 @@ export class LevelBuilder {
         }
       }
     }
+
+    if (workbenchParamsList.length > 0) {
+      const workbenchModel = Resources.getInstance().getGLTFAsset('workbenchModel');
+      if (!workbenchModel) {
+        console.error('Workbench model not loaded');
+        return;
+      }
+
+      const batch = new WorkbenchBatch();
+      this.#workbenchBatch = batch;
+
+      const workbenches: Workbench[] = [];
+      for (const params of workbenchParamsList) {
+        const wb = new Workbench(params, batch);
+        wb.create();
+        workbenches.push(wb);
+      }
+
+      batch.build(group, workbenchModel);
+
+      for (const wb of workbenches) {
+        this.#objects.push(wb);
+      }
+    }
   }
 
   private buildWalls(group: Group): void {
@@ -192,7 +218,12 @@ export class LevelBuilder {
         }
 
         // Skip indices covered by neon walls
-        if ((side === 'top' && (i === 3 || i === 10)) || (side === 'left' && i === 3) || (side === 'right' && (i === 3 || i === 6))) continue;
+        if (
+          (side === 'top' && (i === 3 || i === 10)) ||
+          (side === 'left' && i === 3) ||
+          (side === 'right' && (i === 3 || i === 6))
+        )
+          continue;
 
         const wall = new Wall({
           index: i,
@@ -205,6 +236,47 @@ export class LevelBuilder {
         this.#objects.push(wall);
       }
     }
+
+    this.mergeWallTops(group);
+  }
+
+  private mergeWallTops(group: Group): void {
+    group.updateWorldMatrix(true, true);
+
+    const wallTopRoots: Object3D[] = [];
+    group.traverse((child) => {
+      if (child.name === 'wallTop') wallTopRoots.push(child);
+    });
+
+    if (wallTopRoots.length === 0) return;
+
+    const bakedGeometries: BufferGeometry[] = [];
+    let sharedMaterial: Material | undefined;
+
+    for (const root of wallTopRoots) {
+      root.traverse((child) => {
+        if (!(child instanceof Mesh)) return;
+        const geo = child.geometry.clone();
+        geo.applyMatrix4(child.matrixWorld);
+        bakedGeometries.push(geo);
+        if (!sharedMaterial) sharedMaterial = child.material as Material;
+      });
+    }
+
+    if (bakedGeometries.length === 0 || !sharedMaterial) return;
+
+    const merged = mergeGeometries(bakedGeometries);
+    if (!merged) return;
+
+    const mergedMesh = new Mesh(merged, sharedMaterial);
+    mergedMesh.castShadow = true;
+    mergedMesh.receiveShadow = true;
+
+    for (const root of wallTopRoots) {
+      root.removeFromParent();
+    }
+
+    group.add(mergedMesh);
   }
 
   getInteractables(): LevelObject[] {
@@ -216,5 +288,7 @@ export class LevelBuilder {
       obj.dispose();
     }
     this.#objects = [];
+    this.#workbenchBatch?.dispose();
+    this.#workbenchBatch = null;
   }
 }

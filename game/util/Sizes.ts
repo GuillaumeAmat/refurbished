@@ -52,7 +52,7 @@ export class Sizes extends EventDispatcher<SizesEvents> {
     this.#width = window.innerWidth;
     this.#height = window.innerHeight;
 
-    // Above 2 is not necessary, so we use max the pixel ratio to 2.
-    this.#pixelRatio = Math.min(window.devicePixelRatio, 2);
+    // Above 1.5 is not necessary, so we cap the pixel ratio to 1.5.
+    this.#pixelRatio = Math.min(window.devicePixelRatio, 1.5);
   }
 }

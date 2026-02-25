@@ -44,7 +44,7 @@ export class Environment {
     this.#sunLight = new DirectionalLight('#ffffff', 1);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
-    this.#sunLight.shadow.mapSize.set(2048, 2048);
+    this.#sunLight.shadow.mapSize.set(1024, 1024);
     this.#sunLight.shadow.normalBias = 0.05;
     this.#sunLight.shadow.camera.top = -20;
     this.#sunLight.shadow.camera.bottom = 20;

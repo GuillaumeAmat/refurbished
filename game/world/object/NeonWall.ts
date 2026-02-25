@@ -114,6 +114,7 @@ export class NeonWall extends LevelObject {
         wallTop.position.z += offset.z;
         wallTop.rotation.copy(mesh.rotation);
 
+        wallTop.name = 'wallTop';
         this.setupShadows(wallTop);
         container.add(wallTop);
       }
