@@ -32,4 +32,15 @@ export class SoundManager {
     if (!sound) return;
     sound.pause();
   }
+
+  resumeTrack(name: string, volume: number, loop = true, resetOnResume = false): void {
+    const sound = Resources.getInstance().getAudioAsset(name);
+    if (!sound) return;
+    sound.loop = loop;
+    sound.volume = volume;
+    if (sound.paused) {
+      if (sound.ended || resetOnResume) sound.currentTime = 0;
+      sound.play();
+    }
+  }
 }

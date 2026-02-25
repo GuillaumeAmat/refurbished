@@ -17,6 +17,8 @@ export class WaitingScreen {
   #onResize: () => void;
 
   #visible = false;
+  #startDelay: ReturnType<typeof setTimeout> | null = null;
+  static readonly LEVEL_START_DELAY_MS = 1000;
 
   // Bound listener references for cleanup
   #onControllersReadyChange: () => void;
@@ -44,7 +46,9 @@ export class WaitingScreen {
     this.#onControllersReadyChange = () => {
       this.updateStatus();
       if (this.#gamepadManager.areControllersReady()) {
-        this.#stageActor.send({ type: 'controllersReady' });
+        this.#startDelay = setTimeout(() => {
+          this.#stageActor.send({ type: 'controllersReady' });
+        }, WaitingScreen.LEVEL_START_DELAY_MS);
       }
     };
     this.#onGamepadAssigned = () => this.updateStatus();
@@ -72,13 +76,19 @@ export class WaitingScreen {
     this.updateStatus();
 
     if (this.#gamepadManager.areControllersReady()) {
-      this.#stageActor.send({ type: 'controllersReady' });
+      this.#startDelay = setTimeout(() => {
+        this.#stageActor.send({ type: 'controllersReady' });
+      }, WaitingScreen.LEVEL_START_DELAY_MS);
     }
   }
 
   private hide() {
     this.#visible = false;
     this.#hudManager.hide();
+    if (this.#startDelay !== null) {
+      clearTimeout(this.#startDelay);
+      this.#startDelay = null;
+    }
   }
 
   #handleInput() {
@@ -101,6 +111,10 @@ export class WaitingScreen {
   }
 
   public dispose() {
+    if (this.#startDelay !== null) {
+      clearTimeout(this.#startDelay);
+      this.#startDelay = null;
+    }
     this.#subscription.unsubscribe();
     this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
     this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);

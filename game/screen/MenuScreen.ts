@@ -3,10 +3,8 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { MenuOverlayHUD } from '../hud/MenuOverlayHUD';
-import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
-import { SoundManager } from '../util/SoundManager';
 
 export class MenuScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -24,15 +22,9 @@ export class MenuScreen {
   static readonly MOVEMENT_DEBOUNCE_MS = 200;
   static readonly INPUT_COOLDOWN_MS = 200;
 
-  #debug: Debug;
-  #debugProperties = {
-    DisableMenuTrack: false,
-  };
-
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
     this.#gamepadManager = GamepadManager.getInstance();
-    this.#debug = Debug.getInstance();
 
     this.#hudManager = new HUDRegionManager(camera);
     this.#overlay = new MenuOverlayHUD();
@@ -50,51 +42,17 @@ export class MenuScreen {
     this.#sizes = Sizes.getInstance();
     this.#onResize = () => this.#hudManager.updatePositions();
     this.#sizes.addEventListener('resize', this.#onResize);
-
-    this.setupHelpers();
-  }
-
-  private playMenuTrack() {
-    if (this.#debugProperties.DisableMenuTrack) return;
-
-    SoundManager.getInstance().playTrack('menuTrack', 0.6);
-  }
-
-  private pauseMenuTrack() {
-    SoundManager.getInstance().stopTrack('menuTrack');
   }
 
   private show() {
     this.#visible = true;
     this.#shownAt = Date.now();
     this.#hudManager.show();
-    this.playMenuTrack();
   }
 
   private hide() {
     this.#visible = false;
     this.#hudManager.hide();
-    this.pauseMenuTrack();
-  }
-
-  private setupHelpers() {
-    if (this.#debug.active) {
-      const folderName = 'MenuScreen';
-      const guiFolder = this.#debug.gui.addFolder(folderName);
-
-      this.#debugProperties = {
-        ...this.#debugProperties,
-        ...this.#debug.configFromLocaleStorage?.folders?.[folderName]?.controllers,
-      };
-
-      guiFolder.add(this.#debugProperties, 'DisableMenuTrack').onChange((value: boolean) => {
-        this.#debug.save();
-
-        if (value) {
-          this.pauseMenuTrack();
-        }
-      });
-    }
   }
 
   #handleInput() {
@@ -117,7 +75,6 @@ export class MenuScreen {
 
       if (input.isButtonJustPressed('a')) {
         const selected = this.#overlay.getSelectedOption();
-        if (selected === 'play') SoundManager.getInstance().playSound('selectSound');
         this.#stageActor.send({ type: selected });
         return;
       }

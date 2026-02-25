@@ -16,6 +16,7 @@ import { StartScreen } from './screen/StartScreen';
 import { TutorialScreen } from './screen/TutorialScreen';
 import { WaitingScreen } from './screen/WaitingScreen';
 import { stageMachine } from './Stage.machine';
+import { SessionManager } from './state/SessionManager';
 import { Debug } from './util/Debug';
 import { GamepadManager } from './util/input/GamepadManager';
 import { Renderer } from './util/Renderer';
@@ -320,6 +321,38 @@ export class Stage {
      * If called before, it won't find any meshes to update.
      */
     this.#environment.updateMeshesMaterial();
+
+    // Sync level duration with track length
+    const levelTrackAudio = Resources.getInstance().getAudioAsset('levelTrack');
+    if (levelTrackAudio) {
+      SessionManager.getInstance().setDuration(Math.round(levelTrackAudio.duration));
+    }
+
+    // Centralized audio lifecycle
+    const MENU_TRACK_STATES = ['Menu', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
+
+    let previousState = this.#actor.getSnapshot();
+
+    this.#actor.subscribe((state) => {
+      const sm = SoundManager.getInstance();
+
+      if (MENU_TRACK_STATES.some((s) => state.matches(s))) {
+        sm.stopTrack('levelTrack');
+        sm.resumeTrack('menuTrack', 1.0, true, true);
+      } else if (state.matches('WaitingForControllers')) {
+        sm.stopTrack('menuTrack');
+      } else if (state.matches('Level')) {
+        sm.stopTrack('menuTrack');
+        sm.resumeTrack('levelTrack', 1.0, false, !previousState.matches('Pause'));
+      } else if (state.matches('Pause')) {
+        sm.stopTrack('levelTrack');
+      } else {
+        sm.stopTrack('menuTrack');
+        sm.stopTrack('levelTrack');
+      }
+
+      previousState = state;
+    });
 
     if (Debug.getInstance().active) {
       const sub = this.#actor.subscribe((state) => {

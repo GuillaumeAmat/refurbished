@@ -5,6 +5,7 @@ import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { TutorialOverlayHUD } from '../hud/TutorialOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
+import { SoundManager } from '../util/SoundManager';
 
 export class TutorialScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -65,6 +66,7 @@ export class TutorialScreen {
       }
 
       if (input.isButtonJustPressed('a')) {
+        SoundManager.getInstance().playSound('selectSound');
         this.#stageActor.send({ type: 'play' });
         return;
       }

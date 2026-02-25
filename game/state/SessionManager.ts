@@ -1,7 +1,7 @@
 import { Time } from '../util/Time';
 
 export class SessionManager extends EventTarget {
-  static readonly DURATION = 150; // 2:30
+  static readonly DURATION = 215; // 3:35, but overriden by the level track length in Stage.ts
   static #instance: SessionManager | null = null;
 
   #remaining = SessionManager.DURATION;
@@ -63,5 +63,10 @@ export class SessionManager extends EventTarget {
 
   public getRemainingTime(): number {
     return this.#remaining;
+  }
+
+  public setDuration(seconds: number): void {
+    this.#remaining = seconds;
+    this.dispatchEvent(new CustomEvent('timeChanged', { detail: { remaining: this.#remaining } }));
   }
 }
