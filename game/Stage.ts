@@ -14,7 +14,6 @@ import { SavingScoreScreen } from './screen/SavingScoreScreen';
 import { ScoreScreen } from './screen/ScoreScreen';
 import { StartScreen } from './screen/StartScreen';
 import { TutorialScreen } from './screen/TutorialScreen';
-import { WaitingScreen } from './screen/WaitingScreen';
 import { stageMachine } from './Stage.machine';
 import { SessionManager } from './state/SessionManager';
 import { Debug } from './util/Debug';
@@ -297,7 +296,6 @@ export class Stage {
     const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera, this.#levelInfo);
     const menuScreen = new MenuScreen(this.#actor, this.#camera.camera);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#camera.camera);
-    const waitingScreen = new WaitingScreen(this.#actor, this.#camera.camera);
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#camera.camera);
     const pauseScreen = new PauseScreen(this.#actor, this.#camera.camera);
     const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
@@ -326,8 +324,6 @@ export class Stage {
       if (MENU_TRACK_STATES.some((s) => state.matches(s))) {
         sm.stopTrack('levelTrack');
         sm.resumeTrack('menuTrack', true, true);
-      } else if (state.matches('WaitingForControllers')) {
-        sm.stopTrack('menuTrack');
       } else if (state.matches('Level')) {
         sm.stopTrack('menuTrack');
         if (!Debug.getInstance().active) {
@@ -360,7 +356,6 @@ export class Stage {
       levelScreen.update();
       menuScreen.update();
       tutorialScreen.update();
-      waitingScreen.update();
       leaderboardScreen.update();
       pauseScreen.update();
       scoreScreen.update();

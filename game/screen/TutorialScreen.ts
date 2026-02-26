@@ -19,7 +19,10 @@ export class TutorialScreen {
 
   #visible = false;
   #shownAt = 0;
+  #starting = false;
+  #startDelay: ReturnType<typeof setTimeout> | null = null;
   static readonly INPUT_COOLDOWN_MS = 200;
+  static readonly LEVEL_START_DELAY_MS = 1000;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
@@ -51,11 +54,17 @@ export class TutorialScreen {
 
   private hide() {
     this.#visible = false;
+    this.#starting = false;
+    if (this.#startDelay !== null) {
+      clearTimeout(this.#startDelay);
+      this.#startDelay = null;
+    }
     this.#hudManager.hide();
   }
 
   #handleInput() {
     if (Date.now() - this.#shownAt < TutorialScreen.INPUT_COOLDOWN_MS) return;
+    if (this.#starting) return;
     for (const playerId of [1, 2] as PlayerId[]) {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
@@ -66,8 +75,13 @@ export class TutorialScreen {
       }
 
       if (input.isButtonJustPressed('a')) {
-        SoundManager.getInstance().playSound('selectSound');
-        this.#stageActor.send({ type: 'play' });
+        this.#starting = true;
+        const sm = SoundManager.getInstance();
+        sm.stopTrack('menuTrack');
+        sm.playSound('selectSound');
+        this.#startDelay = setTimeout(() => {
+          this.#stageActor.send({ type: 'play' });
+        }, TutorialScreen.LEVEL_START_DELAY_MS);
         return;
       }
     }
@@ -81,6 +95,10 @@ export class TutorialScreen {
   }
 
   public dispose() {
+    if (this.#startDelay !== null) {
+      clearTimeout(this.#startDelay);
+      this.#startDelay = null;
+    }
     this.#subscription.unsubscribe();
     this.#sizes.removeEventListener('resize', this.#onResize);
     this.#hudManager.dispose();
