@@ -535,8 +535,9 @@ export class Player {
     if (!this.#smokeSystem || !this.#rigidBody) return;
 
     const position = this.getPosition();
-    const linvel = this.#rigidBody.linvel();
-    const velocity = this.#cachedVelocity.set(linvel.x, linvel.y, linvel.z);
+    // #cachedVelocity holds the physics-resolved velocity captured at the top of update(),
+    // before input overwrites linvel — so it reflects actual movement, not desired movement.
+    const velocity = this.#cachedVelocity;
 
     // Burst on dash start
     if (this.#dashState.isDashing && !this.#hasDashBurst && position) {
@@ -548,6 +549,14 @@ export class Player {
   }
 
   public update() {
+    // Capture physics-resolved velocity before updateMovement() overwrites linvel with
+    // gamepad input. This ensures smoke only appears when the player actually moves,
+    // not when they are pressing a direction while blocked by a bench.
+    if (this.#rigidBody) {
+      const v = this.#rigidBody.linvel();
+      this.#cachedVelocity.set(v.x, v.y, v.z);
+    }
+
     this.updateMovement();
     this.updateRotation();
     this.syncMeshWithPhysics();
