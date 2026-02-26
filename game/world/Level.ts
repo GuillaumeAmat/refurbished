@@ -102,6 +102,8 @@ export class Level {
   }
 
   public dispose(): void {
+    this.#player1?.cleanup();
+    this.#player2?.cleanup();
     this.#floor.dispose();
     this.#levelBuilder.dispose();
     this.#group.removeFromParent();

@@ -89,6 +89,13 @@ export class Player {
   #playerId: PlayerId;
   #time: Time;
 
+  #onGamepadAssigned = (e: Event): void => {
+    const event = e as CustomEvent<{ playerId: PlayerId }>;
+    if (event.detail.playerId === this.#playerId) {
+      this.#setupInputCallbacks();
+    }
+  };
+
   // Cached vectors to avoid allocations
   #cachedPosition = new Vector3();
   #cachedFacingDirection = new Vector3();
@@ -132,6 +139,7 @@ export class Player {
     this.createMesh();
     this.createPhysicsBody();
     this.#setupInputCallbacks();
+    this.#gamepadManager.addEventListener('gamepadAssigned', this.#onGamepadAssigned);
     this.#setupSmokeSystem();
 
     this.#setupAnimationDebug();
@@ -150,6 +158,10 @@ export class Player {
 
   public onInteract(callback: () => void): void {
     this.#interactCallback = callback;
+  }
+
+  public cleanup(): void {
+    this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);
   }
 
   #setupSmokeSystem(): void {
