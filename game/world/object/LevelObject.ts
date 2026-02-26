@@ -2,7 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-compat';
 import type { Color, Group, Object3D } from 'three';
 import { Box3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 
-import { HIGHLIGHT_EMISSIVE } from '../../constants';
+import { BLOOM_LAYER, HIGHLIGHT_EMISSIVE } from '../../constants';
 import { Physics } from '../../util/Physics';
 
 export abstract class LevelObject {
@@ -154,6 +154,7 @@ export abstract class LevelObject {
       // Fix neon bloom disappearing at certain angles
       if (isNeon) {
         child.frustumCulled = false;
+        child.layers.enable(BLOOM_LAYER);
       }
     });
   }

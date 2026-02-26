@@ -60,3 +60,5 @@ export const COMBO_MAX_MULTIPLIER = 4;
 
 // Star rating
 export const STAR_THRESHOLDS = [80, 200, 400];
+
+export const BLOOM_LAYER = 1;
