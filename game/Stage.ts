@@ -330,7 +330,9 @@ export class Stage {
         sm.stopTrack('menuTrack');
       } else if (state.matches('Level')) {
         sm.stopTrack('menuTrack');
-        sm.resumeTrack('levelTrack', false, !previousState.matches('Pause'));
+        if (!Debug.getInstance().active) {
+          sm.resumeTrack('levelTrack', false, !previousState.matches('Pause'));
+        }
       } else if (state.matches('Pause')) {
         sm.stopTrack('levelTrack');
       } else {
