@@ -4,7 +4,6 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { useRuntimeConfig } from '#app';
 
 import { ComboHUD } from '../hud/ComboHUD';
-import { ControllersHUD } from '../hud/ControllersHUD';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { OrderQueueHUD } from '../hud/OrderQueueHUD';
 import { PointsHUD } from '../hud/PointsHUD';
@@ -95,7 +94,6 @@ export class LevelScreen {
     this.#scene.add(this.#group);
 
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
-    this.#hudManager.add('topRight', new ControllersHUD(this.#gamepadManager));
     this.#hudManager.add('topCenter', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
     this.#hudManager.add('bottomLeft', new ComboHUD());
