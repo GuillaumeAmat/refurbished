@@ -336,7 +336,7 @@ export class InteractionSystem {
           // Allow targeting if carrying a compatible resource or ready to assemble
           if (carriedType && carriedState && obj.canAcceptResource(carriedType, carriedState)) {
             // Allow targeting
-          } else if (obj.isReadyToAssemble() && !player.isCarrying()) {
+          } else if (obj.isReadyToAssemble()) {
             // Allow targeting for assembly
           } else if (carriedType && carriedState && obj.canAcceptPackage(carriedType, carriedState)) {
             // Allow targeting for packaging
