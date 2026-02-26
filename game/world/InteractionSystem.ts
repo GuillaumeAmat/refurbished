@@ -1,7 +1,7 @@
 import { type Group, Vector3 } from 'three';
 
 import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
-import { ScoreManager } from '../state/ScoreManager';
+import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Time } from '../util/Time';
 import { BlueWorkZone } from './object/BlueWorkZone';
@@ -14,7 +14,6 @@ import type { Player } from './Player';
 
 const REPAIR_HOLD_DURATION = 2000;
 const ASSEMBLE_HOLD_DURATION = 2000;
-const POINTS_PER_DELIVERY = 10;
 
 export class InteractionSystem {
   #interactables: LevelObject[] = [];
@@ -24,7 +23,7 @@ export class InteractionSystem {
   #resourceParents: Map<DroppedResource, LevelObject> = new Map();
   #levelGroup: Group;
   #gamepadManager: GamepadManager;
-  #scoreManager: ScoreManager;
+  #orderManager: OrderManager;
 
   // Cached objects to avoid allocations in hot loops
   #tempToObj = new Vector3();
@@ -36,7 +35,7 @@ export class InteractionSystem {
   constructor(levelGroup: Group) {
     this.#levelGroup = levelGroup;
     this.#gamepadManager = GamepadManager.getInstance();
-    this.#scoreManager = ScoreManager.getInstance();
+    this.#orderManager = OrderManager.getInstance();
   }
 
   setInteractables(objects: LevelObject[]): void {
@@ -109,7 +108,7 @@ export class InteractionSystem {
       // Delivery zone: only accept closed packages
       if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
-        this.#scoreManager.addPoints(POINTS_PER_DELIVERY);
+        this.#orderManager.completeNextOrder();
         return;
       }
 

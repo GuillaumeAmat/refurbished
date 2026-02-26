@@ -39,3 +39,24 @@ export const SMOKE_SPAWN_INTERVAL = 0.05;
 export const SMOKE_COLOR = 0xcccccc;
 
 export const AUDIO_TRACK_FADE_MS = 100;
+
+// Order system
+export const ORDER_BASE_POINTS = 20;
+export const ORDER_DURATION_MS = 60_000;
+export const ORDER_GREEN_THRESHOLD = 0.4;
+export const ORDER_YELLOW_THRESHOLD = 0.7;
+export const ORDER_GREEN_TIP = 8;
+export const ORDER_YELLOW_TIP = 4;
+export const ORDER_RED_TIP = 0;
+export const ORDER_EXPIRE_PENALTY = -10;
+export const ORDER_MAX_ACTIVE = 4;
+export const ORDER_SPAWN_MIN_MS = 15_000;
+export const ORDER_SPAWN_MAX_MS = 20_000;
+export const ORDER_FIRST_DELAY_MS = 3_000;
+export const ORDER_MIN_ACTIVE = 1;
+
+// Combo
+export const COMBO_MAX_MULTIPLIER = 4;
+
+// Star rating
+export const STAR_THRESHOLDS = [80, 200, 400];

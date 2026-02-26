@@ -1,14 +1,16 @@
 import { Group } from 'three';
 
+import { STAR_THRESHOLDS } from '../constants';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { ScoreManager } from '../state/ScoreManager';
 import { HUDBackdrop } from './HUDBackdrop';
 import type { IHUDItem } from './IHUDItem';
 
 export class ScoreOverlayHUD implements IHUDItem {
-  static readonly OVERLAY_HEIGHT = 1.2;
+  static readonly OVERLAY_HEIGHT = 1.4;
   static readonly TITLE_HEIGHT = 0.15;
   static readonly SCORE_HEIGHT = 0.12;
+  static readonly STAR_HEIGHT = 0.1;
   static readonly PROMPT_HEIGHT = 0.08;
   static readonly INPUT_HEIGHT = 0.1;
   static readonly BUTTON_HEIGHT = 0.08;
@@ -17,6 +19,7 @@ export class ScoreOverlayHUD implements IHUDItem {
   #backdrop: HUDBackdrop;
   #titleText: TextPlaneResult | null = null;
   #scoreText: TextPlaneResult | null = null;
+  #starsText: TextPlaneResult | null = null;
   #promptText: TextPlaneResult | null = null;
   #inputText: TextPlaneResult | null = null;
   #saveText: TextPlaneResult | null = null;
@@ -56,8 +59,17 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 56,
       color: '#FFFFFF',
     });
-    this.#scoreText.mesh.position.y = 0.2;
+    this.#scoreText.mesh.position.y = 0.25;
     this.#group.add(this.#scoreText.mesh);
+
+    // Stars
+    this.#starsText = createTextPlane(this.#computeStars(score), {
+      height: ScoreOverlayHUD.STAR_HEIGHT,
+      fontSize: 48,
+      color: '#FBD954',
+    });
+    this.#starsText.mesh.position.y = 0.1;
+    this.#group.add(this.#starsText.mesh);
 
     // Prompt
     this.#promptText = createTextPlane('Enter your name:', {
@@ -65,7 +77,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#CCCCCC',
     });
-    this.#promptText.mesh.position.y = 0.02;
+    this.#promptText.mesh.position.y = -0.05;
     this.#group.add(this.#promptText.mesh);
 
     // Name input
@@ -74,7 +86,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 48,
       color: '#FFFFFF',
     });
-    this.#inputText.mesh.position.y = -0.12;
+    this.#inputText.mesh.position.y = -0.19;
     this.#group.add(this.#inputText.mesh);
 
     // Save button
@@ -83,7 +95,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#saveText.mesh.position.set(-0.4, -0.35, 0);
+    this.#saveText.mesh.position.set(-0.4, -0.42, 0);
     this.#group.add(this.#saveText.mesh);
 
     // Skip button
@@ -92,13 +104,22 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#888888',
     });
-    this.#skipText.mesh.position.set(0.4, -0.35, 0);
+    this.#skipText.mesh.position.set(0.4, -0.42, 0);
     this.#group.add(this.#skipText.mesh);
+  }
+
+  #computeStars(score: number): string {
+    let count = 0;
+    for (const threshold of STAR_THRESHOLDS) {
+      if (score >= threshold) count++;
+    }
+    return '\u2605'.repeat(count) + '\u2606'.repeat(STAR_THRESHOLDS.length - count);
   }
 
   updateScore() {
     const score = this.#scoreManager.getScore();
     this.#scoreText?.updateText(`Score: ${score}`);
+    this.#starsText?.updateText(this.#computeStars(score));
   }
 
   setSelectedOption(option: 'save' | 'skip') {
@@ -176,6 +197,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#backdrop.dispose();
     this.#titleText?.dispose();
     this.#scoreText?.dispose();
+    this.#starsText?.dispose();
     this.#promptText?.dispose();
     this.#inputText?.dispose();
     this.#saveText?.dispose();

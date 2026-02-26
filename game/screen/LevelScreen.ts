@@ -3,11 +3,15 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { useRuntimeConfig } from '#app';
 
+import { ComboHUD } from '../hud/ComboHUD';
 import { ControllersHUD } from '../hud/ControllersHUD';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
+import { OrderQueueHUD } from '../hud/OrderQueueHUD';
 import { PointsHUD } from '../hud/PointsHUD';
 import { TimeHUD } from '../hud/TimeHUD';
 import type { LevelInfo } from '../levels';
+import { ComboManager } from '../state/ComboManager';
+import { OrderManager } from '../state/OrderManager';
 import { ScoreManager } from '../state/ScoreManager';
 import { SessionManager } from '../state/SessionManager';
 import { Debug } from '../util/Debug';
@@ -36,6 +40,8 @@ export class LevelScreen {
   #levelInitialized = false;
   #sessionManager: SessionManager;
   #scoreManager: ScoreManager;
+  #orderManager: OrderManager;
+  #comboManager: ComboManager;
   #isInteractive = false;
 
   // Bound listener references for cleanup
@@ -90,7 +96,9 @@ export class LevelScreen {
 
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
     this.#hudManager.add('topRight', new ControllersHUD(this.#gamepadManager));
+    this.#hudManager.add('topCenter', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
+    this.#hudManager.add('bottomLeft', new ComboHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
     this.#hudManager.hide();
 
@@ -100,6 +108,8 @@ export class LevelScreen {
 
     this.#sessionManager = SessionManager.getInstance();
     this.#scoreManager = ScoreManager.getInstance();
+    this.#orderManager = OrderManager.getInstance();
+    this.#comboManager = ComboManager.getInstance();
     this.#onSessionEnded = () => {
       if (!this.#group.visible) return;
       this.#stageActor.send({ type: 'end', score: this.#scoreManager.getScore() });
@@ -134,15 +144,20 @@ export class LevelScreen {
     if (wasHidden) {
       this.#scoreManager.reset();
       this.#sessionManager.reset();
+      this.#orderManager.reset();
+      this.#comboManager.reset();
       if (!Debug.getInstance().active) {
         this.#sessionManager.start();
+        this.#orderManager.start();
       }
       this.initLevel();
     } else if (!Debug.getInstance().active) {
       if (interactive) {
         this.#sessionManager.start();
+        this.#orderManager.start();
       } else {
         this.#sessionManager.stop();
+        this.#orderManager.stop();
       }
     }
   }
@@ -152,6 +167,7 @@ export class LevelScreen {
     this.#isInteractive = false;
     this.#hudManager.hide();
     this.#sessionManager.stop();
+    this.#orderManager.stop();
   }
 
   #checkPauseInput() {
