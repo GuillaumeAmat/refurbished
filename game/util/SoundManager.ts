@@ -1,9 +1,11 @@
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 
 import { AUDIO_TRACK_FADE_MS } from '../constants';
 
 export class SoundManager {
   static #instance: SoundManager;
+
+  #muted = false;
 
   #sounds: Record<string, Howl> = {
     menuTrack: new Howl({
@@ -59,6 +61,11 @@ export class SoundManager {
         : new Promise<void>((resolve) => howl.once('load', () => resolve())),
     );
     return Promise.all(promises).then(() => undefined);
+  }
+
+  toggleMute(): void {
+    this.#muted = !this.#muted;
+    Howler.mute(this.#muted);
   }
 
   getTrackDuration(name: string): Promise<number> {

@@ -38,6 +38,7 @@ export class Stage {
 
   // Bound listener references for cleanup
   #onResize: () => void;
+  #onMuteKey: (e: KeyboardEvent) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     if (!window) {
@@ -209,6 +210,11 @@ export class Stage {
 
     new SoundManager();
 
+    this.#onMuteKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'm') SoundManager.getInstance().toggleMute();
+    };
+    window.addEventListener('keydown', this.#onMuteKey);
+
     // Initialize keyboard fallback based on runtime config
     const config = useRuntimeConfig();
     const gamepadManager = GamepadManager.getInstance();
@@ -367,6 +373,7 @@ export class Stage {
   public dispose() {
     this.#time.dispose();
     this.#sizes.removeEventListener('resize', this.#onResize);
+    window.removeEventListener('keydown', this.#onMuteKey);
     this.#actor.stop();
   }
 }
