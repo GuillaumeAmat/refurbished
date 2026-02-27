@@ -21,7 +21,9 @@ export class TutorialScreen {
   #shownAt = 0;
   #starting = false;
   #startDelay: ReturnType<typeof setTimeout> | null = null;
+  #movementDebounceTime = 0;
   static readonly INPUT_COOLDOWN_MS = 200;
+  static readonly MOVEMENT_DEBOUNCE_MS = 200;
   static readonly LEVEL_START_DELAY_MS = 1000;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
@@ -49,6 +51,7 @@ export class TutorialScreen {
   private show() {
     this.#visible = true;
     this.#shownAt = Date.now();
+    this.#movementDebounceTime = 0;
     this.#hudManager.show();
   }
 
@@ -63,11 +66,23 @@ export class TutorialScreen {
   }
 
   #handleInput() {
-    if (Date.now() - this.#shownAt < TutorialScreen.INPUT_COOLDOWN_MS) return;
+    const now = Date.now();
+    if (now - this.#shownAt < TutorialScreen.INPUT_COOLDOWN_MS) return;
     if (this.#starting) return;
+    const canMove = now - this.#movementDebounceTime >= TutorialScreen.MOVEMENT_DEBOUNCE_MS;
+
     for (const playerId of [1, 2] as PlayerId[]) {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
+
+      if (canMove) {
+        const movement = input.getMovement();
+        if (Math.abs(movement.z) > 0.5) {
+          this.#movementDebounceTime = now;
+          const next = this.#overlay.getSelectedOption() === 'start' ? 'menu' : 'start';
+          this.#overlay.setSelectedOption(next);
+        }
+      }
 
       if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
         this.#stageActor.send({ type: 'back' });
@@ -75,6 +90,11 @@ export class TutorialScreen {
       }
 
       if (input.isButtonJustPressed('a')) {
+        const selected = this.#overlay.getSelectedOption();
+        if (selected === 'menu') {
+          this.#stageActor.send({ type: 'back' });
+          return;
+        }
         this.#starting = true;
         const sm = SoundManager.getInstance();
         sm.stopTrack('menuTrack');

@@ -14,8 +14,10 @@ export class TutorialOverlayHUD implements IHUDItem {
   #backdrop: HUDBackdrop;
   #titleText: TextPlaneResult | null = null;
   #commandsText: TextPlaneResult | null = null;
-  #backText: TextPlaneResult | null = null;
-  #playText: TextPlaneResult | null = null;
+  #startText: TextPlaneResult | null = null;
+  #menuText: TextPlaneResult | null = null;
+
+  #selectedOption: 'start' | 'menu' = 'start';
 
   constructor() {
     this.#group = new Group();
@@ -44,21 +46,45 @@ export class TutorialOverlayHUD implements IHUDItem {
     this.#commandsText.mesh.position.y = 0.15;
     this.#group.add(this.#commandsText.mesh);
 
-    this.#backText = createTextPlane('[B] Back', {
-      height: TutorialOverlayHUD.BUTTON_HEIGHT,
-      fontSize: 40,
-      color: '#888888',
-    });
-    this.#backText.mesh.position.set(-0.5, -0.35, 0);
-    this.#group.add(this.#backText.mesh);
-
-    this.#playText = createTextPlane('[A] Start Game', {
+    this.#startText = createTextPlane('> Start', {
       height: TutorialOverlayHUD.BUTTON_HEIGHT,
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#playText.mesh.position.set(0.5, -0.35, 0);
-    this.#group.add(this.#playText.mesh);
+    this.#startText.mesh.position.set(0, -0.3, 0);
+    this.#group.add(this.#startText.mesh);
+
+    this.#menuText = createTextPlane('  Main menu', {
+      height: TutorialOverlayHUD.BUTTON_HEIGHT,
+      fontSize: 40,
+      color: '#888888',
+    });
+    this.#menuText.mesh.position.set(0, -0.45, 0);
+    this.#group.add(this.#menuText.mesh);
+  }
+
+  setSelectedOption(option: 'start' | 'menu') {
+    this.#selectedOption = option;
+    if (option === 'start') {
+      this.#startText?.updateText('> Start');
+      this.#startText?.updateColor('#FBD954');
+      this.#menuText?.updateText('  Main menu');
+      this.#menuText?.updateColor('#888888');
+    } else {
+      this.#startText?.updateText('  Start');
+      this.#startText?.updateColor('#888888');
+      this.#menuText?.updateText('> Main menu');
+      this.#menuText?.updateColor('#FBD954');
+    }
+  }
+
+  getSelectedOption(): 'start' | 'menu' {
+    return this.#selectedOption;
+  }
+
+  reset() {
+    this.#selectedOption = 'start';
+    this.setSelectedOption('start');
   }
 
   getGroup(): Group {
@@ -71,6 +97,7 @@ export class TutorialOverlayHUD implements IHUDItem {
 
   show() {
     this.#group.visible = true;
+    this.reset();
   }
 
   hide() {
@@ -83,7 +110,7 @@ export class TutorialOverlayHUD implements IHUDItem {
     this.#backdrop.dispose();
     this.#titleText?.dispose();
     this.#commandsText?.dispose();
-    this.#backText?.dispose();
-    this.#playText?.dispose();
+    this.#startText?.dispose();
+    this.#menuText?.dispose();
   }
 }

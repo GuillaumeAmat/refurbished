@@ -66,7 +66,7 @@ export class MenuScreen {
 
       if (canMove) {
         const movement = input.getMovement();
-        if (Math.abs(movement.x) > 0.5 || Math.abs(movement.z) > 0.5) {
+        if (Math.abs(movement.z) > 0.5) {
           this.#movementDebounceTime = now;
           const next = this.#overlay.getSelectedOption() === 'play' ? 'leaderboard' : 'play';
           this.#overlay.setSelectedOption(next);

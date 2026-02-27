@@ -76,15 +76,15 @@ export class ScoreScreen {
 
       const movement = input.getMovement();
 
-      // Left/Right to switch between save/skip (debounced for analog input)
-      if (canMove && Math.abs(movement.x) > 0.5) {
+      // Up/Down to switch between save/skip (debounced for analog input)
+      if (canMove && Math.abs(movement.z) > 0.5) {
         this.#movementDebounceTime = now;
         const current = this.#scoreOverlay.getSelectedOption();
         this.#scoreOverlay.setSelectedOption(current === 'save' ? 'skip' : 'save');
       }
 
-      // Up/Down to cycle through characters (debounced for analog input)
-      if (canMove && Math.abs(movement.z) > 0.5) {
+      // Left/Right to cycle through characters (debounced for analog input)
+      if (canMove && Math.abs(movement.x) > 0.5) {
         this.#movementDebounceTime = now;
         const name = this.#scoreOverlay.getPlayerName();
         const chars = name.split('');
@@ -92,11 +92,11 @@ export class ScoreScreen {
         const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
 
         let newIdx: number;
-        if (movement.z < -0.5) {
-          // Up - next char
+        if (movement.x > 0.5) {
+          // Right - next char
           newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
         } else {
-          // Down - prev char
+          // Left - prev char
           newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
         }
 

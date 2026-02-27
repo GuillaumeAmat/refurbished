@@ -59,7 +59,7 @@ export class LeaderboardScreen {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
 
-      if (input.isButtonJustPressed('a') || input.isButtonJustPressed('start')) {
+      if (input.isButtonJustPressed('a') || input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
         this.#stageActor.send({ type: 'menu' });
         return;
       }

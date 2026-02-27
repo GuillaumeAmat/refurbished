@@ -22,7 +22,7 @@ export class PauseOverlayHUD implements IHUDItem {
   constructor() {
     this.#group = new Group();
 
-    this.#backdrop = new HUDBackdrop(2.5, PauseOverlayHUD.OVERLAY_HEIGHT);
+    this.#backdrop = new HUDBackdrop(2.5, 0.9);
     this.#group.add(this.#backdrop.getGroup());
 
     this.#createContent();
@@ -44,7 +44,7 @@ export class PauseOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#resumeText.mesh.position.set(-0.3, -0.1, 0);
+    this.#resumeText.mesh.position.set(0, 0.0, 0);
     this.#group.add(this.#resumeText.mesh);
 
     // Quit button
@@ -53,7 +53,7 @@ export class PauseOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#888888',
     });
-    this.#quitText.mesh.position.set(0.5, -0.1, 0);
+    this.#quitText.mesh.position.set(0, -0.15, 0);
     this.#group.add(this.#quitText.mesh);
   }
 

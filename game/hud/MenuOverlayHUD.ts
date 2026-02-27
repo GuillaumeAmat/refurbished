@@ -19,7 +19,7 @@ export class MenuOverlayHUD implements IHUDItem {
 
   constructor() {
     this.#group = new Group();
-    this.#backdrop = new HUDBackdrop(3.5, MenuOverlayHUD.OVERLAY_HEIGHT);
+    this.#backdrop = new HUDBackdrop(2.5, MenuOverlayHUD.OVERLAY_HEIGHT);
     this.#group.add(this.#backdrop.getGroup());
     this.#createContent();
   }
@@ -38,7 +38,7 @@ export class MenuOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#playText.mesh.position.set(-0.5, -0.1, 0);
+    this.#playText.mesh.position.set(0, 0.05, 0);
     this.#group.add(this.#playText.mesh);
 
     this.#leaderboardText = createTextPlane('  Leaderboard', {
@@ -46,7 +46,7 @@ export class MenuOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#888888',
     });
-    this.#leaderboardText.mesh.position.set(0.6, -0.1, 0);
+    this.#leaderboardText.mesh.position.set(0, -0.1, 0);
     this.#group.add(this.#leaderboardText.mesh);
   }
 

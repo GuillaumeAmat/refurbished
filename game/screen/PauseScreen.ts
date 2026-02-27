@@ -72,8 +72,8 @@ export class PauseScreen {
 
       const movement = input.getMovement();
 
-      // Left/Right to switch between resume/quit (debounced for analog input)
-      if (Math.abs(movement.x) > 0.5 && now - this.#movementDebounceTime >= PauseScreen.MOVEMENT_DEBOUNCE_MS) {
+      // Up/Down to switch between resume/quit (debounced for analog input)
+      if (Math.abs(movement.z) > 0.5 && now - this.#movementDebounceTime >= PauseScreen.MOVEMENT_DEBOUNCE_MS) {
         this.#movementDebounceTime = now;
         const current = this.#pauseOverlay.getSelectedOption();
         this.#pauseOverlay.setSelectedOption(current === 'resume' ? 'quit' : 'resume');
@@ -89,8 +89,8 @@ export class PauseScreen {
         }
       }
 
-      // Start button to quick-resume
-      if (input.isButtonJustPressed('start')) {
+      // B or Start to quick-resume
+      if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
         this.#pauseOverlay.triggerResume();
       }
     }

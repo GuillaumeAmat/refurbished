@@ -43,7 +43,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
     this.#scoresText.mesh.position.y = 0.1;
     this.#group.add(this.#scoresText.mesh);
 
-    this.#backText = createTextPlane('[A] Back to Menu', {
+    this.#backText = createTextPlane('> Main menu', {
       height: LeaderboardOverlayHUD.BUTTON_HEIGHT,
       fontSize: 40,
       color: '#FBD954',

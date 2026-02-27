@@ -95,7 +95,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#saveText.mesh.position.set(-0.4, -0.42, 0);
+    this.#saveText.mesh.position.set(0, -0.35, 0);
     this.#group.add(this.#saveText.mesh);
 
     // Skip button
@@ -104,7 +104,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#888888',
     });
-    this.#skipText.mesh.position.set(0.4, -0.42, 0);
+    this.#skipText.mesh.position.set(0, -0.5, 0);
     this.#group.add(this.#skipText.mesh);
   }
 
