@@ -24,8 +24,8 @@ export const BACKGROUND_COLOR_G = '141';
 export const BACKGROUND_COLOR_B = '142';
 
 export const TILE_SIZE = 2;
-export const MOVEMENT_SPEED = 15;
-export const DASH_SPEED = 40;
+export const MOVEMENT_SPEED = 13;
+export const DASH_SPEED = 30;
 export const DASH_DURATION = 0.2;
 export const DASH_COOLDOWN = 0.3;
 
