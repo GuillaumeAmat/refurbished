@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { SavingScoreOverlayHUD } from '../hud/SavingScoreOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 export class SavingScoreScreen {
@@ -53,6 +54,7 @@ export class SavingScoreScreen {
   private show() {
     this.#visible = true;
     this.#canContinue = false;
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
     this.#savingOverlay.reset();
   }

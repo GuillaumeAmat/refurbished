@@ -89,12 +89,6 @@ export class Player {
   #playerId: PlayerId;
   #time: Time;
 
-  #onGamepadAssigned = (e: Event): void => {
-    const event = e as CustomEvent<{ playerId: PlayerId }>;
-    if (event.detail.playerId === this.#playerId) {
-      this.#setupInputCallbacks();
-    }
-  };
 
   // Cached vectors to avoid allocations
   #cachedPosition = new Vector3();
@@ -138,30 +132,22 @@ export class Player {
 
     this.createMesh();
     this.createPhysicsBody();
-    this.#setupInputCallbacks();
-    this.#gamepadManager.addEventListener('gamepadAssigned', this.#onGamepadAssigned);
     this.#setupSmokeSystem();
 
     this.#setupAnimationDebug();
-  }
-
-  #setupInputCallbacks(): void {
-    const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
-    if (inputSource) {
-      inputSource.onButtonUp((button) => {
-        if (button === 'a' && this.#interactCallback) {
-          this.#interactCallback();
-        }
-      });
-    }
   }
 
   public onInteract(callback: () => void): void {
     this.#interactCallback = callback;
   }
 
-  public cleanup(): void {
-    this.#gamepadManager.removeEventListener('gamepadAssigned', this.#onGamepadAssigned);
+  public cleanup(): void {}
+
+  #updateInteract(): void {
+    const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
+    if (inputSource?.isButtonJustPressed('a') && this.#interactCallback) {
+      this.#interactCallback();
+    }
   }
 
   #setupSmokeSystem(): void {
@@ -574,5 +560,6 @@ export class Player {
     this.syncMeshWithPhysics();
     this.#updateAnimation();
     this.#updateSmoke();
+    this.#updateInteract();
   }
 }

@@ -1,0 +1,1 @@
+export const INPUT_TRANSITION_LOCKOUT_MS = 200;

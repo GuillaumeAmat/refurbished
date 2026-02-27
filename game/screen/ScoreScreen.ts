@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { ScoreOverlayHUD } from '../hud/ScoreOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 const ALLOWED_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_';
@@ -56,6 +57,7 @@ export class ScoreScreen {
 
   private show() {
     this.#visible = true;
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
     this.#scoreOverlay.reset();
     this.#charIndex = 0;

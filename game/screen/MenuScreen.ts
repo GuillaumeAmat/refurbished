@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { MenuOverlayHUD } from '../hud/MenuOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 export class MenuScreen {
@@ -17,10 +18,8 @@ export class MenuScreen {
   #onResize: () => void;
 
   #visible = false;
-  #shownAt = 0;
   #movementDebounceTime = 0;
   static readonly MOVEMENT_DEBOUNCE_MS = 200;
-  static readonly INPUT_COOLDOWN_MS = 200;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
@@ -46,7 +45,7 @@ export class MenuScreen {
 
   private show() {
     this.#visible = true;
-    this.#shownAt = Date.now();
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
   }
 
@@ -57,7 +56,6 @@ export class MenuScreen {
 
   #handleInput() {
     const now = Date.now();
-    if (now - this.#shownAt < MenuScreen.INPUT_COOLDOWN_MS) return;
     const canMove = now - this.#movementDebounceTime >= MenuScreen.MOVEMENT_DEBOUNCE_MS;
 
     for (const playerId of [1, 2] as PlayerId[]) {

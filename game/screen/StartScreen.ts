@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { StartOverlayHUD } from '../hud/StartOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 export class StartScreen {
@@ -42,6 +43,7 @@ export class StartScreen {
 
   private show() {
     this.#visible = true;
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
   }
 

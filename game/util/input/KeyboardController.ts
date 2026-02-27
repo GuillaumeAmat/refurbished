@@ -9,6 +9,7 @@ export class KeyboardController implements InputSource {
   #keysJustPressed = new Set<string>();
   #keyHoldStart: Map<string, number> = new Map();
   #keySet?: 'player1' | 'player2';
+  #locked = false;
 
   readonly connected = true;
 
@@ -34,6 +35,7 @@ export class KeyboardController implements InputSource {
   }
 
   public isButtonJustPressed(button: string): boolean {
+    if (this.#locked) return false;
     return this.#isButtonInSet(button, this.#keysJustPressed);
   }
 
@@ -73,7 +75,12 @@ export class KeyboardController implements InputSource {
     return set.has(button);
   }
 
-  public update(): void {
+  clearJustPressed(): void {
+    this.#keysJustPressed.clear();
+  }
+
+  public update(locked: boolean): void {
+    this.#locked = locked;
     this.#keysJustPressed.clear();
   }
 
@@ -157,7 +164,7 @@ export class KeyboardController implements InputSource {
 
     this.#keysPressed.delete(event.code);
 
-    if (this.#buttonUpCallback) {
+    if (!this.#locked && this.#buttonUpCallback) {
       const button = this.#mapKeyToAbstractButton(event.code);
       if (button) {
         this.#buttonUpCallback(button);

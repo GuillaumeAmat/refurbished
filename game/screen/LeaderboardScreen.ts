@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { LeaderboardOverlayHUD } from '../hud/LeaderboardOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 export class LeaderboardScreen {
@@ -17,8 +18,6 @@ export class LeaderboardScreen {
   #onResize: () => void;
 
   #visible = false;
-  #shownAt = 0;
-  static readonly INPUT_COOLDOWN_MS = 200;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
@@ -44,7 +43,7 @@ export class LeaderboardScreen {
 
   private show() {
     this.#visible = true;
-    this.#shownAt = Date.now();
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
   }
 
@@ -54,7 +53,6 @@ export class LeaderboardScreen {
   }
 
   #handleInput() {
-    if (Date.now() - this.#shownAt < LeaderboardScreen.INPUT_COOLDOWN_MS) return;
     for (const playerId of [1, 2] as PlayerId[]) {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;

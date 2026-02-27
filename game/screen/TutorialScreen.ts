@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { TutorialOverlayHUD } from '../hud/TutorialOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 import { SoundManager } from '../util/SoundManager';
 
@@ -18,11 +19,9 @@ export class TutorialScreen {
   #onResize: () => void;
 
   #visible = false;
-  #shownAt = 0;
   #starting = false;
   #startDelay: ReturnType<typeof setTimeout> | null = null;
   #movementDebounceTime = 0;
-  static readonly INPUT_COOLDOWN_MS = 200;
   static readonly MOVEMENT_DEBOUNCE_MS = 200;
   static readonly LEVEL_START_DELAY_MS = 1000;
 
@@ -50,8 +49,8 @@ export class TutorialScreen {
 
   private show() {
     this.#visible = true;
-    this.#shownAt = Date.now();
     this.#movementDebounceTime = 0;
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
   }
 
@@ -67,7 +66,6 @@ export class TutorialScreen {
 
   #handleInput() {
     const now = Date.now();
-    if (now - this.#shownAt < TutorialScreen.INPUT_COOLDOWN_MS) return;
     if (this.#starting) return;
     const canMove = now - this.#movementDebounceTime >= TutorialScreen.MOVEMENT_DEBOUNCE_MS;
 

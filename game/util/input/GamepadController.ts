@@ -73,7 +73,7 @@ export class GamepadController implements InputSource {
     return now - this.#buttonHoldStart.get(button)!;
   }
 
-  pollButtons(): void {
+  pollButtons(locked: boolean): void {
     this.#justPressedButtons.clear();
 
     const gamepad = navigator.getGamepads()[this.#gamepadIndex];
@@ -83,16 +83,22 @@ export class GamepadController implements InputSource {
       const wasPressed = this.#previousButtonStates[index] ?? false;
       const isPressed = gamepad.buttons[index]?.pressed ?? false;
 
-      if (!wasPressed && isPressed) {
-        this.#justPressedButtons.add(name);
-      }
+      if (!locked) {
+        if (!wasPressed && isPressed) {
+          this.#justPressedButtons.add(name);
+        }
 
-      if (wasPressed && !isPressed && this.#buttonUpCallback) {
-        this.#buttonUpCallback(name);
+        if (wasPressed && !isPressed && this.#buttonUpCallback) {
+          this.#buttonUpCallback(name);
+        }
       }
 
       this.#previousButtonStates[index] = isPressed;
     }
+  }
+
+  clearJustPressed(): void {
+    this.#justPressedButtons.clear();
   }
 
   onButtonUp(callback: (button: string) => void): void {

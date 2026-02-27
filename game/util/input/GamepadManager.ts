@@ -28,6 +28,7 @@ export class GamepadManager extends EventTarget {
   }
 
   #rafId: number | null = null;
+  #lockedUntil: number = 0;
 
   static getInstance(): GamepadManager {
     if (!GamepadManager.#instance) {
@@ -207,17 +208,28 @@ export class GamepadManager extends EventTarget {
     };
   }
 
+  lockAllInputFor(ms: number): void {
+    this.#lockedUntil = performance.now() + ms;
+    for (const assignment of this.#assignments.values()) {
+      assignment.controller.clearJustPressed();
+    }
+    this.#keyboardPlayer1?.clearJustPressed();
+    this.#keyboardPlayer2?.clearJustPressed();
+  }
+
   update(): void {
+    const locked = performance.now() < this.#lockedUntil;
     for (const assignment of this.#assignments.values()) {
       if (assignment.controller.connected) {
-        assignment.controller.pollButtons();
+        assignment.controller.pollButtons(locked);
       }
     }
   }
 
   updateKeyboards(): void {
-    this.#keyboardPlayer1?.update();
-    this.#keyboardPlayer2?.update();
+    const locked = performance.now() < this.#lockedUntil;
+    this.#keyboardPlayer1?.update(locked);
+    this.#keyboardPlayer2?.update(locked);
   }
 
   cleanup(): void {

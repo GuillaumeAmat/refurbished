@@ -4,6 +4,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { PauseOverlayHUD } from '../hud/PauseOverlayHUD';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { Sizes } from '../util/Sizes';
 
 export class PauseScreen {
@@ -17,7 +18,6 @@ export class PauseScreen {
   #onResize: () => void;
 
   #visible = false;
-  #justBecameVisible = false;
   #movementDebounceTime = 0;
   static readonly MOVEMENT_DEBOUNCE_MS = 150;
 
@@ -53,7 +53,7 @@ export class PauseScreen {
 
   private show() {
     this.#visible = true;
-    this.#justBecameVisible = true;
+    this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
     this.#pauseOverlay.reset();
   }
@@ -99,12 +99,7 @@ export class PauseScreen {
   public update() {
     if (!this.#visible) return;
 
-    // Skip input on the frame we became visible (same justPressed state as trigger)
-    if (this.#justBecameVisible) {
-      this.#justBecameVisible = false;
-    } else {
-      this.#handleInput();
-    }
+    this.#handleInput();
     this.#hudManager.update();
   }
 
