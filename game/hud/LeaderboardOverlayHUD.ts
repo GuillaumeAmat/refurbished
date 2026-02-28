@@ -1,5 +1,6 @@
 import { Group } from 'three';
 
+import { LEADERBOARD_REFRESH_MS } from '../constants';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { HUDBackdrop } from './HUDBackdrop';
 import type { IHUDItem } from './IHUDItem';
@@ -15,6 +16,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
   #titleText: TextPlaneResult | null = null;
   #scoresText: TextPlaneResult | null = null;
   #backText: TextPlaneResult | null = null;
+  #refreshInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.#group = new Group();
@@ -63,6 +65,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
   show() {
     this.#group.visible = true;
     this.#fetchScores();
+    this.#refreshInterval = setInterval(() => this.#fetchScores(), LEADERBOARD_REFRESH_MS);
   }
 
   async #fetchScores() {
@@ -83,11 +86,19 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
   hide() {
     this.#group.visible = false;
+    if (this.#refreshInterval !== null) {
+      clearInterval(this.#refreshInterval);
+      this.#refreshInterval = null;
+    }
   }
 
   update() {}
 
   dispose() {
+    if (this.#refreshInterval !== null) {
+      clearInterval(this.#refreshInterval);
+      this.#refreshInterval = null;
+    }
     this.#backdrop.dispose();
     this.#titleText?.dispose();
     this.#scoresText?.dispose();
