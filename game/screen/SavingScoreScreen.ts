@@ -1,10 +1,12 @@
 import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
+import { STAR_THRESHOLDS } from '../constants';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { SavingScoreOverlayHUD } from '../hud/SavingScoreOverlayHUD';
-import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { ScoreManager } from '../state/ScoreManager';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 
 export class SavingScoreScreen {
@@ -36,11 +38,7 @@ export class SavingScoreScreen {
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Saving score')) {
         this.show();
-        // Simulate save completion (in real impl, this would be async)
-        setTimeout(() => {
-          this.#savingOverlay.showSaved();
-          this.#canContinue = true;
-        }, 500);
+        this.#saveScore();
       } else {
         this.hide();
       }
@@ -49,6 +47,26 @@ export class SavingScoreScreen {
     this.#sizes = Sizes.getInstance();
     this.#onResize = () => this.#hudManager.updatePositions();
     this.#sizes.addEventListener('resize', this.#onResize);
+  }
+
+  async #saveScore() {
+    const scoreManager = ScoreManager.getInstance();
+    const score = scoreManager.getScore();
+    const { player1, player2 } = scoreManager.getPlayerNames();
+    const stars = STAR_THRESHOLDS.filter((t) => score >= t).length;
+
+    try {
+      await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player1, player2, score, stars }),
+      });
+    } catch {
+      // Fail silently — still let the player continue
+    }
+
+    this.#savingOverlay.showSaved();
+    this.#canContinue = true;
   }
 
   private show() {

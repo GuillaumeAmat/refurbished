@@ -3319,6 +3319,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@upstash/redis@npm:^1.36.3":
+  version: 1.36.3
+  resolution: "@upstash/redis@npm:1.36.3"
+  dependencies:
+    uncrypto: "npm:^0.1.3"
+  checksum: 10/7931ad64a9c6ce002e3c9a0bd0b27ac3240123cfe30314575aa9ad181d5b8e887f03f2e29dd6e6d6ae8eb401174c777a0eb1b43ef08e789bd96fa9c2ea0a00f0
+  languageName: node
+  linkType: hard
+
 "@vercel/nft@npm:^0.30.1":
   version: 0.30.1
   resolution: "@vercel/nft@npm:0.30.1"
@@ -9284,6 +9293,7 @@ __metadata:
     "@types/qrcode": "npm:^1"
     "@types/three": "npm:^0.178.1"
     "@unhead/vue": "npm:^2.0.14"
+    "@upstash/redis": "npm:^1.36.3"
     "@vercel/speed-insights": "npm:^1.2.0"
     eslint: "npm:^9.34.0"
     eslint-config-prettier: "npm:^10.1.8"

@@ -14,7 +14,7 @@ export const stageMachine = setup({
       | { type: 'next' }
       | { type: 'play' }
       | { type: 'quit' }
-      | { type: 'save'; name: string }
+      | { type: 'save'; player1: string; player2: string }
       | { type: 'pause' }
       | { type: 'resume' }
       | { type: 'leaderboard' }

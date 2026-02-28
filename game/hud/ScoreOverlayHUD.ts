@@ -7,11 +7,11 @@ import { HUDBackdrop } from './HUDBackdrop';
 import type { IHUDItem } from './IHUDItem';
 
 export class ScoreOverlayHUD implements IHUDItem {
-  static readonly OVERLAY_HEIGHT = 1.4;
+  static readonly OVERLAY_HEIGHT = 1.8;
   static readonly TITLE_HEIGHT = 0.15;
   static readonly SCORE_HEIGHT = 0.12;
   static readonly STAR_HEIGHT = 0.1;
-  static readonly PROMPT_HEIGHT = 0.08;
+  static readonly LABEL_HEIGHT = 0.08;
   static readonly INPUT_HEIGHT = 0.1;
   static readonly BUTTON_HEIGHT = 0.08;
 
@@ -20,15 +20,18 @@ export class ScoreOverlayHUD implements IHUDItem {
   #titleText: TextPlaneResult | null = null;
   #scoreText: TextPlaneResult | null = null;
   #starsText: TextPlaneResult | null = null;
-  #promptText: TextPlaneResult | null = null;
-  #inputText: TextPlaneResult | null = null;
+  #p1Label: TextPlaneResult | null = null;
+  #p1Input: TextPlaneResult | null = null;
+  #p2Label: TextPlaneResult | null = null;
+  #p2Input: TextPlaneResult | null = null;
   #saveText: TextPlaneResult | null = null;
   #skipText: TextPlaneResult | null = null;
   #scoreManager: ScoreManager;
 
-  #playerName = '';
+  #player1Name = '';
+  #player2Name = '';
   #selectedOption: 'save' | 'skip' = 'save';
-  #onSave: ((name: string) => void) | null = null;
+  #onSave: ((player1: string, player2: string) => void) | null = null;
   #onSkip: (() => void) | null = null;
 
   constructor() {
@@ -50,7 +53,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 72,
       color: '#FBD954',
     });
-    this.#titleText.mesh.position.y = 0.4;
+    this.#titleText.mesh.position.y = 0.7;
     this.#group.add(this.#titleText.mesh);
 
     // Score
@@ -59,7 +62,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 56,
       color: '#FFFFFF',
     });
-    this.#scoreText.mesh.position.y = 0.25;
+    this.#scoreText.mesh.position.y = 0.55;
     this.#group.add(this.#scoreText.mesh);
 
     // Stars
@@ -68,26 +71,44 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 48,
       color: '#FBD954',
     });
-    this.#starsText.mesh.position.y = 0.1;
+    this.#starsText.mesh.position.y = 0.4;
     this.#group.add(this.#starsText.mesh);
 
-    // Prompt
-    this.#promptText = createTextPlane('Enter your name:', {
-      height: ScoreOverlayHUD.PROMPT_HEIGHT,
-      fontSize: 40,
+    // Player 1 label
+    this.#p1Label = createTextPlane('Player 1:', {
+      height: ScoreOverlayHUD.LABEL_HEIGHT,
+      fontSize: 36,
       color: '#CCCCCC',
     });
-    this.#promptText.mesh.position.y = -0.05;
-    this.#group.add(this.#promptText.mesh);
+    this.#p1Label.mesh.position.y = 0.22;
+    this.#group.add(this.#p1Label.mesh);
 
-    // Name input
-    this.#inputText = createTextPlane('_', {
+    // Player 1 input
+    this.#p1Input = createTextPlane('_', {
       height: ScoreOverlayHUD.INPUT_HEIGHT,
       fontSize: 48,
       color: '#FFFFFF',
     });
-    this.#inputText.mesh.position.y = -0.19;
-    this.#group.add(this.#inputText.mesh);
+    this.#p1Input.mesh.position.y = 0.1;
+    this.#group.add(this.#p1Input.mesh);
+
+    // Player 2 label
+    this.#p2Label = createTextPlane('Player 2:', {
+      height: ScoreOverlayHUD.LABEL_HEIGHT,
+      fontSize: 36,
+      color: '#CCCCCC',
+    });
+    this.#p2Label.mesh.position.y = -0.05;
+    this.#group.add(this.#p2Label.mesh);
+
+    // Player 2 input
+    this.#p2Input = createTextPlane('_', {
+      height: ScoreOverlayHUD.INPUT_HEIGHT,
+      fontSize: 48,
+      color: '#FFFFFF',
+    });
+    this.#p2Input.mesh.position.y = -0.17;
+    this.#group.add(this.#p2Input.mesh);
 
     // Save button
     this.#saveText = createTextPlane('> Save', {
@@ -95,7 +116,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#FBD954',
     });
-    this.#saveText.mesh.position.set(0, -0.35, 0);
+    this.#saveText.mesh.position.set(0, -0.38, 0);
     this.#group.add(this.#saveText.mesh);
 
     // Skip button
@@ -104,7 +125,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontSize: 40,
       color: '#888888',
     });
-    this.#skipText.mesh.position.set(0, -0.5, 0);
+    this.#skipText.mesh.position.set(0, -0.53, 0);
     this.#group.add(this.#skipText.mesh);
   }
 
@@ -141,16 +162,22 @@ export class ScoreOverlayHUD implements IHUDItem {
     return this.#selectedOption;
   }
 
-  setPlayerName(name: string) {
-    this.#playerName = name;
-    this.#inputText?.updateText(name.length > 0 ? name : '_');
+  setPlayerName(playerId: 1 | 2, name: string) {
+    const display = name.length > 0 ? name : '_';
+    if (playerId === 1) {
+      this.#player1Name = name;
+      this.#p1Input?.updateText(display);
+    } else {
+      this.#player2Name = name;
+      this.#p2Input?.updateText(display);
+    }
   }
 
-  getPlayerName(): string {
-    return this.#playerName;
+  getPlayerName(playerId: 1 | 2): string {
+    return playerId === 1 ? this.#player1Name : this.#player2Name;
   }
 
-  onSave(callback: (name: string) => void) {
+  onSave(callback: (player1: string, player2: string) => void) {
     this.#onSave = callback;
   }
 
@@ -159,7 +186,7 @@ export class ScoreOverlayHUD implements IHUDItem {
   }
 
   triggerSave() {
-    this.#onSave?.(this.#playerName);
+    this.#onSave?.(this.#player1Name, this.#player2Name);
   }
 
   triggerSkip() {
@@ -167,9 +194,11 @@ export class ScoreOverlayHUD implements IHUDItem {
   }
 
   reset() {
-    this.#playerName = '';
+    this.#player1Name = '';
+    this.#player2Name = '';
     this.#selectedOption = 'save';
-    this.setPlayerName('');
+    this.setPlayerName(1, '');
+    this.setPlayerName(2, '');
     this.setSelectedOption('save');
     this.updateScore();
   }
@@ -198,8 +227,10 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#titleText?.dispose();
     this.#scoreText?.dispose();
     this.#starsText?.dispose();
-    this.#promptText?.dispose();
-    this.#inputText?.dispose();
+    this.#p1Label?.dispose();
+    this.#p1Input?.dispose();
+    this.#p2Label?.dispose();
+    this.#p2Input?.dispose();
     this.#saveText?.dispose();
     this.#skipText?.dispose();
   }

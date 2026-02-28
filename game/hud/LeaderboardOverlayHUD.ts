@@ -33,7 +33,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
     this.#group.add(this.#titleText.mesh);
 
     this.#scoresText = createTextPlane(
-      '1. Player1 — 1000\n2. Player2 — 800\n3. Player3 — 600\n4. Player4 — 400\n5. Player5 — 200',
+      'Loading...',
       {
         height: LeaderboardOverlayHUD.SCORE_HEIGHT,
         fontSize: 36,
@@ -62,6 +62,23 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
   show() {
     this.#group.visible = true;
+    this.#fetchScores();
+  }
+
+  async #fetchScores() {
+    try {
+      const res = await fetch('/api/scores?limit=5');
+      const data = (await res.json()) as { player1: string; player2: string; score: number; rank: number }[];
+
+      if (data.length > 0) {
+        const text = data.map((e) => `${e.rank}. ${e.player1} & ${e.player2} — ${e.score}`).join('\n');
+        this.#scoresText?.updateText(text);
+      } else {
+        this.#scoresText?.updateText('No scores yet');
+      }
+    } catch {
+      // Keep hardcoded fallback on error
+    }
   }
 
   hide() {
