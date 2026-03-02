@@ -24,10 +24,10 @@ export const BACKGROUND_COLOR_G = '141';
 export const BACKGROUND_COLOR_B = '142';
 
 export const TILE_SIZE = 2;
-export const MOVEMENT_SPEED = 13;
-export const DASH_SPEED = 30;
+export const MOVEMENT_SPEED = 10;
+export const DASH_SPEED = 25;
 export const DASH_DURATION = 0.2;
-export const DASH_COOLDOWN = 0.3;
+export const DASH_COOLDOWN = 0.5;
 
 export const INTERACTION_DISTANCE = 1.4;
 export const INTERACTION_FACING_THRESHOLD = 0.5;

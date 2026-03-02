@@ -297,12 +297,16 @@ export class Player {
     const isDashButtonPressed = inputSource.isButtonPressed('b');
     const isMoving = Math.abs(x) > 0.01 || Math.abs(z) > 0.01;
 
-    if (isDashButtonPressed && !this.#dashState.isDashing && this.#dashState.cooldownTimer <= 0 && isMoving) {
-      // Initiate dash
+    if (isDashButtonPressed && !this.#dashState.isDashing && this.#dashState.cooldownTimer <= 0) {
+      // Initiate dash — fall back to facing direction when idle
+      const facing = this.getFacingDirection();
+      const dashDir = isMoving
+        ? { x, z }
+        : { x: facing.x, z: facing.z };
       this.#dashState.isDashing = true;
       this.#dashState.timer = DASH_DURATION;
       this.#dashState.cooldownTimer = DASH_COOLDOWN;
-      this.#dashState.direction = { x, z };
+      this.#dashState.direction = dashDir;
       this.#hasDashBurst = false;
     }
 
