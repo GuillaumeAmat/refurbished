@@ -202,9 +202,29 @@ export class Stage {
         path: '/game/model/resource/package_closed.glb',
         priority: 'low',
       },
+      frameBrokenIcon: {
+        type: 'texture',
+        path: '/game/texture/frame_broken_icon.png',
+        priority: 'low',
+      },
       frameRepairedIcon: {
         type: 'texture',
         path: '/game/texture/frame_repaired_icon.png',
+        priority: 'low',
+      },
+      batteryEmptyIcon: {
+        type: 'texture',
+        path: '/game/texture/battery_empty_icon.png',
+        priority: 'low',
+      },
+      batteryFilledIcon: {
+        type: 'texture',
+        path: '/game/texture/battery_filled_icon.png',
+        priority: 'low',
+      },
+      screenRepairedIcon: {
+        type: 'texture',
+        path: '/game/texture/screen_repaired_icon.png',
         priority: 'low',
       },
       // bmLogo: {

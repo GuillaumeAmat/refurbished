@@ -16,15 +16,19 @@ export interface DroppedResourceParams {
 }
 
 const RESOURCE_SCALE: Record<ResourceType, number> = {
-  frame: 1.7,
-  screen: 1.7,
-  battery: 1.5,
-  phone: 1.7,
-  package: 1.4,
+  frame: 1.6,
+  screen: 1.6,
+  battery: 1.4,
+  phone: 1.6,
+  package: 1.3,
 };
 
 function iconNameForResource(resourceType: ResourceType, state: ResourceState): string | null {
+  if (resourceType === 'frame' && state === 'broken') return 'frameBrokenIcon';
   if (resourceType === 'frame' && state === 'repaired') return 'frameRepairedIcon';
+  if (resourceType === 'battery' && state === 'broken') return 'batteryEmptyIcon';
+  if (resourceType === 'battery' && state === 'repaired') return 'batteryFilledIcon';
+  if (resourceType === 'screen' && state === 'repaired') return 'screenRepairedIcon';
   return null;
 }
 
@@ -217,7 +221,7 @@ export class DroppedResource extends LevelObject {
     }
 
     this.#iconPlane = createIconPlane(texture, 0.3);
-    this.#iconPlane.mesh.position.set(iconX, meshObject.position.y + 1.8, iconZ);
+    this.#iconPlane.mesh.position.set(iconX, meshObject.position.y + 2.5, iconZ);
     this.#group.add(this.#iconPlane.mesh);
   }
 
