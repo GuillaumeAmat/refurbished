@@ -106,6 +106,41 @@ export class SmokeParticleSystem {
     }
   }
 
+  spawnArc(position: Vector3, dashDirection: Vector3, count: number, arcAngle: number): void {
+    const mag = Math.sqrt(dashDirection.x * dashDirection.x + dashDirection.z * dashDirection.z);
+    const behindX = mag > 0 ? -dashDirection.x / mag : -1;
+    const behindZ = mag > 0 ? -dashDirection.z / mag : 0;
+
+    for (let i = 0; i < count; i++) {
+      const particle = this.#getInactiveParticle();
+      if (!particle) return;
+
+      const t = count > 1 ? i / (count - 1) : 0.5;
+      const angle = (t - 0.5) * arcAngle;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const dirX = behindX * cos - behindZ * sin;
+      const dirZ = behindX * sin + behindZ * cos;
+
+      const radius = 0.35 + Math.random() * 0.15;
+      this.#tempSpawnPos.set(
+        position.x + dirX * radius,
+        0.1 + Math.random() * 0.2,
+        position.z + dirZ * radius,
+      );
+
+      particle.mesh.position.copy(this.#tempSpawnPos);
+      particle.mesh.scale.setScalar(0.25 + Math.random() * 0.35);
+      particle.mesh.visible = true;
+
+      particle.velocity.set(dirX * (1.5 + Math.random() * 1.0), 0.4 + Math.random() * 0.4, dirZ * (1.5 + Math.random() * 1.0));
+
+      particle.age = 0;
+      particle.maxAge = SMOKE_PARTICLE_LIFETIME + (Math.random() - 0.5) * 0.15;
+      particle.active = true;
+    }
+  }
+
   update(playerPosition: Vector3 | null, velocity: Vector3 | null, isDashing: boolean): void {
     const deltaTime = this.#time.delta * 0.001;
 

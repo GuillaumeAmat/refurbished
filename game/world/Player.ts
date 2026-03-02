@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
 
-import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED } from '../constants';
+import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, SMOKE_DASH_ARC_ANGLE, SMOKE_DASH_ARC_COUNT } from '../constants';
 import type { GripConfig, ResourceState, ResourceType } from '../types';
 import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -543,7 +543,8 @@ export class Player {
 
     // Burst on dash start
     if (this.#dashState.isDashing && !this.#hasDashBurst && position) {
-      this.#smokeSystem.spawnBurst(position, velocity, 5);
+      const dashDir = new Vector3(this.#dashState.direction.x, 0, this.#dashState.direction.z);
+      this.#smokeSystem.spawnArc(position, dashDir, SMOKE_DASH_ARC_COUNT, SMOKE_DASH_ARC_ANGLE);
       this.#hasDashBurst = true;
     }
 
