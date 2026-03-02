@@ -185,7 +185,7 @@ export class DroppedResource extends LevelObject {
       mesh.position.y = size.y;
     } else {
       mesh.position.copy(position);
-      mesh.position.y = 0;
+      mesh.position.y = 0.01;
     }
 
     this.setupShadows(mesh);
