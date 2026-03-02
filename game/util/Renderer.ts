@@ -1,15 +1,14 @@
 import type { Material, Scene } from 'three';
 import {
-  CineonToneMapping,
   HalfFloatType,
   Mesh,
   MeshBasicMaterial,
   PCFSoftShadowMap,
-  SRGBColorSpace,
   ShaderMaterial,
+  SRGBColorSpace,
   Vector2,
-  WebGLRenderTarget,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -65,8 +64,6 @@ export class Renderer {
 
     // this.#renderer.physicallyCorrectLights = true;
     this.#renderer.outputColorSpace = SRGBColorSpace;
-    this.#renderer.toneMapping = CineonToneMapping;
-    this.#renderer.toneMappingExposure = 1.75;
 
     this.#renderer.shadowMap.enabled = true;
     this.#renderer.shadowMap.type = PCFSoftShadowMap;
@@ -113,9 +110,18 @@ export class Renderer {
     this.#debug = Debug.getInstance();
     if (this.#debug.active) {
       const bloomFolder = this.#debug.gui.addFolder('Bloom');
-      bloomFolder.add(this.#bloomPass, 'strength', 0, 3, 0.01).name('Strength').onChange(() => this.#debug.save());
-      bloomFolder.add(this.#bloomPass, 'radius', 0, 2, 0.01).name('Radius').onChange(() => this.#debug.save());
-      bloomFolder.add(this.#bloomPass, 'threshold', 0, 1, 0.01).name('Threshold').onChange(() => this.#debug.save());
+      bloomFolder
+        .add(this.#bloomPass, 'strength', 0, 3, 0.01)
+        .name('Strength')
+        .onChange(() => this.#debug.save());
+      bloomFolder
+        .add(this.#bloomPass, 'radius', 0, 2, 0.01)
+        .name('Radius')
+        .onChange(() => this.#debug.save());
+      bloomFolder
+        .add(this.#bloomPass, 'threshold', 0, 1, 0.01)
+        .name('Threshold')
+        .onChange(() => this.#debug.save());
     }
   }
 

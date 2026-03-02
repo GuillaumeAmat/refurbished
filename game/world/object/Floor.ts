@@ -54,18 +54,14 @@ export class Floor extends LevelObject {
     const planeSize = 200;
     const geometry = new PlaneGeometry(planeSize, planeSize);
     const material = new MeshStandardMaterial({
-      color: 0xfffffe,
+      color: 0x505566,
       roughness: 1,
       metalness: 0,
     });
 
     const plane = new Mesh(geometry, material);
     plane.rotation.x = -Math.PI / 2;
-    plane.position.set(
-      (levelWidth * TILE_SIZE) / 2,
-      -0.05,
-      (levelDepth * TILE_SIZE) / 2,
-    );
+    plane.position.set((levelWidth * TILE_SIZE) / 2, -0.05, (levelDepth * TILE_SIZE) / 2);
     plane.receiveShadow = true;
 
     group.add(plane);
@@ -85,11 +81,7 @@ export class Floor extends LevelObject {
         g = Math.pow(Math.max(0, g), gamma) * brightness;
         b = Math.pow(Math.max(0, b), gamma) * brightness;
 
-        material.color.setRGB(
-          Math.max(0, Math.min(1, r)),
-          Math.max(0, Math.min(1, g)),
-          Math.max(0, Math.min(1, b)),
-        );
+        material.color.setRGB(Math.max(0, Math.min(1, r)), Math.max(0, Math.min(1, g)), Math.max(0, Math.min(1, b)));
       }
     });
   }

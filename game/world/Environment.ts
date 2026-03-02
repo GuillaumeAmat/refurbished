@@ -38,10 +38,10 @@ export class Environment {
   }
 
   private setupLights() {
-    const ambientLight = new AmbientLight('#ffffff', 1.5);
+    const ambientLight = new AmbientLight('#ffffff', 2.3);
     this.#scene.add(ambientLight);
 
-    this.#sunLight = new DirectionalLight('#ffffff', 1);
+    this.#sunLight = new DirectionalLight('#ffffff', 2);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -53,7 +53,7 @@ export class Environment {
 
     const { width, depth, center } = this.#levelInfo;
 
-    this.#sunLight.position.set(width, 16, 0);
+    this.#sunLight.position.set(width * 0.6, 16, depth * 0.15);
     this.#sunLight.target.position.set(center.x, 0, center.z);
 
     this.#scene.add(this.#sunLight);

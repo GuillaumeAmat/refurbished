@@ -202,6 +202,11 @@ export class Stage {
         path: '/game/model/resource/package_closed.glb',
         priority: 'low',
       },
+      frameRepairedIcon: {
+        type: 'texture',
+        path: '/game/texture/frame_repaired_icon.png',
+        priority: 'low',
+      },
       // bmLogo: {
       //   type: 'svg',
       //   path: '/game/svg/bmLogo.svg',

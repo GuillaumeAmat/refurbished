@@ -1,7 +1,8 @@
-import { Box3, type Group, Mesh, Vector3 } from 'three';
+import { Box3, type Group, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { ProgressBar } from '../../hud/ProgressBar';
+import { createIconPlane, type IconPlaneResult } from '../../lib/createIconPlane';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import { Crate } from './Crate';
@@ -15,6 +16,19 @@ export interface DroppedResourceParams {
   state?: ResourceState;
 }
 
+const RESOURCE_SCALE: Record<ResourceType, number> = {
+  frame: 1.7,
+  screen: 1.7,
+  battery: 1.5,
+  phone: 1.7,
+  package: 1.4,
+};
+
+function iconNameForResource(resourceType: ResourceType, state: ResourceState): string | null {
+  if (resourceType === 'frame' && state === 'repaired') return 'frameRepairedIcon';
+  return null;
+}
+
 export class DroppedResource extends LevelObject {
   #params: DroppedResourceParams;
   #resourceType: ResourceType;
@@ -22,6 +36,7 @@ export class DroppedResource extends LevelObject {
   #group: Group | null = null;
   #repairProgress: number = 0;
   #progressBar: ProgressBar | null = null;
+  #iconPlane: IconPlaneResult | null = null;
 
   constructor(params: DroppedResourceParams) {
     super();
@@ -87,15 +102,19 @@ export class DroppedResource extends LevelObject {
   public override dispose(): void {
     this.#progressBar?.dispose();
     this.#progressBar = null;
+    this.#iconPlane?.mesh.removeFromParent();
+    this.#iconPlane?.dispose();
+    this.#iconPlane = null;
     super.dispose();
   }
 
   public swapModel(): void {
     if (!this.mesh || !this.#group) return;
 
-    const modelName = this.#state === 'repaired'
-      ? Crate.getRepairedModelName(this.#resourceType)
-      : Crate.getResourceModelName(this.#resourceType);
+    const modelName =
+      this.#state === 'repaired'
+        ? Crate.getRepairedModelName(this.#resourceType)
+        : Crate.getResourceModelName(this.#resourceType);
 
     if (!modelName) return;
 
@@ -110,21 +129,26 @@ export class DroppedResource extends LevelObject {
     const newMesh = model.scene.clone();
     newMesh.position.copy(oldPosition);
     newMesh.rotation.copy(oldRotation);
+    newMesh.scale.setScalar(RESOURCE_SCALE[this.#resourceType]);
 
     this.setupShadows(newMesh);
     this.cloneMaterials(newMesh);
     this.mesh = newMesh;
     this.invalidateBox();
     this.#group.add(newMesh);
+
+    this.#iconPlane?.mesh.removeFromParent();
+    this.#iconPlane?.dispose();
+    this.#iconPlane = null;
+    this.#attachIcon(newMesh);
   }
 
   create(group: Group): void {
     const { resourceType, position, onTopOf } = this.#params;
     this.#group = group;
 
-    const modelName = this.#state === 'repaired'
-      ? Crate.getRepairedModelName(resourceType)
-      : Crate.getResourceModelName(resourceType);
+    const modelName =
+      this.#state === 'repaired' ? Crate.getRepairedModelName(resourceType) : Crate.getResourceModelName(resourceType);
 
     if (!modelName) {
       console.error('Unknown resource type:', resourceType);
@@ -138,6 +162,7 @@ export class DroppedResource extends LevelObject {
     }
 
     const mesh = model.scene.clone();
+    mesh.scale.setScalar(RESOURCE_SCALE[resourceType]);
 
     if (onTopOf?.getMesh()) {
       const parentMesh = onTopOf.getMesh()!;
@@ -165,6 +190,37 @@ export class DroppedResource extends LevelObject {
 
     this.mesh = mesh;
     group.add(mesh);
+
+    this.#attachIcon(mesh);
+  }
+
+  #attachIcon(meshObject: Group): void {
+    if (!this.#group) return;
+    const iconName = iconNameForResource(this.#resourceType, this.#state);
+    if (!iconName) return;
+    const texture = Resources.getInstance().getTextureAsset(iconName);
+    if (!texture) return;
+
+    let iconX: number;
+    let iconZ: number;
+
+    const onTopOf = this.#params.onTopOf;
+    if (onTopOf?.getMesh()) {
+      const parentMesh = onTopOf.getMesh()!;
+      const tileOffset = new Vector3(TILE_SIZE / 2, 0, TILE_SIZE / 2);
+      tileOffset.applyAxisAngle(new Vector3(0, 1, 0), parentMesh.rotation.y);
+      iconX = parentMesh.position.x + tileOffset.x;
+      iconZ = parentMesh.position.z + tileOffset.z;
+    } else {
+      const center = new Vector3();
+      new Box3().setFromObject(meshObject).getCenter(center);
+      iconX = center.x;
+      iconZ = center.z;
+    }
+
+    this.#iconPlane = createIconPlane(texture, 0.3);
+    this.#iconPlane.mesh.position.set(iconX, meshObject.position.y + 1.8, iconZ);
+    this.#group.add(this.#iconPlane.mesh);
   }
 
   public override getPosition(): Vector3 | null {
