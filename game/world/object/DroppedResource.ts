@@ -16,11 +16,11 @@ export interface DroppedResourceParams {
 }
 
 const RESOURCE_SCALE: Record<ResourceType, number> = {
-  frame: 1.7,
-  screen: 1.7,
-  battery: 1.5,
-  phone: 1.7,
-  package: 1.4,
+  frame: 1.5,
+  screen: 1.4,
+  battery: 1.3,
+  phone: 1.5,
+  package: 1.2,
 };
 
 function iconNameForResource(resourceType: ResourceType, state: ResourceState): string | null {
