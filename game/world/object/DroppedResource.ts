@@ -221,8 +221,8 @@ export class DroppedResource extends LevelObject {
       iconZ = center.z;
     }
 
-    this.#iconPlane = createIconPlane(texture, 0.3);
-    this.#iconPlane.mesh.position.set(iconX, meshObject.position.y + 1.8, iconZ);
+    const anchor = new Vector3(iconX, meshObject.position.y, iconZ);
+    this.#iconPlane = createIconPlane(texture, 0.3, anchor);
     this.#group.add(this.#iconPlane.mesh);
   }
 

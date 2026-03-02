@@ -2,14 +2,17 @@ import type { PerspectiveCamera, Texture } from 'three';
 import { Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 
 const _worldPos = new Vector3();
+const _cameraUp = new Vector3();
+const _iconPos = new Vector3();
 const REFERENCE_DIST = 10;
+const SCREEN_UP_OFFSET = 1.8;
 
 export interface IconPlaneResult {
   mesh: Mesh;
   dispose: () => void;
 }
 
-export function createIconPlane(texture: Texture, size: number): IconPlaneResult {
+export function createIconPlane(texture: Texture, size: number, anchor?: Vector3): IconPlaneResult {
   texture.colorSpace = SRGBColorSpace;
 
   const geometry = new PlaneGeometry(size, size);
@@ -25,6 +28,12 @@ export function createIconPlane(texture: Texture, size: number): IconPlaneResult
   mesh.renderOrder = 999;
 
   mesh.onBeforeRender = (_, __, camera) => {
+    if (anchor) {
+      _cameraUp.setFromMatrixColumn((camera as PerspectiveCamera).matrixWorld, 1);
+      _iconPos.copy(anchor).addScaledVector(_cameraUp, SCREEN_UP_OFFSET);
+      if (mesh.parent) mesh.parent.worldToLocal(_iconPos);
+      mesh.position.copy(_iconPos);
+    }
     mesh.quaternion.copy(camera.quaternion);
     mesh.getWorldPosition(_worldPos);
     const dist = _worldPos.distanceTo((camera as PerspectiveCamera).position);
