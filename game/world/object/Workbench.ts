@@ -61,6 +61,11 @@ export class Workbench extends LevelObject {
     return this.#storedPosition;
   }
 
+  override getDropSurface(): Vector3 | null {
+    const { xIndex, zIndex } = this.#params;
+    return new Vector3(xIndex * TILE_SIZE + 1, 1.0, zIndex * TILE_SIZE + 1);
+  }
+
   override getClosestPoint(from: Vector3): Vector3 | null {
     return new Vector3(
       Math.max(this.#cachedBox.min.x, Math.min(from.x, this.#cachedBox.max.x)),

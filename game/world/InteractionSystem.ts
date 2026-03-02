@@ -1,6 +1,7 @@
 import { type Group, Vector3 } from 'three';
 
 import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
+import { type LevelData, isWorkbench } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Time } from '../util/Time';
@@ -22,6 +23,7 @@ export class InteractionSystem {
   #droppedResources: DroppedResource[] = [];
   #resourceParents: Map<DroppedResource, LevelObject> = new Map();
   #levelGroup: Group;
+  #levelData: LevelData;
   #gamepadManager: GamepadManager;
   #orderManager: OrderManager;
 
@@ -32,8 +34,9 @@ export class InteractionSystem {
   #activeAssemblyTargets = new Set<BlueWorkZone>();
   #objectsWithResources = new Set<LevelObject>();
 
-  constructor(levelGroup: Group) {
+  constructor(levelGroup: Group, levelData: LevelData) {
     this.#levelGroup = levelGroup;
+    this.#levelData = levelData;
     this.#gamepadManager = GamepadManager.getInstance();
     this.#orderManager = OrderManager.getInstance();
   }
@@ -80,6 +83,56 @@ export class InteractionSystem {
     }
 
     resource.dispose();
+  }
+
+  #isBenchCenter(x: number, z: number): boolean {
+    if (x % 2 === 0 || z % 2 === 0) return false;
+    const tileX = (x - 1) / 2;
+    const tileZ = (z - 1) / 2;
+    return isWorkbench(this.#levelData.matrix[tileZ]?.[tileX] ?? '');
+  }
+
+  #snapDropPosition(rawPos: Vector3, playerPos: Vector3): Vector3 {
+    let rx = Math.round(rawPos.x);
+    let rz = Math.round(rawPos.z);
+
+    if ((rx + rz) % 2 !== 0) {
+      const candidates = [
+        [rx + 1, rz],
+        [rx - 1, rz],
+        [rx, rz + 1],
+        [rx, rz - 1],
+      ] as const;
+      let bestDist = Infinity;
+      for (const [cx, cz] of candidates) {
+        const dx = cx - rawPos.x;
+        const dz = cz - rawPos.z;
+        const d = dx * dx + dz * dz;
+        if (d < bestDist) { bestDist = d; rx = cx; rz = cz; }
+      }
+    }
+
+    if (this.#isBenchCenter(rx, rz)) {
+      const corners = [
+        [rx + 1, rz + 1],
+        [rx + 1, rz - 1],
+        [rx - 1, rz + 1],
+        [rx - 1, rz - 1],
+      ] as const;
+      let bestDist = Infinity;
+      let bestX = rx;
+      let bestZ = rz;
+      for (const [cx, cz] of corners) {
+        const dx = cx - playerPos.x;
+        const dz = cz - playerPos.z;
+        const d = dx * dx + dz * dz;
+        if (d < bestDist) { bestDist = d; bestX = cx; bestZ = cz; }
+      }
+      rx = bestX;
+      rz = bestZ;
+    }
+
+    return this.#tempDropPos.set(rx, rawPos.y, rz);
   }
 
   #hasResourceOnTop(obj: LevelObject): boolean {
@@ -180,7 +233,8 @@ export class InteractionSystem {
         this.addDroppedResource(dropped, target);
       } else {
         const facing = player.getFacingDirection();
-        const dropPos = this.#tempDropPos.copy(playerPos).addScaledVector(facing, 1.0);
+        const rawDropPos = this.#tempDropPos.copy(playerPos).addScaledVector(facing, 1.0);
+        const dropPos = this.#snapDropPosition(rawDropPos, playerPos);
         const dropped = new DroppedResource({
           resourceType: resourceData.type,
           position: dropPos,

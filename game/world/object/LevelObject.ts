@@ -90,6 +90,11 @@ export abstract class LevelObject {
     return this.mesh;
   }
 
+  /** World position where a dropped resource should be placed on this object. */
+  public getDropSurface(): Vector3 | null {
+    return null;
+  }
+
   public getRigidBody(): RAPIER.RigidBody | null {
     return this.rigidBody;
   }

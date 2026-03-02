@@ -51,7 +51,7 @@ export class Level {
     this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
     this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
 
-    this.#interactionSystem = new InteractionSystem(this.#group);
+    this.#interactionSystem = new InteractionSystem(this.#group, this.#levelInfo.data);
     this.#interactionSystem.registerPlayer(this.#player1);
     this.#interactionSystem.registerPlayer(this.#player2);
     this.#interactionSystem.setInteractables(this.#levelBuilder.getInteractables());

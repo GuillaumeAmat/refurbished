@@ -67,4 +67,9 @@ export class RepairZone extends LevelObject {
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
     this.isInteractable = true;
   }
+
+  override getDropSurface(): Vector3 | null {
+    const { xIndex, zIndex } = this.#params;
+    return new Vector3(xIndex * TILE_SIZE + 1, 1.0, zIndex * TILE_SIZE + 1);
+  }
 }
