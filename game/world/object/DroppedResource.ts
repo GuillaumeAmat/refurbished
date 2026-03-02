@@ -28,6 +28,7 @@ function iconNameForResource(resourceType: ResourceType, state: ResourceState): 
   if (resourceType === 'frame' && state === 'repaired') return 'frameRepairedIcon';
   if (resourceType === 'battery' && state === 'broken') return 'batteryEmptyIcon';
   if (resourceType === 'battery' && state === 'repaired') return 'batteryFilledIcon';
+  if (resourceType === 'screen' && state === 'broken') return 'screenBrokenIcon';
   if (resourceType === 'screen' && state === 'repaired') return 'screenRepairedIcon';
   return null;
 }

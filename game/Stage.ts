@@ -222,6 +222,11 @@ export class Stage {
         path: '/game/texture/battery_filled_icon.png',
         priority: 'low',
       },
+      screenBrokenIcon: {
+        type: 'texture',
+        path: '/game/texture/screen_broken_icon.png',
+        priority: 'low',
+      },
       screenRepairedIcon: {
         type: 'texture',
         path: '/game/texture/screen_repaired_icon.png',
