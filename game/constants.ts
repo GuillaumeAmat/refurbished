@@ -64,3 +64,9 @@ export const STAR_THRESHOLDS = [80, 200, 400];
 export const BLOOM_LAYER = 1;
 
 export const LEADERBOARD_REFRESH_MS = 60_000;
+
+// Camera
+export const CAMERA_DEFAULT_FOV = 35;
+export const CAMERA_SMOOTH_TIME = 0.6; // s, exponential smoothing time constant
+export const CAMERA_PAN_MARGIN = 0.02; // fraction of viewport per side
+export const CAMERA_ZOOM_STRENGTH = 0.02; // max FOV change fraction

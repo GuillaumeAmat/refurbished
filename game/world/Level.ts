@@ -1,4 +1,4 @@
-import { Group, type Scene } from 'three';
+import { Group, Vector3, type Scene } from 'three';
 
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
@@ -27,6 +27,7 @@ export class Level {
     DisplayHelper: true,
   };
   #interactive = true;
+  #cachedMidpoint = new Vector3();
 
   constructor(screenGroup: Group, scene: Scene, levelInfo: LevelInfo) {
     this.#screenGroup = screenGroup;
@@ -91,6 +92,20 @@ export class Level {
         });
       }
     }
+  }
+
+  public getPlayerMidpoint(): Vector3 | null {
+    const p1 = this.#player1?.getPosition();
+    const p2 = this.#player2?.getPosition();
+    if (!p1 || !p2) return null;
+    return this.#cachedMidpoint.addVectors(p1, p2).multiplyScalar(0.5);
+  }
+
+  public getPlayerDistance(): number | null {
+    const p1 = this.#player1?.getPosition();
+    const p2 = this.#player2?.getPosition();
+    if (!p1 || !p2) return null;
+    return p1.distanceTo(p2);
   }
 
   public getInteractables(): LevelObject[] {

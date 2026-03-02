@@ -37,6 +37,7 @@ export class LevelScreen {
   #level: Level | null = null;
   #hudManager: HUDRegionManager;
   #levelInitialized = false;
+  #spawnDist: number;
   #sessionManager: SessionManager;
   #scoreManager: ScoreManager;
   #orderManager: OrderManager;
@@ -55,6 +56,7 @@ export class LevelScreen {
     this.#camera = camera;
     this.#gamepadManager = GamepadManager.getInstance();
     this.#levelInfo = levelInfo;
+    this.#spawnDist = levelInfo.spawnPositions[0]!.distanceTo(levelInfo.spawnPositions[1]!);
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       const isBackgroundVisible = LEVEL_BACKGROUND_STATES.some((s) => state.matches(s));
@@ -181,12 +183,20 @@ export class LevelScreen {
   }
 
   public update() {
-    if (!this.#group.visible) return;
-    if (!this.#levelInitialized) return;
+    if (!this.#group.visible || !this.#levelInitialized) {
+      this.#camera.setFollowTarget(null, 0);
+      return;
+    }
 
     if (this.#isInteractive) {
       this.#checkPauseInput();
     }
+
+    const midpoint = this.#level?.getPlayerMidpoint() ?? null;
+    const dist = this.#level?.getPlayerDistance() ?? null;
+    const zoomFactor =
+      dist !== null ? Math.max(-1, Math.min(1, (this.#spawnDist - dist) / this.#spawnDist)) : 0;
+    this.#camera.setFollowTarget(midpoint, zoomFactor);
 
     this.#level?.update();
     this.#hudManager.update();
