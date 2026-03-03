@@ -1,5 +1,5 @@
 import type { Group } from 'three';
-import { Box3, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from 'three';
+import { Box3, LinearMipmapNearestFilter, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import type { LevelInfo } from '../../levels';
@@ -41,6 +41,7 @@ export class Floor extends LevelObject {
     mesh.scale.setScalar(1.1);
     mesh.position.set(floorSize.x + 2, 0, -wallSize.z + floorSize.z + 2);
 
+    this.cloneMaterials(mesh);
     this.setupShadows(mesh);
     this.adjustMaterial(mesh, 0.8, 1.3, 2.4);
 
@@ -83,8 +84,25 @@ export class Floor extends LevelObject {
     object.traverse((child) => {
       if (!(child instanceof Mesh)) return;
 
-      const material = child.material;
-      if (material instanceof MeshStandardMaterial && material.color) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!(material instanceof MeshStandardMaterial) || !material.color) continue;
+
+        const textureMaps = [
+          material.map,
+          material.normalMap,
+          material.roughnessMap,
+          material.metalnessMap,
+          material.aoMap,
+          material.emissiveMap,
+        ];
+        for (const texture of textureMaps) {
+          if (texture) {
+            texture.minFilter = LinearMipmapNearestFilter;
+            texture.needsUpdate = true;
+          }
+        }
+
         let r = (material.color.r - 0.5) * contrast + 0.5;
         let g = (material.color.g - 0.5) * contrast + 0.5;
         let b = (material.color.b - 0.5) * contrast + 0.5;
