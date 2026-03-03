@@ -31,10 +31,10 @@ export class Environment {
   }
 
   private setupLights() {
-    this.#ambientLight = new AmbientLight('#ffffff', 1.6);
+    this.#ambientLight = new AmbientLight('#ffffff', 1);
     this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight('#ffffff', 1);
+    this.#sunLight = new DirectionalLight('#ffffff', 1.2);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -52,7 +52,7 @@ export class Environment {
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
 
-    this.#counterSunLight = new DirectionalLight('#ffffff', 1);
+    this.#counterSunLight = new DirectionalLight('#ffffff', 1.4);
     this.#counterSunLight.castShadow = false;
 
     this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);

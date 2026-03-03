@@ -16,7 +16,9 @@ import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import { DeliveryZone } from './object/DeliveryZone';
 import type { LevelObject } from './object/LevelObject';
+import { NeonWall } from './object/NeonWall';
 import { RepairZone } from './object/RepairZone';
+import { Poster } from './object/Poster';
 import { Wall, type WallSide } from './object/Wall';
 import { Workbench, type WorkbenchParams } from './object/Workbench';
 import { WorkbenchBatch } from './object/WorkbenchBatch';
@@ -33,6 +35,7 @@ export class LevelBuilder {
   buildFromMatrix(group: Group): LevelObject[] {
     this.buildLevelObjects(group);
     this.buildWalls(group);
+    this.buildPosters(group);
     return this.#objects;
   }
 
@@ -175,6 +178,55 @@ export class LevelBuilder {
         const cellValue = getCell(i);
         if (isWalkable(cellValue) || isDeliveryZone(cellValue)) continue;
 
+        // Replace walls 2-3 and 9-10 on top side with neon walls
+        if (side === 'top' && (i === 2 || i === 9)) {
+          const neonWall = new NeonWall({
+            index: i,
+            side,
+            levelWidth,
+            levelDepth,
+          });
+          neonWall.create(group);
+          this.#objects.push(neonWall);
+          continue;
+        }
+
+        // Replace walls 2-3 on left side with blue neon wall
+        if (side === 'left' && i === 2) {
+          const neonWall = new NeonWall({
+            index: i,
+            side,
+            levelWidth,
+            levelDepth,
+            variant: 'blue',
+          });
+          neonWall.create(group);
+          this.#objects.push(neonWall);
+          continue;
+        }
+
+        // Replace walls 2-3 and 5-6 on right side with blue neon walls
+        if (side === 'right' && (i === 2 || i === 5)) {
+          const neonWall = new NeonWall({
+            index: i,
+            side,
+            levelWidth,
+            levelDepth,
+            variant: 'blue',
+          });
+          neonWall.create(group);
+          this.#objects.push(neonWall);
+          continue;
+        }
+
+        // Skip indices covered by neon walls
+        if (
+          (side === 'top' && (i === 3 || i === 10)) ||
+          (side === 'left' && i === 3) ||
+          (side === 'right' && (i === 3 || i === 6))
+        )
+          continue;
+
         const wall = new Wall({
           index: i,
           side,
@@ -227,6 +279,22 @@ export class LevelBuilder {
     }
 
     group.add(mergedMesh);
+  }
+
+  private buildPosters(group: Group): void {
+    const posters: { textureKey: string; wallIndex: number }[] = [
+      { textureKey: 'posterSayItStraight', wallIndex: 4 },
+      { textureKey: 'posterFiredUp', wallIndex: 5 },
+      { textureKey: 'posterHumbleHearts', wallIndex: 6 },
+      { textureKey: 'posterNotGreenEnough', wallIndex: 7 },
+      { textureKey: 'posterDontFear', wallIndex: 8 },
+    ];
+
+    for (const params of posters) {
+      const poster = new Poster(params);
+      poster.create(group);
+      this.#objects.push(poster);
+    }
   }
 
   getInteractables(): LevelObject[] {

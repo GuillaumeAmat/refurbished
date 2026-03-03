@@ -257,6 +257,31 @@ export class Stage {
         path: '/game/texture/plus_icon.png',
         priority: 'low',
       },
+      posterSayItStraight: {
+        type: 'texture',
+        path: '/game/texture/poster_say_it_straight.jpg',
+        priority: 'low',
+      },
+      posterFiredUp: {
+        type: 'texture',
+        path: '/game/texture/poster_fired_up.jpg',
+        priority: 'low',
+      },
+      posterHumbleHearts: {
+        type: 'texture',
+        path: '/game/texture/poster_humble_hearts.jpg',
+        priority: 'low',
+      },
+      posterNotGreenEnough: {
+        type: 'texture',
+        path: '/game/texture/poster_not_green_enough.jpg',
+        priority: 'low',
+      },
+      posterDontFear: {
+        type: 'texture',
+        path: '/game/texture/poster_dont_fear.jpg',
+        priority: 'low',
+      },
       // bmLogo: {
       //   type: 'svg',
       //   path: '/game/svg/bmLogo.svg',
