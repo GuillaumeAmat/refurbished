@@ -144,7 +144,10 @@ export abstract class LevelObject {
 
   protected cloneMaterials(mesh: Group): void {
     mesh.traverse((child) => {
-      if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
+      if (!(child instanceof Mesh)) return;
+      if (Array.isArray(child.material)) {
+        child.material = child.material.map((m) => m.clone());
+      } else {
         child.material = child.material.clone();
       }
     });
