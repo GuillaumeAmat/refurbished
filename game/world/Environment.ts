@@ -3,7 +3,6 @@ import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } fro
 
 import { BACKGROUND_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
-import { Debug } from '../util/Debug';
 
 type EnvironmentMap = {
   intensity: number;
@@ -20,21 +19,12 @@ export class Environment {
     texture: null,
   };
 
-  #debug: Debug;
-  #debugProperties = {
-    DisplayAxesHelper: true,
-    DisplayGridHelper: false,
-    DisplayLightsHelpers: true,
-  };
-
   constructor(scene: Scene, levelInfo: LevelInfo) {
     this.#scene = scene;
     this.#levelInfo = levelInfo;
-    this.#debug = Debug.getInstance();
 
     this.setupLights();
     this.setupEnvironment();
-    this.setupHelpers();
   }
 
   private setupLights() {
@@ -89,46 +79,4 @@ export class Environment {
     });
   }
 
-  private async setupHelpers() {
-    if (this.#debug.active) {
-      const folderName = 'Environment';
-      const guiFolder = this.#debug.gui.addFolder(folderName);
-
-      this.#debugProperties = {
-        ...this.#debugProperties,
-        ...this.#debug.configFromLocaleStorage?.folders?.[folderName]?.controllers,
-      };
-
-      const { AxesHelper, GridHelper } = await import('three');
-      const axesHelper = new AxesHelper(5);
-      axesHelper.visible = this.#debugProperties.DisplayAxesHelper;
-      this.#scene.add(axesHelper);
-
-      guiFolder.add(this.#debugProperties, 'DisplayAxesHelper').onChange((value: boolean) => {
-        axesHelper.visible = value;
-        this.#debug.save();
-      });
-
-      const gridHelper = new GridHelper(100, 100);
-      gridHelper.visible = this.#debugProperties.DisplayGridHelper;
-      this.#scene.add(gridHelper);
-
-      guiFolder.add(this.#debugProperties, 'DisplayGridHelper').onChange((value: boolean) => {
-        gridHelper.visible = value;
-        this.#debug.save();
-      });
-
-      if (this.#sunLight) {
-        const { DirectionalLightHelper } = await import('three');
-        const directionalLightHelper = new DirectionalLightHelper(this.#sunLight, 5, 'red');
-        directionalLightHelper.visible = this.#debugProperties.DisplayLightsHelpers;
-        this.#scene.add(directionalLightHelper);
-
-        guiFolder.add(this.#debugProperties, 'DisplayLightsHelpers').onChange((value: boolean) => {
-          directionalLightHelper.visible = value;
-          this.#debug.save();
-        });
-      }
-    }
-  }
 }
