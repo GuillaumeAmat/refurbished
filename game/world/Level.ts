@@ -1,7 +1,6 @@
-import { Group, Vector3, type Scene } from 'three';
+import { Group, type Scene, Vector3 } from 'three';
 
 import type { LevelInfo } from '../levels';
-import { Debug } from '../util/Debug';
 import { Physics } from '../util/Physics';
 import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
@@ -22,17 +21,12 @@ export class Level {
   #interactionSystem!: InteractionSystem;
   #physics: Physics;
 
-  #debug: Debug;
-  #debugProperties = {
-    DisplayHelper: true,
-  };
   #interactive = true;
   #cachedMidpoint = new Vector3();
 
   constructor(screenGroup: Group, scene: Scene, levelInfo: LevelInfo) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;
-    this.#debug = Debug.getInstance();
     this.#physics = Physics.getInstance();
     this.#levelInfo = levelInfo;
 
@@ -58,7 +52,6 @@ export class Level {
     this.#interactionSystem.setInteractables(this.#levelBuilder.getInteractables());
 
     this.#setupInputCallbacks();
-    this.setupHelpers();
   }
 
   #setupInputCallbacks(): void {
@@ -68,30 +61,6 @@ export class Level {
     this.#player2?.onInteract(() => {
       this.#interactionSystem.handleInteraction(2);
     });
-  }
-
-  private async setupHelpers() {
-    if (this.#debug.active) {
-      const folderName = 'Level';
-      const guiFolder = this.#debug.gui.addFolder(folderName);
-
-      this.#debugProperties = {
-        ...this.#debugProperties,
-        ...this.#debug.configFromLocaleStorage?.folders?.[folderName]?.controllers,
-      };
-
-      if (this.#group) {
-        const { BoxHelper } = await import('three');
-        const helper = new BoxHelper(this.#group, 0xffff00);
-        helper.visible = this.#debugProperties.DisplayHelper;
-        this.#scene.add(helper);
-
-        guiFolder.add(this.#debugProperties, 'DisplayHelper').onChange((value: boolean) => {
-          helper.visible = value;
-          this.#debug.save();
-        });
-      }
-    }
   }
 
   public getPlayerMidpoint(): Vector3 | null {
