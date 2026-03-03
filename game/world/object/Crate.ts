@@ -185,12 +185,27 @@ export class Crate extends LevelObject {
     }
   }
 
+  static getCrateModelName(type: CrateType): string {
+    switch (type) {
+      case Cell.CRATE_BATTERY:
+        return 'crateBatteryModel';
+      case Cell.CRATE_FRAME:
+        return 'crateFrameModel';
+      case Cell.CRATE_SCREEN:
+        return 'crateScreenModel';
+      case Cell.CRATE_PACKAGE:
+      default:
+        return 'crateModel';
+    }
+  }
+
   create(group: Group): void {
     const { type, xIndex, zIndex, levelWidth, levelDepth } = this.#params;
 
-    const model = Resources.getInstance().getGLTFAsset('crateModel');
+    const modelName = Crate.getCrateModelName(type);
+    const model = Resources.getInstance().getGLTFAsset(modelName);
     if (!model) {
-      console.error('Crate model not loaded');
+      console.error(`Crate model "${modelName}" not loaded`);
       return;
     }
 
@@ -206,24 +221,6 @@ export class Crate extends LevelObject {
     // Setup lid pivot before adding resource (avoid misidentifying resource as lid)
     this.#setupLidPivot(mesh);
     Time.getInstance().addEventListener('tick', this.#onTick);
-
-    const resourceModelName = Crate.getResourceModelName(type);
-    if (resourceModelName) {
-      const resourceModel = Resources.getInstance().getGLTFAsset(resourceModelName);
-      if (resourceModel) {
-        const resource = resourceModel.scene.clone();
-
-        const bbox = new Box3().setFromObject(mesh);
-        const size = new Vector3();
-        bbox.getSize(size);
-        const meshHeight = size.y;
-
-        resource.position.set(TILE_SIZE / 2, meshHeight, TILE_SIZE / 2);
-        this.cloneMaterials(resource);
-        this.setupShadows(resource);
-        mesh.add(resource);
-      }
-    }
 
     this.mesh = mesh;
     group.add(mesh);
