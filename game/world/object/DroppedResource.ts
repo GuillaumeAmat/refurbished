@@ -25,13 +25,11 @@ const RESOURCE_SCALE: Record<ResourceType, number> = {
 };
 
 function iconNameForResource(resourceType: ResourceType, state: ResourceState): string | null {
-  if (resourceType === 'frame' && state === 'broken') return 'frameBrokenIcon';
-  if (resourceType === 'frame' && state === 'repaired') return 'frameRepairedIcon';
-  if (resourceType === 'battery' && state === 'broken') return 'batteryEmptyIcon';
-  if (resourceType === 'battery' && state === 'repaired') return 'batteryFilledIcon';
-  if (resourceType === 'screen' && state === 'broken') return 'screenBrokenIcon';
-  if (resourceType === 'screen' && state === 'repaired') return 'screenRepairedIcon';
-  if (resourceType === 'phone' && state === 'repaired') return 'phoneIcon';
+  if (state === 'broken') return null;
+  if (resourceType === 'frame') return 'frameRepairedIcon';
+  if (resourceType === 'battery') return 'batteryFilledIcon';
+  if (resourceType === 'screen') return 'screenRepairedIcon';
+  if (resourceType === 'phone') return 'phoneIcon';
   return null;
 }
 
