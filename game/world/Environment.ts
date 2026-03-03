@@ -3,6 +3,7 @@ import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } fro
 
 import { BACKGROUND_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
+import { Debug } from '../util/Debug';
 
 type EnvironmentMap = {
   intensity: number;
@@ -12,6 +13,7 @@ type EnvironmentMap = {
 export class Environment {
   #scene: Scene;
   #levelInfo: LevelInfo;
+  #ambientLight: AmbientLight | null = null;
   #sunLight: DirectionalLight | null = null;
   #counterSunLight: DirectionalLight | null = null;
   #environmentMap: EnvironmentMap = {
@@ -25,13 +27,14 @@ export class Environment {
 
     this.setupLights();
     this.setupEnvironment();
+    this.setupDebug();
   }
 
   private setupLights() {
-    const ambientLight = new AmbientLight('#ffffff', 2.3);
-    this.#scene.add(ambientLight);
+    this.#ambientLight = new AmbientLight('#ffffff', 1.6);
+    this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight('#ffffff', 2);
+    this.#sunLight = new DirectionalLight('#ffffff', 1);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -49,7 +52,7 @@ export class Environment {
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
 
-    this.#counterSunLight = new DirectionalLight('#ffffff', 0.8);
+    this.#counterSunLight = new DirectionalLight('#ffffff', 1);
     this.#counterSunLight.castShadow = false;
 
     this.#counterSunLight.position.set(0, 14, depth);
@@ -69,6 +72,55 @@ export class Environment {
     // this.updateMeshesMaterial();
   }
 
+  private setupDebug() {
+    const debug = Debug.getInstance();
+    if (!debug.active) return;
+
+    const lightsFolder = debug.gui.addFolder('Lights');
+
+    const ambientFolder = lightsFolder.addFolder('Ambient');
+    const ambientParams = { color: '#ffffff' };
+    ambientFolder
+      .addColor(ambientParams, 'color')
+      .name('Color')
+      .onChange((value: string) => {
+        this.#ambientLight!.color.set(value);
+        debug.save();
+      });
+    ambientFolder
+      .add(this.#ambientLight!, 'intensity', 0, 10, 0.01)
+      .name('Intensity')
+      .onChange(() => debug.save());
+
+    const sunFolder = lightsFolder.addFolder('Sun');
+    const sunParams = { color: '#ffffff' };
+    sunFolder
+      .addColor(sunParams, 'color')
+      .name('Color')
+      .onChange((value: string) => {
+        this.#sunLight!.color.set(value);
+        debug.save();
+      });
+    sunFolder
+      .add(this.#sunLight!, 'intensity', 0, 10, 0.01)
+      .name('Intensity')
+      .onChange(() => debug.save());
+
+    const counterSunFolder = lightsFolder.addFolder('Counter Sun');
+    const counterSunParams = { color: '#ffffff' };
+    counterSunFolder
+      .addColor(counterSunParams, 'color')
+      .name('Color')
+      .onChange((value: string) => {
+        this.#counterSunLight!.color.set(value);
+        debug.save();
+      });
+    counterSunFolder
+      .add(this.#counterSunLight!, 'intensity', 0, 10, 0.01)
+      .name('Intensity')
+      .onChange(() => debug.save());
+  }
+
   public updateMeshesMaterial() {
     this.#scene.traverse((child) => {
       if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
@@ -78,5 +130,4 @@ export class Environment {
       }
     });
   }
-
 }
