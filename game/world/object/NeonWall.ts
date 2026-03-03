@@ -68,7 +68,6 @@ export class NeonWall extends LevelObject {
     }
 
     this.setupShadows(mesh);
-    this.setupNeonMaterials(mesh);
 
     // Boost blue neon emissive intensity and add debug slider
     if (variant === 'blue') {
