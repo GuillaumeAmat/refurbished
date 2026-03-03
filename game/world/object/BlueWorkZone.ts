@@ -3,7 +3,6 @@ import { type Group, Mesh, Vector3 } from 'three';
 import { TILE_SIZE } from '../../constants';
 import { ProgressBar } from '../../hud/ProgressBar';
 import { createIconPlane, type IconPlaneResult } from '../../lib/createIconPlane';
-import { createTextPlane, type TextPlaneResult } from '../../lib/createTextPlane';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
 import type { DroppedResource } from './DroppedResource';
@@ -17,18 +16,18 @@ export interface BlueWorkZoneParams {
 }
 
 type AssemblyResourceType = 'battery' | 'frame' | 'screen';
-const ASSEMBLY_RESOURCES: AssemblyResourceType[] = ['battery', 'frame', 'screen'];
+const ASSEMBLY_RESOURCES: AssemblyResourceType[] = ['battery', 'screen', 'frame'];
 
-const LETTER_MAP: Record<AssemblyResourceType, string> = {
-  battery: 'B',
-  frame: 'F',
-  screen: 'S',
+const RESOURCE_ICON_MAP: Record<AssemblyResourceType, string> = {
+  battery: 'batteryFilledIcon',
+  frame: 'frameRepairedIcon',
+  screen: 'screenRepairedIcon',
 };
 
 export class BlueWorkZone extends LevelObject {
   #params: BlueWorkZoneParams;
   #containedResources: Map<AssemblyResourceType, DroppedResource> = new Map();
-  #letterIndicators: Map<AssemblyResourceType, TextPlaneResult> = new Map();
+  #slotIcons: Map<AssemblyResourceType, IconPlaneResult> = new Map();
   #assemblyProgress: number = 0;
   #progressBar: ProgressBar | null = null;
   #awaitingPackaging: boolean = false;
@@ -56,19 +55,30 @@ export class BlueWorkZone extends LevelObject {
   public setResource(resource: DroppedResource | null): void {
     if (!resource) {
       this.#containedResources.clear();
+      this.#createIndicators();
       this.resetAssemblyProgress();
       return;
     }
     const type = resource.getResourceType() as AssemblyResourceType;
     if (ASSEMBLY_RESOURCES.includes(type)) {
       this.#containedResources.set(type, resource);
-      this.#updateIndicators();
+      this.#setSlotIcon(type, RESOURCE_ICON_MAP[type]);
       this.resetAssemblyProgress();
 
       // Hide dropped resource model
       resource.getMesh()?.traverse((child) => {
         if (child instanceof Mesh) child.visible = false;
       });
+    }
+  }
+
+  public removeResource(resource: DroppedResource): void {
+    for (const [type, r] of this.#containedResources) {
+      if (r === resource) {
+        this.#containedResources.delete(type);
+        this.#setSlotIcon(type, 'plusIcon');
+        break;
+      }
     }
   }
 
@@ -87,6 +97,11 @@ export class BlueWorkZone extends LevelObject {
   public setAwaitingPackaging(phone: DroppedResource): void {
     this.#awaitingPackaging = true;
     this.#phoneResource = phone;
+
+    // Hide phone model mesh
+    phone.getMesh()?.traverse((child) => {
+      if (child instanceof Mesh) child.visible = false;
+    });
   }
 
   public clearAwaitingPackaging(): DroppedResource | null {
@@ -99,6 +114,14 @@ export class BlueWorkZone extends LevelObject {
 
   public showPhoneIcon(): void {
     if (this.#zoneIcon || !this.mesh) return;
+
+    // Dispose all slot icons before showing phone icon
+    for (const icon of this.#slotIcons.values()) {
+      icon.mesh.removeFromParent();
+      icon.dispose();
+    }
+    this.#slotIcons.clear();
+
     const texture = Resources.getInstance().getTextureAsset('phoneIcon');
     if (!texture) return;
     const anchor = new Vector3(
@@ -115,6 +138,9 @@ export class BlueWorkZone extends LevelObject {
     this.#zoneIcon.mesh.removeFromParent();
     this.#zoneIcon.dispose();
     this.#zoneIcon = null;
+
+    // Restore plus icons
+    this.#createIndicators();
   }
 
   public override getDropSurface(): Vector3 | null {
@@ -137,7 +163,6 @@ export class BlueWorkZone extends LevelObject {
   public assemble(): DroppedResource[] {
     const removed = Array.from(this.#containedResources.values());
     this.#containedResources.clear();
-    this.#updateIndicators();
     this.#progressBar?.dispose();
     this.#progressBar = null;
     return removed;
@@ -178,14 +203,32 @@ export class BlueWorkZone extends LevelObject {
     this.#progressBar?.setProgress(progress);
   }
 
-  #updateIndicators(): void {
-    for (const type of ASSEMBLY_RESOURCES) {
-      const indicator = this.#letterIndicators.get(type);
-      if (indicator) {
-        const hasResource = this.#containedResources.has(type);
-        indicator.updateColor(hasResource ? '#00FF88' : '#FFFFFF');
-      }
+  #getSlotAnchor(index: number): Vector3 {
+    const spacing = 1.2;
+    const totalWidth = spacing * (ASSEMBLY_RESOURCES.length - 1);
+    const startX = TILE_SIZE * 0.5 - totalWidth / 2;
+    return new Vector3(
+      this.mesh!.position.x + startX + index * spacing,
+      2.8,
+      this.mesh!.position.z + TILE_SIZE * 0.5,
+    );
+  }
+
+  #setSlotIcon(type: AssemblyResourceType, textureName: string): void {
+    const old = this.#slotIcons.get(type);
+    if (old) {
+      old.mesh.removeFromParent();
+      old.dispose();
     }
+
+    const texture = Resources.getInstance().getTextureAsset(textureName);
+    if (!texture || !this.mesh?.parent) return;
+
+    const index = ASSEMBLY_RESOURCES.indexOf(type);
+    const anchor = this.#getSlotAnchor(index);
+    const icon = createIconPlane(texture, 0.3, anchor);
+    this.mesh.parent.add(icon.mesh);
+    this.#slotIcons.set(type, icon);
   }
 
   create(group: Group): void {
@@ -206,43 +249,27 @@ export class BlueWorkZone extends LevelObject {
     this.cloneMaterials(mesh);
     this.setupShadows(mesh);
 
-    this.#createIndicators(mesh);
-
     this.mesh = mesh;
     group.add(mesh);
+
+    this.#createIndicators();
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
     this.isInteractable = true;
   }
 
-  #createIndicators(parentMesh: Group): void {
-    const spacing = 0.4;
-    const totalWidth = spacing * (ASSEMBLY_RESOURCES.length - 1);
-    const startX = TILE_SIZE * 0.5 - totalWidth / 2;
-
-    for (let i = 0; i < ASSEMBLY_RESOURCES.length; i++) {
-      const type = ASSEMBLY_RESOURCES[i]!;
-      const letter = LETTER_MAP[type];
-
-      const textPlane = createTextPlane(letter, {
-        height: 0.3,
-        color: '#FFFFFF',
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
-      });
-
-      textPlane.mesh.position.set(startX + i * spacing, 2.8, TILE_SIZE * 0.5);
-
-      parentMesh.add(textPlane.mesh);
-      this.#letterIndicators.set(type, textPlane);
+  #createIndicators(): void {
+    for (const type of ASSEMBLY_RESOURCES) {
+      this.#setSlotIcon(type, 'plusIcon');
     }
   }
 
   override dispose(): void {
-    for (const indicator of this.#letterIndicators.values()) {
-      indicator.dispose();
+    for (const icon of this.#slotIcons.values()) {
+      icon.mesh.removeFromParent();
+      icon.dispose();
     }
-    this.#letterIndicators.clear();
+    this.#slotIcons.clear();
     this.#progressBar?.dispose();
     this.hidePhoneIcon();
   }

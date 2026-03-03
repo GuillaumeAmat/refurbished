@@ -221,6 +221,7 @@ export class InteractionSystem {
             position: targetPos,
             onTopOf: target,
             state: dropped.state,
+            skipIcon: true,
           });
           resource.create(this.#levelGroup);
           this.addDroppedResource(resource, target);
@@ -278,13 +279,7 @@ export class InteractionSystem {
           if (target.getResourceType() === 'phone' && parent.isAwaitingPackaging()) {
             parent.clearAwaitingPackaging();
           } else {
-            const resources = parent.getResources();
-            for (const [type, r] of resources) {
-              if (r === target) {
-                resources.delete(type);
-                break;
-              }
-            }
+            parent.removeResource(target);
           }
         }
 
@@ -362,7 +357,6 @@ export class InteractionSystem {
               skipIcon: true,
             });
             phone.create(this.#levelGroup);
-            phone.getMesh()?.rotation.set(Math.PI / 4, 0, 0);
             this.addDroppedResource(phone, target);
             target.setAwaitingPackaging(phone);
             target.showPhoneIcon();

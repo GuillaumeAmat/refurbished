@@ -234,6 +234,11 @@ export class Stage {
       },
       phoneIcon: {
         type: 'texture',
+        path: '/game/texture/phone_icon.png',
+        priority: 'low',
+      },
+      plusIcon: {
+        type: 'texture',
         path: '/game/texture/plus_icon.png',
         priority: 'low',
       },
