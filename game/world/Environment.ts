@@ -55,7 +55,7 @@ export class Environment {
     this.#counterSunLight = new DirectionalLight('#ffffff', 1);
     this.#counterSunLight.castShadow = false;
 
-    this.#counterSunLight.position.set(0, 14, depth);
+    this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);
     this.#counterSunLight.target.position.set(center.x, 0, center.z);
 
     this.#scene.add(this.#counterSunLight);
