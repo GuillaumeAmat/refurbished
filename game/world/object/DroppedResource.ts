@@ -204,6 +204,8 @@ export class DroppedResource extends LevelObject {
     const texture = Resources.getInstance().getTextureAsset(iconName);
     if (!texture) return;
 
+    const bbox = new Box3().setFromObject(meshObject);
+
     let iconX: number;
     let iconZ: number;
 
@@ -216,12 +218,12 @@ export class DroppedResource extends LevelObject {
       iconZ = parentMesh.position.z + tileOffset.z;
     } else {
       const center = new Vector3();
-      new Box3().setFromObject(meshObject).getCenter(center);
+      bbox.getCenter(center);
       iconX = center.x;
       iconZ = center.z;
     }
 
-    const anchor = new Vector3(iconX, meshObject.position.y, iconZ);
+    const anchor = new Vector3(iconX, bbox.max.y, bbox.min.z);
     this.#iconPlane = createIconPlane(texture, 0.3, anchor);
     this.#group.add(this.#iconPlane.mesh);
   }
