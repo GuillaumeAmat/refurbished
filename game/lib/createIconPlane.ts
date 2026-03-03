@@ -4,6 +4,8 @@ import { LinearMipmapNearestFilter, Mesh, MeshBasicMaterial, PlaneGeometry, SRGB
 const _worldPos = new Vector3();
 const _cameraUp = new Vector3();
 const _iconPos = new Vector3();
+const _toIcon = new Vector3();
+const _cameraDir = new Vector3();
 const REFERENCE_DIST = 10;
 const SCREEN_UP_OFFSET = 1.8;
 
@@ -38,8 +40,10 @@ export function createIconPlane(texture: Texture, size: number, anchor?: Vector3
     }
     mesh.quaternion.copy(camera.quaternion);
     mesh.getWorldPosition(_worldPos);
-    const dist = _worldPos.distanceTo((camera as PerspectiveCamera).position);
-    mesh.scale.setScalar(dist / REFERENCE_DIST);
+    (camera as PerspectiveCamera).getWorldDirection(_cameraDir);
+    _toIcon.subVectors(_worldPos, (camera as PerspectiveCamera).position);
+    const depth = _toIcon.dot(_cameraDir);
+    mesh.scale.setScalar(depth / REFERENCE_DIST);
   };
 
   const dispose = () => {
