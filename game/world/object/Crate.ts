@@ -1,10 +1,20 @@
-import { Box3, type Group, Vector3 } from 'three';
+import { Box3, Group, Mesh, type Object3D, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Cell } from '../../levels';
 import type { ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
+import { Time } from '../../util/Time';
 import { LevelObject } from './LevelObject';
+
+const LID = {
+  openAngle: -Math.PI * 0.35,
+  openMs: 150,
+  holdMs: 100,
+  closeMs: 150,
+};
+
+type LidState = 'idle' | 'opening' | 'open' | 'closing';
 
 export type CrateType =
   | typeof Cell.CRATE_BATTERY
@@ -23,11 +33,103 @@ export interface CrateParams {
 export class Crate extends LevelObject {
   #params: CrateParams;
   type: CrateType;
+  #lidPivot: Object3D | null = null;
+  #lidAngle = 0;
+  #lidState: LidState = 'idle';
+  #holdTimer = 0;
+
+  #onTick = (): void => {
+    if (!this.#lidPivot || this.#lidState === 'idle') return;
+
+    const delta = Time.getInstance().delta;
+    this.#holdTimer += delta;
+
+    if (this.#lidState === 'opening') {
+      const t = Math.min(this.#holdTimer / LID.openMs, 1);
+      // ease-out: fast start, smooth stop
+      this.#lidAngle = LID.openAngle * (1 - Math.pow(1 - t, 2));
+      if (t >= 1) {
+        this.#lidState = 'open';
+        this.#holdTimer = 0;
+      }
+    } else if (this.#lidState === 'open') {
+      if (this.#holdTimer >= LID.holdMs) {
+        this.#lidState = 'closing';
+        this.#holdTimer = 0;
+      }
+    } else if (this.#lidState === 'closing') {
+      const t = Math.min(this.#holdTimer / LID.closeMs, 1);
+      // ease-in: gradual start, fast finish
+      this.#lidAngle = LID.openAngle * (1 - t * t);
+      if (t >= 1) {
+        this.#lidAngle = 0;
+        this.#lidState = 'idle';
+        this.#holdTimer = 0;
+      }
+    }
+
+    this.#lidPivot.rotation.x = this.#lidAngle;
+  };
 
   constructor(params: CrateParams) {
     super();
     this.#params = params;
     this.type = params.type;
+  }
+
+  public openLid(): void {
+    if (this.#lidState !== 'idle') return;
+    this.#lidState = 'opening';
+  }
+
+  public override dispose(): void {
+    Time.getInstance().removeEventListener('tick', this.#onTick);
+    super.dispose();
+  }
+
+  #setupLidPivot(mesh: Object3D): void {
+    // Find direct child with highest Y center — that's the lid
+    let lidChild: Object3D | null = null;
+    let maxY = -Infinity;
+    const tmpBox = new Box3();
+    const tmpCenter = new Vector3();
+
+    for (const child of mesh.children) {
+      tmpBox.setFromObject(child);
+      tmpBox.getCenter(tmpCenter);
+      if (tmpCenter.y > maxY) {
+        maxY = tmpCenter.y;
+        lidChild = child;
+      }
+    }
+
+    if (!lidChild) return;
+
+    // Get lid bounds in mesh-local space (glTF nodes have no transforms, so
+    // geometry bounding box == mesh-local bounding box)
+    const lidLocalBox = new Box3();
+    if (lidChild instanceof Mesh && lidChild.geometry) {
+      lidChild.geometry.computeBoundingBox();
+      if (lidChild.geometry.boundingBox) {
+        lidLocalBox.copy(lidChild.geometry.boundingBox);
+      }
+    } else {
+      lidLocalBox.setFromObject(lidChild);
+    }
+
+    // Hinge at bottom-front edge of lid (rotate around min-Z edge)
+    const hinge = new Vector3((lidLocalBox.min.x + lidLocalBox.max.x) / 2, lidLocalBox.min.y, lidLocalBox.min.z);
+
+    const pivot = new Group();
+    pivot.position.copy(hinge);
+
+    // Offset lid so it stays visually in place after reparenting
+    mesh.remove(lidChild);
+    lidChild.position.set(-hinge.x, -hinge.y, -hinge.z);
+    pivot.add(lidChild);
+    mesh.add(pivot);
+
+    this.#lidPivot = pivot;
   }
 
   public getResourceType(): ResourceType {
@@ -100,6 +202,10 @@ export class Crate extends LevelObject {
     this.applyEdgeRotation(mesh, xIndex, zIndex, TILE_SIZE, levelWidth, levelDepth);
     this.cloneMaterials(mesh);
     this.setupShadows(mesh);
+
+    // Setup lid pivot before adding resource (avoid misidentifying resource as lid)
+    this.#setupLidPivot(mesh);
+    Time.getInstance().addEventListener('tick', this.#onTick);
 
     const resourceModelName = Crate.getResourceModelName(type);
     if (resourceModelName) {
