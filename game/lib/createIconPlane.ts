@@ -1,5 +1,5 @@
 import type { PerspectiveCamera, Texture } from 'three';
-import { Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
+import { LinearMipmapNearestFilter, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 
 const _worldPos = new Vector3();
 const _cameraUp = new Vector3();
@@ -14,6 +14,8 @@ export interface IconPlaneResult {
 
 export function createIconPlane(texture: Texture, size: number, anchor?: Vector3): IconPlaneResult {
   texture.colorSpace = SRGBColorSpace;
+  // Avoid trilinear mipmap blending, which blurs at mid-range distances
+  texture.minFilter = LinearMipmapNearestFilter;
 
   const geometry = new PlaneGeometry(size, size);
   const material = new MeshBasicMaterial({
