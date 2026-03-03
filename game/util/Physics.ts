@@ -1,19 +1,12 @@
 import RAPIER, { type RigidBody, type World } from '@dimforge/rapier3d-compat';
-import { BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments, type Scene, type Vector3 } from 'three';
-
-import { Debug } from './Debug';
+import type { Vector3 } from 'three';
 
 export class Physics {
   private static instance: Physics | null = null;
   private world: World | null = null;
   private initialized = false;
-  private debug: Debug;
-  private debugRenderer: LineSegments | null = null;
-  private scene: Scene | null = null;
 
-  private constructor() {
-    this.debug = Debug.getInstance();
-  }
+  private constructor() {}
 
   public static getInstance() {
     if (!Physics.instance) {
@@ -22,18 +15,13 @@ export class Physics {
     return Physics.instance;
   }
 
-  public async init(scene?: Scene) {
+  public async init() {
     if (this.initialized) return;
 
     await RAPIER.init();
 
     const gravity = new RAPIER.Vector3(0.0, -9.81, 0.0);
     this.world = new RAPIER.World(gravity);
-
-    if (scene) {
-      this.scene = scene;
-      this.setupDebugRenderer();
-    }
 
     this.initialized = true;
   }
@@ -76,28 +64,6 @@ export class Physics {
   public update() {
     if (!this.world) return;
     this.world.step();
-    this.updateDebugRenderer();
-  }
-
-  private setupDebugRenderer(): void {
-    if (!this.debug.active || !this.scene) return;
-
-    const material = new LineBasicMaterial({
-      color: 0x00ff00,
-      linewidth: 1,
-    });
-
-    const geometry = new BufferGeometry();
-    this.debugRenderer = new LineSegments(geometry, material);
-    this.scene.add(this.debugRenderer);
-  }
-
-  private updateDebugRenderer(): void {
-    if (!this.debug.active || !this.debugRenderer || !this.world) return;
-
-    const buffers = this.world.debugRender();
-    this.debugRenderer.geometry.setAttribute('position', new BufferAttribute(buffers.vertices, 3));
-    this.debugRenderer.geometry.setAttribute('color', new BufferAttribute(buffers.colors, 4));
   }
 
   public dispose(): void {

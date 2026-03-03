@@ -35,7 +35,7 @@ export class Level {
   }
 
   public async init(): Promise<void> {
-    await this.#physics.init(this.#scene);
+    await this.#physics.init();
 
     this.#floor = new Floor(this.#levelInfo);
     this.#floor.create(this.#group);
