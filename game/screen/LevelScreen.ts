@@ -143,6 +143,7 @@ export class LevelScreen {
     // Only reset/start session when freshly entering from hidden state
     if (wasHidden) {
       this.#scoreManager.reset();
+      void this.#requestSessionToken();
       this.#sessionManager.reset();
       this.#orderManager.reset();
       this.#comboManager.reset();
@@ -159,6 +160,16 @@ export class LevelScreen {
         this.#sessionManager.stop();
         this.#orderManager.stop();
       }
+    }
+  }
+
+  async #requestSessionToken(): Promise<void> {
+    try {
+      const res = await fetch('/api/game/session', { method: 'POST' });
+      const { token } = await res.json();
+      this.#scoreManager.setSessionToken(token);
+    } catch {
+      // graceful degradation
     }
   }
 

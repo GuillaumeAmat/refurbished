@@ -1,7 +1,6 @@
 import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
-import { STAR_THRESHOLDS } from '../constants';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { SavingScoreOverlayHUD } from '../hud/SavingScoreOverlayHUD';
 import { ScoreManager } from '../state/ScoreManager';
@@ -51,15 +50,16 @@ export class SavingScoreScreen {
 
   async #saveScore() {
     const scoreManager = ScoreManager.getInstance();
-    const score = scoreManager.getScore();
     const { player1, player2 } = scoreManager.getPlayerNames();
-    const stars = STAR_THRESHOLDS.filter((t) => score >= t).length;
+    const token = scoreManager.getSessionToken();
+
+    await scoreManager.flushEvents();
 
     try {
       await fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player1, player2, score, stars }),
+        body: JSON.stringify({ player1, player2, token }),
       });
     } catch {
       // Fail silently — still let the player continue
