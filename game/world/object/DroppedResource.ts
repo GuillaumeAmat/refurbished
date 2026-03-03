@@ -13,6 +13,7 @@ export interface DroppedResourceParams {
   position: Vector3;
   onTopOf?: LevelObject;
   state?: ResourceState;
+  skipIcon?: boolean;
 }
 
 const RESOURCE_SCALE: Record<ResourceType, number> = {
@@ -30,6 +31,7 @@ function iconNameForResource(resourceType: ResourceType, state: ResourceState): 
   if (resourceType === 'battery' && state === 'repaired') return 'batteryFilledIcon';
   if (resourceType === 'screen' && state === 'broken') return 'screenBrokenIcon';
   if (resourceType === 'screen' && state === 'repaired') return 'screenRepairedIcon';
+  if (resourceType === 'phone' && state === 'repaired') return 'phoneIcon';
   return null;
 }
 
@@ -194,7 +196,7 @@ export class DroppedResource extends LevelObject {
     this.mesh = mesh;
     group.add(mesh);
 
-    this.#attachIcon(mesh);
+    if (!this.#params.skipIcon) this.#attachIcon(mesh);
   }
 
   #attachIcon(meshObject: Group): void {

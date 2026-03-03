@@ -158,6 +158,32 @@ export class InteractionSystem {
         return;
       }
 
+      // Package phone anywhere: drop phone on open package or open package on phone
+      if (target instanceof DroppedResource) {
+        const carriedIsPhone = carriedType === 'phone' && carriedState === 'repaired';
+        const targetIsOpenPkg = target.getResourceType() === 'package' && target.getState() === 'broken';
+        const carriedIsOpenPkg = carriedType === 'package' && carriedState === 'broken';
+        const targetIsPhone = target.getResourceType() === 'phone' && target.getState() === 'repaired';
+
+        if ((carriedIsPhone && targetIsOpenPkg) || (carriedIsOpenPkg && targetIsPhone)) {
+          const parent = this.#getParentObject(target) ?? undefined;
+          const targetPos = target.getPosition() ?? player.getPosition();
+
+          player.dropResource();
+          this.removeDroppedResource(target);
+
+          const closedPkg = new DroppedResource({
+            resourceType: 'package',
+            position: targetPos,
+            onTopOf: parent,
+            state: 'repaired',
+          });
+          closedPkg.create(this.#levelGroup);
+          this.addDroppedResource(closedPkg, parent);
+          return;
+        }
+      }
+
       // Delivery zone: only accept closed packages
       if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
@@ -249,11 +275,15 @@ export class InteractionSystem {
 
         const parent = this.#getParentObject(target);
         if (parent instanceof BlueWorkZone) {
-          const resources = parent.getResources();
-          for (const [type, r] of resources) {
-            if (r === target) {
-              resources.delete(type);
-              break;
+          if (target.getResourceType() === 'phone' && parent.isAwaitingPackaging()) {
+            parent.clearAwaitingPackaging();
+          } else {
+            const resources = parent.getResources();
+            for (const [type, r] of resources) {
+              if (r === target) {
+                resources.delete(type);
+                break;
+              }
             }
           }
         }
@@ -321,7 +351,7 @@ export class InteractionSystem {
             this.removeDroppedResource(res);
           }
 
-          // Spawn phone (not grabbable, awaiting packaging)
+          // Spawn phone inside zone (grabbable)
           const targetPos = target.getPosition();
           if (targetPos) {
             const phone = new DroppedResource({
@@ -329,11 +359,13 @@ export class InteractionSystem {
               position: targetPos,
               onTopOf: target,
               state: 'repaired',
+              skipIcon: true,
             });
             phone.create(this.#levelGroup);
-            phone.isInteractable = false;
+            phone.getMesh()?.rotation.set(Math.PI / 4, 0, 0);
             this.addDroppedResource(phone, target);
             target.setAwaitingPackaging(phone);
+            target.showPhoneIcon();
           }
         }
       }
@@ -369,16 +401,11 @@ export class InteractionSystem {
 
     for (const obj of this.#interactables) {
       // Skip non-phone resources on BlueWorkZone - zone handles assembly
-      // Skip phone when awaiting packaging (phone is not grabbable)
       if (obj instanceof DroppedResource) {
         const parent = this.#getParentObject(obj);
         if (parent instanceof BlueWorkZone) {
           const resourceType = obj.getResourceType();
           if (resourceType !== 'phone' && resourceType !== 'package') {
-            continue;
-          }
-          // Skip phone when awaiting packaging
-          if (resourceType === 'phone' && parent.isAwaitingPackaging()) {
             continue;
           }
         }

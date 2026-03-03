@@ -2,6 +2,7 @@ import { type Group, Mesh, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { ProgressBar } from '../../hud/ProgressBar';
+import { createIconPlane, type IconPlaneResult } from '../../lib/createIconPlane';
 import { createTextPlane, type TextPlaneResult } from '../../lib/createTextPlane';
 import type { ResourceState, ResourceType } from '../../types';
 import { Resources } from '../../util/Resources';
@@ -32,6 +33,7 @@ export class BlueWorkZone extends LevelObject {
   #progressBar: ProgressBar | null = null;
   #awaitingPackaging: boolean = false;
   #phoneResource: DroppedResource | null = null;
+  #zoneIcon: IconPlaneResult | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
@@ -91,7 +93,37 @@ export class BlueWorkZone extends LevelObject {
     const phone = this.#phoneResource;
     this.#awaitingPackaging = false;
     this.#phoneResource = null;
+    this.hidePhoneIcon();
     return phone;
+  }
+
+  public showPhoneIcon(): void {
+    if (this.#zoneIcon || !this.mesh) return;
+    const texture = Resources.getInstance().getTextureAsset('phoneIcon');
+    if (!texture) return;
+    const anchor = new Vector3(
+      this.mesh.position.x + TILE_SIZE / 2,
+      2.8,
+      this.mesh.position.z + TILE_SIZE / 2,
+    );
+    this.#zoneIcon = createIconPlane(texture, 0.3, anchor);
+    this.mesh.parent?.add(this.#zoneIcon.mesh);
+  }
+
+  public hidePhoneIcon(): void {
+    if (!this.#zoneIcon) return;
+    this.#zoneIcon.mesh.removeFromParent();
+    this.#zoneIcon.dispose();
+    this.#zoneIcon = null;
+  }
+
+  public override getDropSurface(): Vector3 | null {
+    if (!this.mesh) return null;
+    return new Vector3(
+      this.mesh.position.x + TILE_SIZE / 2,
+      0.5,
+      this.mesh.position.z + TILE_SIZE / 2,
+    );
   }
 
   public canAcceptPackage(type: ResourceType, state: ResourceState): boolean {
@@ -212,5 +244,6 @@ export class BlueWorkZone extends LevelObject {
     }
     this.#letterIndicators.clear();
     this.#progressBar?.dispose();
+    this.hidePhoneIcon();
   }
 }

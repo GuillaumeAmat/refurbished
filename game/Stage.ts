@@ -232,6 +232,11 @@ export class Stage {
         path: '/game/texture/screen_repaired_icon.png',
         priority: 'low',
       },
+      phoneIcon: {
+        type: 'texture',
+        path: '/game/texture/plus_icon.png',
+        priority: 'low',
+      },
       // bmLogo: {
       //   type: 'svg',
       //   path: '/game/svg/bmLogo.svg',
