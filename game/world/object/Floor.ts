@@ -3,6 +3,7 @@ import { Box3, Mesh, MeshStandardMaterial, PlaneGeometry, Vector3 } from 'three'
 
 import { TILE_SIZE } from '../../constants';
 import type { LevelInfo } from '../../levels';
+import { Debug } from '../../util/Debug';
 import { Physics } from '../../util/Physics';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
@@ -65,6 +66,17 @@ export class Floor extends LevelObject {
     plane.receiveShadow = true;
 
     group.add(plane);
+
+    const debug = Debug.getInstance();
+    if (debug.active) {
+      const params = { exteriorFloorColor: '#505566' };
+      debug.gui
+        .addColor(params, 'exteriorFloorColor')
+        .name('Exterior Floor Color')
+        .onChange((value: string) => {
+          material.color.set(value);
+        });
+    }
   }
 
   private adjustMaterial(object: Group, brightness: number, contrast: number, gamma: number): void {
