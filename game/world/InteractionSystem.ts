@@ -262,6 +262,7 @@ export class InteractionSystem {
         this.#currentTargets.set(playerId, null);
       } else if (target instanceof Crate) {
         player.grabResource(target.getResourceType(), 'broken');
+        target.openLid();
       }
     }
   }
