@@ -1,5 +1,5 @@
 import type { CubeTexture, Scene } from 'three';
-import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } from 'three';
+import { AmbientLight, CameraHelper, Color, Mesh, MeshStandardMaterial, SpotLight } from 'three';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 import { BACKGROUND_COLOR, LIGHT_COLOR } from '../constants';
@@ -19,9 +19,8 @@ export class Environment {
   #scene: Scene;
   #levelInfo: LevelInfo;
   #ambientLight: AmbientLight | null = null;
-  #sunLight: DirectionalLight | null = null;
-  #counterSunLight: DirectionalLight | null = null;
-  #frontSunLight: DirectionalLight | null = null;
+  #quadLights: SpotLight[] = [];
+  #shadowHelpers: CameraHelper[] = [];
   #environmentMap: EnvironmentMap = {
     intensity: 0.4,
     texture: null,
@@ -38,44 +37,44 @@ export class Environment {
   }
 
   private setupLights() {
-    this.#ambientLight = new AmbientLight(LIGHT_COLOR, 0.4);
+    this.#ambientLight = new AmbientLight(LIGHT_COLOR, 1.1);
     this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
-    this.#sunLight.castShadow = true;
-    this.#sunLight.shadow.camera.far = 50;
-    this.#sunLight.shadow.mapSize.set(1024, 1024);
-    this.#sunLight.shadow.normalBias = 0.05;
-    this.#sunLight.shadow.camera.top = -20;
-    this.#sunLight.shadow.camera.bottom = 20;
-    this.#sunLight.shadow.camera.left = -20;
-    this.#sunLight.shadow.camera.right = 20;
+    const { center } = this.#levelInfo;
+    const qx = center.x / 2;
+    const qz = center.z / 2;
 
-    const { width, depth, center } = this.#levelInfo;
+    const quadrants = [
+      { x: center.x - qx, z: center.z - qz },
+      { x: center.x + qx, z: center.z - qz },
+      { x: center.x - qx, z: center.z + qz },
+      { x: center.x + qx, z: center.z + qz },
+    ];
 
-    this.#sunLight.position.set(width * 0.6, 16, depth * 0.3);
-    this.#sunLight.target.position.set(center.x, 0, center.z);
+    for (let i = 0; i < quadrants.length; i++) {
+      const q = quadrants[i];
+      const castShadow = i === 1; // back-right only
+      const light = new SpotLight(LIGHT_COLOR, 77, 35, 1.07, 0.05, 1.6);
+      light.castShadow = castShadow;
+      if (castShadow) {
+        light.shadow.mapSize.set(1024, 1024);
+        light.shadow.normalBias = 0.05;
+        light.shadow.camera.near = 1;
+        light.shadow.camera.far = 40;
+      }
+      light.position.set(q.x, 14, q.z);
+      light.target.position.set(q.x, 0, q.z);
+      this.#quadLights.push(light);
+      this.#scene.add(light);
+      this.#scene.add(light.target);
 
-    this.#scene.add(this.#sunLight);
-    this.#scene.add(this.#sunLight.target);
-
-    this.#counterSunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
-    this.#counterSunLight.castShadow = false;
-
-    this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);
-    this.#counterSunLight.target.position.set(center.x, 0, center.z);
-
-    this.#scene.add(this.#counterSunLight);
-    this.#scene.add(this.#counterSunLight.target);
-
-    this.#frontSunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
-    this.#frontSunLight.castShadow = false;
-
-    this.#frontSunLight.position.set(center.x, 3, depth);
-    this.#frontSunLight.target.position.set(center.x, 0, center.z);
-
-    this.#scene.add(this.#frontSunLight);
-    this.#scene.add(this.#frontSunLight.target);
+      if (castShadow) {
+        const helper = new CameraHelper(light.shadow.camera);
+        helper.visible = false;
+        this.#shadowHelpers.push(helper);
+        this.#scene.add(helper);
+      }
+    }
   }
 
   private setupEnvironment() {
@@ -100,9 +99,7 @@ export class Environment {
       .name('LIGHT_COLOR')
       .onChange((value: string) => {
         this.#ambientLight!.color.set(value);
-        this.#sunLight!.color.set(value);
-        this.#counterSunLight!.color.set(value);
-        this.#frontSunLight!.color.set(value);
+        for (const light of this.#quadLights) light.color.set(value);
         for (const light of Poster.lights) light.color.set(value);
         for (const light of DeliveryZone.lights) light.color.set(value);
         for (const light of RepairZone.lights) light.color.set(value);
@@ -138,18 +135,49 @@ export class Environment {
       folder.add(actions, 'dec').name('-');
     };
 
-    addIntensityFolder('Ambient', 1, (v) => {
+    addIntensityFolder('Ambient', 1.1, (v) => {
       this.#ambientLight!.intensity = v;
     });
-    addIntensityFolder('Sun', 1, (v) => {
-      this.#sunLight!.intensity = v;
-    });
-    addIntensityFolder('Counter Sun', 1, (v) => {
-      this.#counterSunLight!.intensity = v;
-    });
-    addIntensityFolder('Front Sun', 0.5, (v) => {
-      this.#frontSunLight!.intensity = v;
-    });
+
+    const quadFolder = lightsFolder.addFolder('Quad Lights');
+    const ref = this.#quadLights[0]!;
+    const quadState = {
+      intensity: ref.intensity,
+      height: ref.position.y,
+      decay: ref.decay,
+      distance: ref.distance,
+      angle: ref.angle,
+      penumbra: ref.penumbra,
+      castShadow: ref.castShadow,
+    };
+    quadFolder
+      .add(quadState, 'intensity', 0, 200, 1)
+      .name('Intensity')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.intensity = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'height', 1, 50, 0.5)
+      .name('Height')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.position.y = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'decay', 0, 5, 0.1)
+      .name('Decay')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.decay = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'distance', 0, 200, 1)
+      .name('Distance')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.distance = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'angle', 0.1, Math.PI / 2, 0.01)
+      .name('Angle')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.angle = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'penumbra', 0, 1, 0.05)
+      .name('Penumbra')
+      .onChange((v: number) => { for (const l of this.#quadLights) l.penumbra = v; debug.save(); });
+    quadFolder
+      .add(quadState, 'castShadow')
+      .name('Cast Shadow')
+      .onChange((v: boolean) => { for (const l of this.#quadLights) l.castShadow = v; debug.save(); });
     addIntensityFolder('Poster Lights', 10, (v) => {
       for (const light of Poster.lights) light.intensity = v;
     });
@@ -165,6 +193,15 @@ export class Environment {
     addIntensityFolder('Neon Lights', 1, (v) => {
       for (const light of NeonWall.lights) light.intensity = v;
     });
+
+    const shadowHelperState = { visible: false };
+    lightsFolder
+      .add(shadowHelperState, 'visible')
+      .name('Shadow Helpers')
+      .onChange((v: boolean) => {
+        for (const helper of this.#shadowHelpers) helper.visible = v;
+        debug.save();
+      });
 
     const neonHelperState = { visible: false };
     lightsFolder

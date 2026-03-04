@@ -63,7 +63,7 @@ export const COMBO_MAX_MULTIPLIER = 4;
 // Star rating
 export const STAR_THRESHOLDS = [80, 200, 400];
 
-export const LIGHT_COLOR = '#fff8e1';
+export const LIGHT_COLOR = '#ffffff';
 
 export const BLOOM_LAYER = 1;
 
