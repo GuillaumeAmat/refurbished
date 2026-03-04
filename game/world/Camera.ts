@@ -111,6 +111,11 @@ export class Camera {
       this.#controls.enableDamping = true;
       this.#controls.target.set(center.x, center.y, center.z);
       this.#controls.update();
+
+      const folder = this.#debug.gui.addFolder('Camera');
+      folder.add(this.#camera.position, 'x', -50, 50, 0.1).listen();
+      folder.add(this.#camera.position, 'y', 0, 100, 0.1).listen();
+      folder.add(this.#camera.position, 'z', -50, 100, 0.1).listen();
     }
   }
 
