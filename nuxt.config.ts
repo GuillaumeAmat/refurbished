@@ -23,6 +23,13 @@ export default defineNuxtConfig({
       fs: {
         strict: false,  // Allow devtools extension files
       },
+      watch: {
+        atomic: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 100,
+          pollInterval: 50,
+        },
+      },
     },
   },
 
