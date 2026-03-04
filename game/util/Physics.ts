@@ -16,6 +16,7 @@ export class Physics {
   }
 
   public async init() {
+    this.#accumulator = 0;
     if (this.initialized) return;
 
     await RAPIER.init();
