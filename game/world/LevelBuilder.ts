@@ -10,6 +10,7 @@ import {
   isWalkable,
   isWorkbench,
   type LevelData,
+  type NeonWallDef,
 } from '../levels';
 import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
@@ -173,61 +174,22 @@ export class LevelBuilder {
       { side: 'right', getCell: (i) => matrix[i]?.[levelWidth - 1] ?? '', length: levelDepth },
     ];
 
+    const neonSet = new Map<string, NeonWallDef>(
+      (this.#data.neonWalls ?? []).map((def) => [`${def.side}:${def.index}`, def]),
+    );
+
     for (const { side, getCell, length } of sides) {
       for (let i = 0; i < length; i++) {
         const cellValue = getCell(i);
         if (isWalkable(cellValue) || isDeliveryZone(cellValue)) continue;
 
-        // Replace walls 2-3 and 9-10 on top side with neon walls
-        if (side === 'top' && (i === 2 || i === 9)) {
-          const neonWall = new NeonWall({
-            index: i,
-            side,
-            levelWidth,
-            levelDepth,
-          });
+        const neonDef = neonSet.get(`${side}:${i}`);
+        if (neonDef) {
+          const neonWall = new NeonWall({ index: i, side, levelWidth, levelDepth, ...neonDef });
           neonWall.create(group);
           this.#objects.push(neonWall);
           continue;
         }
-
-        // Replace walls 2-3 on left side with blue neon wall
-        if (side === 'left' && i === 2) {
-          const neonWall = new NeonWall({
-            index: i,
-            side,
-            levelWidth,
-            levelDepth,
-            variant: 'blue',
-            emissiveIntensity: 3.4,
-          });
-          neonWall.create(group);
-          this.#objects.push(neonWall);
-          continue;
-        }
-
-        // Replace walls 2-3 and 5-6 on right side with blue neon walls
-        if (side === 'right' && (i === 2 || i === 5)) {
-          const neonWall = new NeonWall({
-            index: i,
-            side,
-            levelWidth,
-            levelDepth,
-            variant: 'blue',
-            emissiveIntensity: i === 2 ? 3.3 : 2.9,
-          });
-          neonWall.create(group);
-          this.#objects.push(neonWall);
-          continue;
-        }
-
-        // Skip indices covered by neon walls
-        if (
-          (side === 'top' && (i === 3 || i === 10)) ||
-          (side === 'left' && i === 3) ||
-          (side === 'right' && (i === 3 || i === 6))
-        )
-          continue;
 
         const wall = new Wall({
           index: i,

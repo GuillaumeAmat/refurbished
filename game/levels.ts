@@ -18,6 +18,14 @@ export const Cell = {
 
 export type CellValue = string;
 
+export type NeonWallVariant = 'default' | 'blue';
+
+export interface NeonWallDef {
+  index: number;
+  side: 'top' | 'bottom' | 'left' | 'right';
+  variant?: NeonWallVariant;
+}
+
 export const isSpawn = (c: string) => c === Cell.SPAWN_P1 || c === Cell.SPAWN_P2;
 export const isWalkable = (c: string) => c === Cell.FLOOR || isSpawn(c);
 export const isBatteryCrate = (c: string) => c === Cell.CRATE_BATTERY;
@@ -33,6 +41,7 @@ export const isDeliveryZone = (c: string) => c === Cell.DELIVERY_ZONE;
 
 export interface LevelData {
   matrix: CellValue[][];
+  neonWalls?: NeonWallDef[];
 }
 
 export interface LevelInfo {
@@ -44,6 +53,27 @@ export interface LevelInfo {
 }
 
 const LEVEL_1: LevelData = {
+  neonWalls: [
+    { index: 2, side: 'top' },
+    { index: 3, side: 'top' },
+    { index: 4, side: 'top' },
+
+    { index: 8, side: 'top' },
+    { index: 9, side: 'top' },
+    { index: 10, side: 'top' },
+
+    { index: 1, side: 'left', variant: 'blue' },
+    { index: 2, side: 'left', variant: 'blue' },
+    { index: 3, side: 'left', variant: 'blue' },
+
+    { index: 1, side: 'right', variant: 'blue' },
+    { index: 2, side: 'right', variant: 'blue' },
+    { index: 3, side: 'right', variant: 'blue' },
+
+    { index: 5, side: 'right', variant: 'blue' },
+    { index: 6, side: 'right', variant: 'blue' },
+    { index: 7, side: 'right', variant: 'blue' },
+  ],
   matrix: [
     ['03', '03', '03', '10', '03', '03', '03', '03', '05', '03', '03', '03', '03'],
     ['03', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '03'],
