@@ -189,9 +189,7 @@ export class Player {
     gripFolder.add(GRIP_CONFIGS.screen, 'handRotationX', -1.5, 1.5, 0.01).name('Hand Rot X');
     gripFolder.add(GRIP_CONFIGS.screen, 'handRotationY', -1.5, 1.5, 0.01).name('Hand Rot Y');
     gripFolder.add(GRIP_CONFIGS.screen, 'handRotationZ', -1.5, 1.5, 0.01).name('Hand Rot Z');
-    gripFolder.open();
-
-    folder.open();
+    folder.close();
   }
 
   private createMesh() {

@@ -12,6 +12,11 @@ export interface RepairZoneParams {
 }
 
 export class RepairZone extends LevelObject {
+  static #lights: SpotLight[] = [];
+  static get lights(): SpotLight[] {
+    return RepairZone.#lights;
+  }
+
   #params: RepairZoneParams;
 
   constructor(params: RepairZoneParams) {
@@ -54,6 +59,7 @@ export class RepairZone extends LevelObject {
     light.target.position.set(0.95, 1.2, 1.3);
     container.add(light);
     container.add(light.target);
+    RepairZone.#lights.push(light);
 
     // Position container in level
     container.position.x = xIndex * TILE_SIZE;

@@ -7,6 +7,7 @@ import { Debug } from '../util/Debug';
 import { DeliveryZone } from './object/DeliveryZone';
 import { NeonWall } from './object/NeonWall';
 import { Poster } from './object/Poster';
+import { RepairZone } from './object/RepairZone';
 
 type EnvironmentMap = {
   intensity: number;
@@ -91,135 +92,55 @@ export class Environment {
 
     const lightsFolder = debug.gui.addFolder('Lights');
 
-    const ambientFolder = lightsFolder.addFolder('Ambient');
-    const ambientParams = { color: '#ffffff' };
-    ambientFolder
-      .addColor(ambientParams, 'color')
-      .name('Color')
+    const lightColorParams = { color: LIGHT_COLOR };
+    lightsFolder
+      .addColor(lightColorParams, 'color')
+      .name('LIGHT_COLOR')
       .onChange((value: string) => {
         this.#ambientLight!.color.set(value);
-        debug.save();
-      });
-    ambientFolder
-      .add(this.#ambientLight!, 'intensity', 0, 10, 0.01)
-      .name('Intensity')
-      .onChange(() => debug.save());
-
-    const sunFolder = lightsFolder.addFolder('Sun');
-    const sunParams = { color: '#ffffff' };
-    sunFolder
-      .addColor(sunParams, 'color')
-      .name('Color')
-      .onChange((value: string) => {
         this.#sunLight!.color.set(value);
-        debug.save();
-      });
-    sunFolder
-      .add(this.#sunLight!, 'intensity', 0, 10, 0.01)
-      .name('Intensity')
-      .onChange(() => debug.save());
-
-    const counterSunFolder = lightsFolder.addFolder('Counter Sun');
-    const counterSunParams = { color: '#ffffff' };
-    counterSunFolder
-      .addColor(counterSunParams, 'color')
-      .name('Color')
-      .onChange((value: string) => {
         this.#counterSunLight!.color.set(value);
-        debug.save();
-      });
-    counterSunFolder
-      .add(this.#counterSunLight!, 'intensity', 0, 10, 0.01)
-      .name('Intensity')
-      .onChange(() => debug.save());
-
-    const posterLightsFolder = lightsFolder.addFolder('Poster Lights');
-    const posterLightsParams = {
-      color: LIGHT_COLOR,
-      intensity: 5,
-      distance: 4,
-      angle: Math.PI / 5,
-      penumbra: 0,
-      decay: 0,
-    };
-    const updatePosterHelpers = () => {
-      for (const helper of Poster.helpers) helper.update();
-    };
-    posterLightsFolder
-      .addColor(posterLightsParams, 'color')
-      .name('Color')
-      .onChange((value: string) => {
+        this.#frontSunLight!.color.set(value);
         for (const light of Poster.lights) light.color.set(value);
-        updatePosterHelpers();
-        debug.save();
-      });
-    posterLightsFolder
-      .add(posterLightsParams, 'intensity', 0, 20, 0.1)
-      .name('Intensity')
-      .onChange((value: number) => {
-        for (const light of Poster.lights) light.intensity = value;
-        updatePosterHelpers();
-        debug.save();
-      });
-    posterLightsFolder
-      .add(posterLightsParams, 'distance', 0, 20, 0.1)
-      .name('Distance')
-      .onChange((value: number) => {
-        for (const light of Poster.lights) light.distance = value;
-        updatePosterHelpers();
-        debug.save();
-      });
-    posterLightsFolder
-      .add(posterLightsParams, 'angle', 0, Math.PI / 2, 0.01)
-      .name('Angle')
-      .onChange((value: number) => {
-        for (const light of Poster.lights) light.angle = value;
-        updatePosterHelpers();
-        debug.save();
-      });
-    posterLightsFolder
-      .add(posterLightsParams, 'penumbra', 0, 1, 0.01)
-      .name('Penumbra')
-      .onChange((value: number) => {
-        for (const light of Poster.lights) light.penumbra = value;
-        updatePosterHelpers();
-        debug.save();
-      });
-    posterLightsFolder
-      .add(posterLightsParams, 'decay', 0, 5, 0.1)
-      .name('Decay')
-      .onChange((value: number) => {
-        for (const light of Poster.lights) light.decay = value;
-        updatePosterHelpers();
+        for (const light of DeliveryZone.lights) light.color.set(value);
+        for (const light of RepairZone.lights) light.color.set(value);
         debug.save();
       });
 
-    const deliveryZoneFolder = lightsFolder.addFolder('Delivery Zone');
-    const deliveryZoneParams = { intensity: 1 };
-    deliveryZoneFolder
-      .add(deliveryZoneParams, 'intensity', 0, 20, 0.1)
-      .name('Intensity')
-      .onChange((value: number) => {
-        for (const light of DeliveryZone.lights) light.intensity = value;
-      });
+    const addIntensityFolder = (name: string, initial: number, setter: (v: number) => void) => {
+      const folder = lightsFolder.addFolder(name);
+      const state = { intensity: initial };
+      const ctrl = folder
+        .add(state, 'intensity')
+        .name('Intensity')
+        .step(0.1)
+        .onChange((v: number) => { setter(v); debug.save(); });
+      const actions = {
+        inc: () => {
+          state.intensity = Math.round((state.intensity + 0.1) * 10) / 10;
+          ctrl.updateDisplay();
+          setter(state.intensity);
+          debug.save();
+        },
+        dec: () => {
+          state.intensity = Math.round((state.intensity - 0.1) * 10) / 10;
+          ctrl.updateDisplay();
+          setter(state.intensity);
+          debug.save();
+        },
+      };
+      folder.add(actions, 'inc').name('+');
+      folder.add(actions, 'dec').name('-');
+    };
 
-    const neonFolder = lightsFolder.addFolder('Neon');
-    const neonParams = { intensity: 1, emissive: 2.0 };
-    neonFolder
-      .add(neonParams, 'intensity', 0, 20, 0.1)
-      .name('Intensity')
-      .onChange((value: number) => {
-        for (const light of NeonWall.lights) {
-          light.intensity = value;
-        }
-      });
-    neonFolder
-      .add(neonParams, 'emissive', 0, 10, 0.1)
-      .name('Emissive Intensity')
-      .onChange((value: number) => {
-        NeonWall.setEmissiveIntensity(value);
-        debug.save();
-      });
+    addIntensityFolder('Ambient', 1, (v) => { this.#ambientLight!.intensity = v; });
+    addIntensityFolder('Sun', 1, (v) => { this.#sunLight!.intensity = v; });
+    addIntensityFolder('Counter Sun', 1, (v) => { this.#counterSunLight!.intensity = v; });
+    addIntensityFolder('Front Sun', 0.5, (v) => { this.#frontSunLight!.intensity = v; });
+    addIntensityFolder('Poster Lights', 10, (v) => { for (const light of Poster.lights) light.intensity = v; });
+    addIntensityFolder('Delivery Zone', 6, (v) => { for (const light of DeliveryZone.lights) light.intensity = v; });
+    addIntensityFolder('Repair Zone', 5, (v) => { for (const light of RepairZone.lights) light.intensity = v; });
+    addIntensityFolder('Neon', 1, (v) => { for (const light of NeonWall.lights) light.intensity = v; });
   }
 
   public updateMeshesMaterial() {
