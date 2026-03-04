@@ -12,6 +12,7 @@ import {
   type LevelData,
   type NeonWallDef,
 } from '../levels';
+import { Debug } from '../util/Debug';
 import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
@@ -252,22 +253,91 @@ export class LevelBuilder {
     const levelWidth = matrix[0].length;
     const levelDepth = matrix.length;
 
-    const posters: { textureKey: string; wallIndex: number; side: WallSide }[] = [
-      { textureKey: 'poster1', wallIndex: 4, side: 'left' },
-      { textureKey: 'poster2', wallIndex: 1, side: 'top' },
-      { textureKey: 'poster3', wallIndex: 3, side: 'top' },
-      { textureKey: 'poster4', wallIndex: 5, side: 'top' },
-      { textureKey: 'poster5', wallIndex: 7, side: 'top' },
-      { textureKey: 'poster1', wallIndex: 9, side: 'top' },
-      { textureKey: 'poster2', wallIndex: 11, side: 'top' },
-      { textureKey: 'poster5', wallIndex: 4, side: 'right' },
+    const posters: { textureKey: string; wallIndex: number; side: WallSide; depth?: number; offsetX?: number; rotationY?: number }[] = [
+      { textureKey: 'poster1', wallIndex: 4, side: 'left', depth: 1, offsetX: -0.2, rotationY: -27 },
+      { textureKey: 'poster2', wallIndex: 1, side: 'top', depth: 1.8, offsetX: -1, rotationY: 33 },
+      { textureKey: 'poster3', wallIndex: 3, side: 'top', depth: 0.6, offsetX: -0.6, rotationY: 15 },
+      { textureKey: 'poster4', wallIndex: 5, side: 'top', depth: 1.8, offsetX: -0.8, rotationY: -9 },
+      { textureKey: 'poster5', wallIndex: 7, side: 'top', depth: 1.2, offsetX: 0.6, rotationY: 9 },
+      { textureKey: 'poster6', wallIndex: 9, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
+      { textureKey: 'poster7', wallIndex: 11, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
+      { textureKey: 'poster8', wallIndex: 4, side: 'right', depth: 0.8, offsetX: 0.2, rotationY: 30 },
     ];
 
-    for (const { textureKey, wallIndex, side } of posters) {
+    const backPosters: Poster[] = [];
+    const sidePosters: Poster[] = [];
+
+    for (const { textureKey, wallIndex, side, depth, offsetX, rotationY } of posters) {
       const poster = new Poster({ textureKey, wallIndex, side, levelWidth, levelDepth });
       poster.create(group);
+      if (depth) poster.setDepth(depth);
+      if (offsetX) poster.setOffsetX(offsetX);
+      if (rotationY) poster.setRotationY(rotationY);
       this.#objects.push(poster);
+      if (side === 'top') backPosters.push(poster);
+      if (side === 'left' || side === 'right') sidePosters.push(poster);
     }
+
+    this.setupPosterDebug(backPosters, sidePosters);
+  }
+
+  private setupPosterDebug(backPosters: Poster[], sidePosters: Poster[]) {
+    const debug = Debug.getInstance();
+    if (!debug.active) return;
+
+    const folder = debug.gui.addFolder('Poster Positions');
+
+    const addPosterFolder = (poster: Poster, label: string) => {
+      const pFolder = folder.addFolder(label);
+      const state = { depth: poster.depth, offsetX: poster.offsetX, rotationY: poster.rotationY };
+
+      pFolder.add(state, 'depth').name('Depth').step(0.01)
+        .onChange((v: number) => { poster.setDepth(v); debug.save(); });
+
+      const depthActions = {
+        inc: () => { state.depth = Math.round((state.depth + 0.2) * 100) / 100; poster.setDepth(state.depth); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        dec: () => { state.depth = Math.round((state.depth - 0.2) * 100) / 100; poster.setDepth(state.depth); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+      };
+      pFolder.add(depthActions, 'inc').name('Depth +0.2');
+      pFolder.add(depthActions, 'dec').name('Depth -0.2');
+
+      pFolder.add(state, 'offsetX').name('Offset X').step(0.01)
+        .onChange((v: number) => { poster.setOffsetX(v); debug.save(); });
+
+      const xActions = {
+        inc: () => { state.offsetX = Math.round((state.offsetX + 0.2) * 100) / 100; poster.setOffsetX(state.offsetX); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        dec: () => { state.offsetX = Math.round((state.offsetX - 0.2) * 100) / 100; poster.setOffsetX(state.offsetX); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+      };
+      pFolder.add(xActions, 'inc').name('X +0.2');
+      pFolder.add(xActions, 'dec').name('X -0.2');
+
+      pFolder.add(state, 'rotationY').name('Rotation Y').step(0.1)
+        .onChange((v: number) => { poster.setRotationY(v); debug.save(); });
+
+      const rotActions = {
+        inc: () => { state.rotationY = Math.round((state.rotationY + 3) * 10) / 10; poster.setRotationY(state.rotationY); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        dec: () => { state.rotationY = Math.round((state.rotationY - 3) * 10) / 10; poster.setRotationY(state.rotationY); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+      };
+      pFolder.add(rotActions, 'inc').name('Rot +3°');
+      pFolder.add(rotActions, 'dec').name('Rot -3°');
+    };
+
+    for (let i = 0; i < backPosters.length; i++) {
+      addPosterFolder(backPosters[i]!, `Back ${i + 1}`);
+    }
+
+    for (let i = 0; i < sidePosters.length; i++) {
+      addPosterFolder(sidePosters[i]!, `Side ${i + 1}`);
+    }
+
+    const allPosters = [...backPosters, ...sidePosters];
+    const wireState = { height: 25 };
+    folder.add(wireState, 'height', 0.5, 30, 0.5)
+      .name('Wire Height')
+      .onChange((v: number) => {
+        for (const poster of allPosters) poster.setWireHeight(v);
+        debug.save();
+      });
   }
 
   getInteractables(): LevelObject[] {
