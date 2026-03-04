@@ -194,7 +194,7 @@ export class Environment {
       });
 
     const neonFolder = lightsFolder.addFolder('Neon');
-    const neonParams = { intensity: 1 };
+    const neonParams = { intensity: 1, emissive: 2.0 };
     neonFolder
       .add(neonParams, 'intensity', 0, 20, 0.1)
       .name('Intensity')
@@ -202,6 +202,13 @@ export class Environment {
         for (const light of NeonWall.lights) {
           light.intensity = value;
         }
+      });
+    neonFolder
+      .add(neonParams, 'emissive', 0, 10, 0.1)
+      .name('Emissive Intensity')
+      .onChange((value: number) => {
+        NeonWall.setEmissiveIntensity(value);
+        debug.save();
       });
   }
 

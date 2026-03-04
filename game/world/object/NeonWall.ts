@@ -1,8 +1,9 @@
+import type { MeshStandardMaterial } from 'three';
 import { Box3, Group, Mesh, RectAreaLight, Vector3 } from 'three';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
-import type { NeonWallVariant } from '../../levels';
 import { TILE_SIZE } from '../../constants';
+import type { NeonWallVariant } from '../../levels';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -22,6 +23,16 @@ export class NeonWall extends LevelObject {
   static get lights(): RectAreaLight[] {
     return NeonWall.#lights;
   }
+  static #emissiveIntensity = 2.0;
+  static #neonMaterials: MeshStandardMaterial[] = [];
+
+  static setEmissiveIntensity(value: number): void {
+    NeonWall.#emissiveIntensity = value;
+    for (const mat of NeonWall.#neonMaterials) {
+      mat.emissiveIntensity = value;
+    }
+  }
+
   #params: NeonWallParams;
 
   constructor(params: NeonWallParams) {
@@ -73,6 +84,15 @@ export class NeonWall extends LevelObject {
 
     this.setupShadows(mesh);
     this.setupNeonMaterials(mesh);
+    this.cloneMaterials(mesh);
+
+    mesh.traverse((child) => {
+      if (!(child instanceof Mesh)) return;
+      if (!child.name.toLowerCase().includes('neon')) return;
+      const mat = child.material as MeshStandardMaterial;
+      mat.emissiveIntensity = NeonWall.#emissiveIntensity;
+      NeonWall.#neonMaterials.push(mat);
+    });
 
     // Rect area light matching neon face, projecting inward
     RectAreaLightUniformsLib.init();

@@ -49,6 +49,7 @@ export class Renderer {
   #bloomPass: UnrealBloomPass;
   #debug: Debug;
   #darkMaterial = new MeshBasicMaterial({ color: 0x000000 });
+  #darkTransparentMaterial = new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
   #materialCache: Map<string, Material | Material[]> = new Map();
 
   constructor(scene: Scene, canvas: HTMLCanvasElement, camera: Camera) {
@@ -135,11 +136,14 @@ export class Renderer {
   }
 
   public update() {
-    // Bloom pass: darken non-bloom objects so depth is preserved but only neons contribute bloom
+    // Bloom pass: darken non-bloom objects so only neons contribute bloom.
+    // Transparent objects get an invisible material (no depth write) so they
+    // don't occlude bloom-layer meshes behind them in the depth buffer.
     this.#scene.traverse((obj) => {
       if (obj instanceof Mesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
         this.#materialCache.set(obj.uuid, obj.material);
-        obj.material = this.#darkMaterial;
+        const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+        obj.material = mat?.transparent ? this.#darkTransparentMaterial : this.#darkMaterial;
       }
     });
     const savedBackground = this.#scene.background;
