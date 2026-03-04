@@ -255,8 +255,11 @@ export class LevelBuilder {
     const posters: { textureKey: string; wallIndex: number; side: WallSide }[] = [
       { textureKey: 'poster1', wallIndex: 4, side: 'left' },
       { textureKey: 'poster2', wallIndex: 1, side: 'top' },
-      { textureKey: 'poster3', wallIndex: 6, side: 'top' },
-      { textureKey: 'poster4', wallIndex: 11, side: 'top' },
+      { textureKey: 'poster3', wallIndex: 3, side: 'top' },
+      { textureKey: 'poster4', wallIndex: 5, side: 'top' },
+      { textureKey: 'poster5', wallIndex: 7, side: 'top' },
+      { textureKey: 'poster1', wallIndex: 9, side: 'top' },
+      { textureKey: 'poster2', wallIndex: 11, side: 'top' },
       { textureKey: 'poster5', wallIndex: 4, side: 'right' },
     ];
 

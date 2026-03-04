@@ -63,46 +63,56 @@ export class Poster extends LevelObject {
 
     const TS = TILE_SIZE;
     const mesh = new Mesh(geometry, material);
-    mesh.position.y = wallHeight + wallHeight * 0.75 - 0.55;
+    mesh.position.y = wallHeight + wallHeight * 0.75 - 0.67;
 
     let lightOffsetX = 0;
     let lightOffsetZ = 0;
     let lightTargetX = 0;
     let lightTargetZ = 0;
+    let downLightTargetX = 0;
+    let downLightTargetZ = 0;
 
     if (side === 'top') {
       mesh.position.x = wallIndex * TS + TS / 2;
       mesh.position.z = 0.01;
       mesh.rotation.y = 0;
       lightOffsetX = mesh.position.x;
-      lightOffsetZ = 0.2;
+      lightOffsetZ = 1.2;
       lightTargetX = mesh.position.x;
       lightTargetZ = 0;
+      downLightTargetX = mesh.position.x;
+      downLightTargetZ = -0.5;
     } else if (side === 'left') {
       mesh.position.x = 0.01;
       mesh.position.z = wallIndex * TS + TS / 2;
       mesh.rotation.y = Math.PI / 2;
-      lightOffsetX = 0.2;
+      lightOffsetX = 1.2;
       lightOffsetZ = mesh.position.z;
       lightTargetX = 0;
       lightTargetZ = mesh.position.z;
+      downLightTargetX = -0.5;
+      downLightTargetZ = mesh.position.z;
     } else if (side === 'right') {
       mesh.position.x = levelWidth * TS - 0.01;
       mesh.position.z = wallIndex * TS + TS / 2;
       mesh.rotation.y = -Math.PI / 2;
-      lightOffsetX = levelWidth * TS - 0.2;
+      lightOffsetX = levelWidth * TS - 1.2;
       lightOffsetZ = mesh.position.z;
       lightTargetX = levelWidth * TS;
       lightTargetZ = mesh.position.z;
+      downLightTargetX = levelWidth * TS + 0.5;
+      downLightTargetZ = mesh.position.z;
     } else {
       // bottom
       mesh.position.x = wallIndex * TS + TS / 2;
       mesh.position.z = levelDepth * TS - 0.01;
       mesh.rotation.y = Math.PI;
       lightOffsetX = mesh.position.x;
-      lightOffsetZ = levelDepth * TS - 0.2;
+      lightOffsetZ = levelDepth * TS - 1.2;
       lightTargetX = mesh.position.x;
       lightTargetZ = levelDepth * TS;
+      downLightTargetX = mesh.position.x;
+      downLightTargetZ = levelDepth * TS + 0.5;
     }
 
     this.mesh = mesh;
@@ -110,16 +120,16 @@ export class Poster extends LevelObject {
 
     const posterTop = mesh.position.y + posterHeight / 2;
 
-    const upLight = new SpotLight(LIGHT_COLOR, 10, 6, Math.PI / 5, 0.2, 0.3);
-    upLight.position.set(lightOffsetX, 1.9, lightOffsetZ);
+    const upLight = new SpotLight(LIGHT_COLOR, 10, 5.5, Math.PI / 12, 0.2, 0.4);
+    upLight.position.set(lightOffsetX, 0.3, lightOffsetZ);
     upLight.target.position.set(lightTargetX, posterTop, lightTargetZ);
     group.add(upLight);
     group.add(upLight.target);
     Poster.#lights.push(upLight);
 
-    const downLight = new SpotLight(LIGHT_COLOR, 10, 1.7, Math.PI / 6, 0.4, 0.4);
-    downLight.position.set(lightOffsetX, 2.5, lightOffsetZ);
-    downLight.target.position.set(lightTargetX, 0, lightTargetZ);
+    const downLight = new SpotLight(LIGHT_COLOR, 10, 4, Math.PI / 12, 0.4, 0.4);
+    downLight.position.set(lightOffsetX, 4.5, lightOffsetZ);
+    downLight.target.position.set(downLightTargetX, 0, downLightTargetZ);
     group.add(downLight);
     group.add(downLight.target);
     Poster.#lights.push(downLight);
