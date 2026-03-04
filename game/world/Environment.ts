@@ -38,10 +38,10 @@ export class Environment {
   }
 
   private setupLights() {
-    this.#ambientLight = new AmbientLight(LIGHT_COLOR, 1);
+    this.#ambientLight = new AmbientLight(LIGHT_COLOR, 0.4);
     this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight(LIGHT_COLOR, 1);
+    this.#sunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -59,7 +59,7 @@ export class Environment {
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
 
-    this.#counterSunLight = new DirectionalLight(LIGHT_COLOR, 1);
+    this.#counterSunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
     this.#counterSunLight.castShadow = false;
 
     this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);
@@ -68,7 +68,7 @@ export class Environment {
     this.#scene.add(this.#counterSunLight);
     this.#scene.add(this.#counterSunLight.target);
 
-    this.#frontSunLight = new DirectionalLight(LIGHT_COLOR, 0.5);
+    this.#frontSunLight = new DirectionalLight(LIGHT_COLOR, 1.4);
     this.#frontSunLight.castShadow = false;
 
     this.#frontSunLight.position.set(center.x, 3, depth);
@@ -116,7 +116,10 @@ export class Environment {
         .add(state, 'intensity')
         .name('Intensity')
         .step(0.1)
-        .onChange((v: number) => { setter(v); debug.save(); });
+        .onChange((v: number) => {
+          setter(v);
+          debug.save();
+        });
       const actions = {
         inc: () => {
           state.intensity = Math.round((state.intensity + 0.1) * 10) / 10;
@@ -135,15 +138,33 @@ export class Environment {
       folder.add(actions, 'dec').name('-');
     };
 
-    addIntensityFolder('Ambient', 1, (v) => { this.#ambientLight!.intensity = v; });
-    addIntensityFolder('Sun', 1, (v) => { this.#sunLight!.intensity = v; });
-    addIntensityFolder('Counter Sun', 1, (v) => { this.#counterSunLight!.intensity = v; });
-    addIntensityFolder('Front Sun', 0.5, (v) => { this.#frontSunLight!.intensity = v; });
-    addIntensityFolder('Poster Lights', 10, (v) => { for (const light of Poster.lights) light.intensity = v; });
-    addIntensityFolder('Delivery Zone', 6, (v) => { for (const light of DeliveryZone.lights) light.intensity = v; });
-    addIntensityFolder('Repair Zone', 5, (v) => { for (const light of RepairZone.lights) light.intensity = v; });
-    addIntensityFolder('Neon Emissive', 2.0, (v) => { NeonWall.setEmissiveIntensity(v); });
-    addIntensityFolder('Neon Lights', 1, (v) => { for (const light of NeonWall.lights) light.intensity = v; });
+    addIntensityFolder('Ambient', 1, (v) => {
+      this.#ambientLight!.intensity = v;
+    });
+    addIntensityFolder('Sun', 1, (v) => {
+      this.#sunLight!.intensity = v;
+    });
+    addIntensityFolder('Counter Sun', 1, (v) => {
+      this.#counterSunLight!.intensity = v;
+    });
+    addIntensityFolder('Front Sun', 0.5, (v) => {
+      this.#frontSunLight!.intensity = v;
+    });
+    addIntensityFolder('Poster Lights', 10, (v) => {
+      for (const light of Poster.lights) light.intensity = v;
+    });
+    addIntensityFolder('Delivery Zone', 6, (v) => {
+      for (const light of DeliveryZone.lights) light.intensity = v;
+    });
+    addIntensityFolder('Repair Zone', 5, (v) => {
+      for (const light of RepairZone.lights) light.intensity = v;
+    });
+    addIntensityFolder('Neon Emissive', 2.0, (v) => {
+      NeonWall.setEmissiveIntensity(v);
+    });
+    addIntensityFolder('Neon Lights', 1, (v) => {
+      for (const light of NeonWall.lights) light.intensity = v;
+    });
 
     const neonHelperState = { visible: false };
     lightsFolder

@@ -19,7 +19,7 @@ export interface NeonWallParams {
 }
 
 export class NeonWall extends LevelObject {
-  static #emissiveIntensity = 2.0;
+  static #emissiveIntensity = 1.5;
   static #neonMaterials: MeshStandardMaterial[] = [];
   static #lights: PointLight[] = [];
   static get lights(): PointLight[] {

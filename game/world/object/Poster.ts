@@ -52,8 +52,8 @@ export class Poster extends LevelObject {
 
     texture.colorSpace = SRGBColorSpace;
     texture.minFilter = LinearFilter;
-    texture.generateMipmaps = false;
-    texture.anisotropy = 4;
+    // texture.generateMipmaps = false;
+    // texture.anisotropy = 4;
 
     const geometry = new PlaneGeometry(posterWidth, posterHeight);
     const material = new MeshStandardMaterial({
