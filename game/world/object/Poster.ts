@@ -1,6 +1,7 @@
-import { Box3, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
+import { type Group, LinearMipmapNearestFilter, type SpotLightHelper } from 'three';
+import { Box3, Mesh, MeshStandardMaterial, PlaneGeometry, SpotLight, SRGBColorSpace, Vector3 } from 'three';
 
-import { TILE_SIZE } from '../../constants';
+import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -12,6 +13,16 @@ export interface PosterParams {
 }
 
 export class Poster extends LevelObject {
+  static #lights: SpotLight[] = [];
+  static get lights(): SpotLight[] {
+    return Poster.#lights;
+  }
+
+  static #helpers: SpotLightHelper[] = [];
+  static get helpers(): SpotLightHelper[] {
+    return Poster.#helpers;
+  }
+
   #params: PosterParams;
 
   constructor(params: PosterParams) {
@@ -36,12 +47,12 @@ export class Poster extends LevelObject {
     if (!texture) return;
 
     texture.colorSpace = SRGBColorSpace;
+    // Avoid trilinear mipmap blending, which blurs at mid-range distances
+    texture.minFilter = LinearMipmapNearestFilter;
 
     const geometry = new PlaneGeometry(posterWidth, posterHeight);
     const material = new MeshStandardMaterial({
       map: texture,
-      roughness: 0.8,
-      metalness: 0,
     });
 
     const mesh = new Mesh(geometry, material);
@@ -51,5 +62,21 @@ export class Poster extends LevelObject {
 
     this.mesh = mesh;
     group.add(mesh);
+
+    const posterTop = mesh.position.y + posterHeight / 2;
+
+    const upLight = new SpotLight(LIGHT_COLOR, 10, 6, Math.PI / 5, 0.2, 0.3);
+    upLight.position.set(mesh.position.x, 1.9, 0.2);
+    upLight.target.position.set(mesh.position.x, posterTop, 0);
+    group.add(upLight);
+    group.add(upLight.target);
+    Poster.#lights.push(upLight);
+
+    const downLight = new SpotLight(LIGHT_COLOR, 10, 1.7, Math.PI / 6, 0.4, 0.4);
+    downLight.position.set(mesh.position.x, 2.5, 0.2);
+    downLight.target.position.set(mesh.position.x, 0, 0);
+    group.add(downLight);
+    group.add(downLight.target);
+    Poster.#lights.push(downLight);
   }
 }

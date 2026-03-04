@@ -1,10 +1,11 @@
 import type { CubeTexture, Scene } from 'three';
 import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } from 'three';
 
-import { BACKGROUND_COLOR } from '../constants';
+import { BACKGROUND_COLOR, LIGHT_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
 import { NeonWall } from './object/NeonWall';
+import { Poster } from './object/Poster';
 
 type EnvironmentMap = {
   intensity: number;
@@ -17,6 +18,7 @@ export class Environment {
   #ambientLight: AmbientLight | null = null;
   #sunLight: DirectionalLight | null = null;
   #counterSunLight: DirectionalLight | null = null;
+  #frontSunLight: DirectionalLight | null = null;
   #environmentMap: EnvironmentMap = {
     intensity: 0.4,
     texture: null,
@@ -32,10 +34,10 @@ export class Environment {
   }
 
   private setupLights() {
-    this.#ambientLight = new AmbientLight('#8c8c8c', 3);
+    this.#ambientLight = new AmbientLight(LIGHT_COLOR, 1);
     this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight('#fffbcc', 1);
+    this.#sunLight = new DirectionalLight(LIGHT_COLOR, 1);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -47,13 +49,13 @@ export class Environment {
 
     const { width, depth, center } = this.#levelInfo;
 
-    this.#sunLight.position.set(width * 0.6, 16, depth * 0.15);
+    this.#sunLight.position.set(width * 0.6, 16, depth * 0.3);
     this.#sunLight.target.position.set(center.x, 0, center.z);
 
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
 
-    this.#counterSunLight = new DirectionalLight('#d6ddff', 2);
+    this.#counterSunLight = new DirectionalLight(LIGHT_COLOR, 1);
     this.#counterSunLight.castShadow = false;
 
     this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);
@@ -61,6 +63,15 @@ export class Environment {
 
     this.#scene.add(this.#counterSunLight);
     this.#scene.add(this.#counterSunLight.target);
+
+    this.#frontSunLight = new DirectionalLight(LIGHT_COLOR, 0.5);
+    this.#frontSunLight.castShadow = false;
+
+    this.#frontSunLight.position.set(center.x, 3, depth);
+    this.#frontSunLight.target.position.set(center.x, 0, center.z);
+
+    this.#scene.add(this.#frontSunLight);
+    this.#scene.add(this.#frontSunLight.target);
   }
 
   private setupEnvironment() {
@@ -120,6 +131,67 @@ export class Environment {
       .add(this.#counterSunLight!, 'intensity', 0, 10, 0.01)
       .name('Intensity')
       .onChange(() => debug.save());
+
+    const posterLightsFolder = lightsFolder.addFolder('Poster Lights');
+    const posterLightsParams = {
+      color: LIGHT_COLOR,
+      intensity: 5,
+      distance: 4,
+      angle: Math.PI / 5,
+      penumbra: 0,
+      decay: 0,
+    };
+    const updatePosterHelpers = () => {
+      for (const helper of Poster.helpers) helper.update();
+    };
+    posterLightsFolder
+      .addColor(posterLightsParams, 'color')
+      .name('Color')
+      .onChange((value: string) => {
+        for (const light of Poster.lights) light.color.set(value);
+        updatePosterHelpers();
+        debug.save();
+      });
+    posterLightsFolder
+      .add(posterLightsParams, 'intensity', 0, 20, 0.1)
+      .name('Intensity')
+      .onChange((value: number) => {
+        for (const light of Poster.lights) light.intensity = value;
+        updatePosterHelpers();
+        debug.save();
+      });
+    posterLightsFolder
+      .add(posterLightsParams, 'distance', 0, 20, 0.1)
+      .name('Distance')
+      .onChange((value: number) => {
+        for (const light of Poster.lights) light.distance = value;
+        updatePosterHelpers();
+        debug.save();
+      });
+    posterLightsFolder
+      .add(posterLightsParams, 'angle', 0, Math.PI / 2, 0.01)
+      .name('Angle')
+      .onChange((value: number) => {
+        for (const light of Poster.lights) light.angle = value;
+        updatePosterHelpers();
+        debug.save();
+      });
+    posterLightsFolder
+      .add(posterLightsParams, 'penumbra', 0, 1, 0.01)
+      .name('Penumbra')
+      .onChange((value: number) => {
+        for (const light of Poster.lights) light.penumbra = value;
+        updatePosterHelpers();
+        debug.save();
+      });
+    posterLightsFolder
+      .add(posterLightsParams, 'decay', 0, 5, 0.1)
+      .name('Decay')
+      .onChange((value: number) => {
+        for (const light of Poster.lights) light.decay = value;
+        updatePosterHelpers();
+        debug.save();
+      });
 
     const neonFolder = lightsFolder.addFolder('Neon');
     const neonParams = { intensity: 1 };
