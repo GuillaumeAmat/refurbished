@@ -4,6 +4,7 @@ import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } fro
 import { BACKGROUND_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
+import { NeonWall } from './object/NeonWall';
 
 type EnvironmentMap = {
   intensity: number;
@@ -31,10 +32,10 @@ export class Environment {
   }
 
   private setupLights() {
-    this.#ambientLight = new AmbientLight('#ffffff', 1);
+    this.#ambientLight = new AmbientLight('#8c8c8c', 3);
     this.#scene.add(this.#ambientLight);
 
-    this.#sunLight = new DirectionalLight('#ffffff', 1.2);
+    this.#sunLight = new DirectionalLight('#fffbcc', 1);
     this.#sunLight.castShadow = true;
     this.#sunLight.shadow.camera.far = 50;
     this.#sunLight.shadow.mapSize.set(1024, 1024);
@@ -52,7 +53,7 @@ export class Environment {
     this.#scene.add(this.#sunLight);
     this.#scene.add(this.#sunLight.target);
 
-    this.#counterSunLight = new DirectionalLight('#ffffff', 1.4);
+    this.#counterSunLight = new DirectionalLight('#d6ddff', 2);
     this.#counterSunLight.castShadow = false;
 
     this.#counterSunLight.position.set(width * 0.4, 16, depth * 0.85);
@@ -119,6 +120,17 @@ export class Environment {
       .add(this.#counterSunLight!, 'intensity', 0, 10, 0.01)
       .name('Intensity')
       .onChange(() => debug.save());
+
+    const neonFolder = lightsFolder.addFolder('Neon');
+    const neonParams = { intensity: 1 };
+    neonFolder
+      .add(neonParams, 'intensity', 0, 20, 0.1)
+      .name('Intensity')
+      .onChange((value: number) => {
+        for (const light of NeonWall.lights) {
+          light.intensity = value;
+        }
+      });
   }
 
   public updateMeshesMaterial() {

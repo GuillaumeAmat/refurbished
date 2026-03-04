@@ -78,9 +78,9 @@ export class Renderer {
 
     this.#bloomPass = new UnrealBloomPass(
       new Vector2(this.#sizes.width, this.#sizes.height),
-      0.46, // strength
-      0.01, // radius
-      0.93, // threshold
+      0.5, // strength
+      0.2, // radius
+      0.9, // threshold
     );
     this.#bloomComposer.addPass(this.#bloomPass);
 

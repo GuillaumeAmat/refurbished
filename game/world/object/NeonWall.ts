@@ -1,5 +1,6 @@
 import type { MeshStandardMaterial } from 'three';
-import { Box3, Group, Mesh, Vector3 } from 'three';
+import { Box3, Group, Mesh, RectAreaLight, Vector3 } from 'three';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 import { TILE_SIZE } from '../../constants';
 import { Debug } from '../../util/Debug';
@@ -15,9 +16,14 @@ export interface NeonWallParams {
   levelWidth: number;
   levelDepth: number;
   variant?: NeonWallVariant;
+  emissiveIntensity?: number;
 }
 
 export class NeonWall extends LevelObject {
+  static #lights: RectAreaLight[] = [];
+  static get lights(): RectAreaLight[] {
+    return NeonWall.#lights;
+  }
   #params: NeonWallParams;
 
   constructor(params: NeonWallParams) {
@@ -81,6 +87,12 @@ export class NeonWall extends LevelObject {
         }
       });
 
+      if (this.#params.emissiveIntensity !== undefined) {
+        neonMaterials.forEach((mat) => {
+          mat.emissiveIntensity = this.#params.emissiveIntensity!;
+        });
+      }
+
       const debug = Debug.getInstance();
       const firstMat = neonMaterials[0];
       if (debug.active && firstMat) {
@@ -96,27 +108,84 @@ export class NeonWall extends LevelObject {
       }
     }
 
+    // Rect area light matching neon face, projecting inward
+    RectAreaLightUniformsLib.init();
+    const lightColor = variant === 'blue' ? 0x4488ff : 0xffdd00;
+    const rectLight = new RectAreaLight(lightColor, 1, 6, 1.5);
+
+    const lightOffset = new Vector3(TILE_SIZE, wallSize.y * 0.6, wallSize.z + 0.01);
+    lightOffset.applyEuler(mesh.rotation);
+    rectLight.position.copy(mesh.position).add(lightOffset);
+    rectLight.rotation.y = mesh.rotation.y + Math.PI;
+
+    NeonWall.#lights.push(rectLight);
+
     const container = new Group();
     container.add(mesh);
+    container.add(rectLight);
 
-    const wallTopModel = Resources.getInstance().getGLTFAsset('wallTopRegularModel');
+    // Second row: wallTop for bottom, stacked classic walls for others
+    if (side === 'bottom') {
+      const wallTopModel = Resources.getInstance().getGLTFAsset('wallTopRegularModel');
+      if (wallTopModel) {
+        for (let i = 0; i < 2; i++) {
+          const wallTop = wallTopModel.scene.clone();
 
-    if (wallTopModel) {
-      for (let i = 0; i < 2; i++) {
-        const wallTop = wallTopModel.scene.clone();
+          const offset = new Vector3(TILE_SIZE / 2 + i * TILE_SIZE, 0, wallSize.z / 2);
+          offset.applyEuler(mesh.rotation);
 
-        const offset = new Vector3(TILE_SIZE / 2 + i * TILE_SIZE, 0, wallSize.z / 2);
-        offset.applyEuler(mesh.rotation);
+          wallTop.position.copy(mesh.position);
+          wallTop.position.x += offset.x;
+          wallTop.position.y = wallSize.y;
+          wallTop.position.z += offset.z;
+          wallTop.rotation.copy(mesh.rotation);
 
-        wallTop.position.copy(mesh.position);
-        wallTop.position.x += offset.x;
-        wallTop.position.y = wallSize.y;
-        wallTop.position.z += offset.z;
-        wallTop.rotation.copy(mesh.rotation);
+          wallTop.name = 'wallTop';
+          this.setupShadows(wallTop);
+          container.add(wallTop);
+        }
+      }
+    } else {
+      const classicModel = Resources.getInstance().getGLTFAsset('wallModel');
+      if (classicModel) {
+        const classicBox = new Box3().setFromObject(classicModel.scene);
+        const classicSize = classicBox.getSize(new Vector3());
 
-        wallTop.name = 'wallTop';
-        this.setupShadows(wallTop);
-        container.add(wallTop);
+        for (let i = 0; i < 2; i++) {
+          const stackedWall = classicModel.scene.clone();
+
+          const stackOffset = new Vector3(i * classicSize.x + classicSize.x, 0, classicSize.z);
+          stackOffset.applyEuler(mesh.rotation);
+
+          stackedWall.position.copy(mesh.position);
+          stackedWall.position.x += stackOffset.x;
+          stackedWall.position.y = wallSize.y;
+          stackedWall.position.z += stackOffset.z;
+          stackedWall.rotation.y = mesh.rotation.y + Math.PI;
+
+          this.setupShadows(stackedWall);
+          container.add(stackedWall);
+        }
+
+        const wallTopModel = Resources.getInstance().getGLTFAsset('wallTopRegularModel');
+        if (wallTopModel) {
+          for (let i = 0; i < 2; i++) {
+            const wallTop = wallTopModel.scene.clone();
+
+            const topOffset = new Vector3(TILE_SIZE / 2 + i * TILE_SIZE, 0, wallSize.z / 2);
+            topOffset.applyEuler(mesh.rotation);
+
+            wallTop.position.copy(mesh.position);
+            wallTop.position.x += topOffset.x;
+            wallTop.position.y = wallSize.y * 2;
+            wallTop.position.z += topOffset.z;
+            wallTop.rotation.copy(mesh.rotation);
+
+            wallTop.name = 'wallTop';
+            this.setupShadows(wallTop);
+            container.add(wallTop);
+          }
+        }
       }
     }
 

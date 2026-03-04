@@ -199,6 +199,7 @@ export class LevelBuilder {
             levelWidth,
             levelDepth,
             variant: 'blue',
+            emissiveIntensity: 3.4,
           });
           neonWall.create(group);
           this.#objects.push(neonWall);
@@ -213,6 +214,7 @@ export class LevelBuilder {
             levelWidth,
             levelDepth,
             variant: 'blue',
+            emissiveIntensity: i === 2 ? 3.3 : 2.9,
           });
           neonWall.create(group);
           this.#objects.push(neonWall);
@@ -283,11 +285,11 @@ export class LevelBuilder {
 
   private buildPosters(group: Group): void {
     const posters: { textureKey: string; wallIndex: number }[] = [
-      { textureKey: 'posterSayItStraight', wallIndex: 4 },
-      { textureKey: 'posterFiredUp', wallIndex: 5 },
+      { textureKey: 'posterSayItStraight', wallIndex: 2 },
+      { textureKey: 'posterFiredUp', wallIndex: 4 },
       { textureKey: 'posterHumbleHearts', wallIndex: 6 },
-      { textureKey: 'posterNotGreenEnough', wallIndex: 7 },
-      { textureKey: 'posterDontFear', wallIndex: 8 },
+      { textureKey: 'posterNotGreenEnough', wallIndex: 8 },
+      { textureKey: 'posterDontFear', wallIndex: 10 },
     ];
 
     for (const params of posters) {

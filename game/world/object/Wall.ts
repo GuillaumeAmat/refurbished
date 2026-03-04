@@ -69,21 +69,53 @@ export class Wall extends LevelObject {
     const container = new Group();
     container.add(mesh);
 
-    if (wallTopModel) {
-      const wallTop = wallTopModel.scene.clone();
+    if (side === 'bottom') {
+      if (wallTopModel) {
+        const wallTop = wallTopModel.scene.clone();
 
-      const offset = new Vector3(wallSize.x / 2, 0, wallSize.z / 2);
-      offset.applyEuler(mesh.rotation);
+        const offset = new Vector3(wallSize.x / 2, 0, wallSize.z / 2);
+        offset.applyEuler(mesh.rotation);
 
-      wallTop.position.copy(mesh.position);
-      wallTop.position.x += offset.x;
-      wallTop.position.y = wallSize.y;
-      wallTop.position.z += offset.z;
-      wallTop.rotation.copy(mesh.rotation);
+        wallTop.position.copy(mesh.position);
+        wallTop.position.x += offset.x;
+        wallTop.position.y = wallSize.y;
+        wallTop.position.z += offset.z;
+        wallTop.rotation.copy(mesh.rotation);
 
-      wallTop.name = 'wallTop';
-      this.setupShadows(wallTop);
-      container.add(wallTop);
+        wallTop.name = 'wallTop';
+        this.setupShadows(wallTop);
+        container.add(wallTop);
+      }
+    } else {
+      const stackedWall = model.scene.clone();
+      const stackOffset = new Vector3(wallSize.x, 0, wallSize.z);
+      stackOffset.applyEuler(mesh.rotation);
+
+      stackedWall.position.copy(mesh.position);
+      stackedWall.position.x += stackOffset.x;
+      stackedWall.position.y = wallSize.y;
+      stackedWall.position.z += stackOffset.z;
+      stackedWall.rotation.y = mesh.rotation.y + Math.PI;
+
+      this.setupShadows(stackedWall);
+      container.add(stackedWall);
+
+      if (wallTopModel) {
+        const wallTop = wallTopModel.scene.clone();
+
+        const topOffset = new Vector3(wallSize.x / 2, 0, wallSize.z / 2);
+        topOffset.applyEuler(mesh.rotation);
+
+        wallTop.position.copy(mesh.position);
+        wallTop.position.x += topOffset.x;
+        wallTop.position.y = wallSize.y * 2;
+        wallTop.position.z += topOffset.z;
+        wallTop.rotation.copy(mesh.rotation);
+
+        wallTop.name = 'wallTop';
+        this.setupShadows(wallTop);
+        container.add(wallTop);
+      }
     }
 
     this.mesh = container;

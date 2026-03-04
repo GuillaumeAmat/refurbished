@@ -29,7 +29,7 @@ export class Poster extends LevelObject {
     const wallSize = wallBox.getSize(new Vector3());
     const wallHeight = wallSize.y;
 
-    const posterHeight = wallHeight * 0.55;
+    const posterHeight = wallHeight * 0.9;
     const posterWidth = posterHeight * POSTER_ASPECT_RATIO;
 
     const texture = Resources.getInstance().getTextureAsset(textureKey);
@@ -46,7 +46,7 @@ export class Poster extends LevelObject {
 
     const mesh = new Mesh(geometry, material);
     mesh.position.x = wallIndex * TILE_SIZE + TILE_SIZE / 2;
-    mesh.position.y = wallHeight * 0.75 - 0.15;
+    mesh.position.y = wallHeight + wallHeight * 0.75 - 0.55;
     mesh.position.z = 0.01;
 
     this.mesh = mesh;
