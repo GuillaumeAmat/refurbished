@@ -253,11 +253,11 @@ export class LevelBuilder {
     const levelDepth = matrix.length;
 
     const posters: { textureKey: string; wallIndex: number; side: WallSide }[] = [
-      { textureKey: 'posterSayItStraight', wallIndex: 4, side: 'left' },
-      { textureKey: 'posterFiredUp', wallIndex: 1, side: 'top' },
-      { textureKey: 'posterHumbleHearts', wallIndex: 6, side: 'top' },
-      { textureKey: 'posterNotGreenEnough', wallIndex: 11, side: 'top' },
-      { textureKey: 'posterDontFear', wallIndex: 4, side: 'right' },
+      { textureKey: 'poster1', wallIndex: 4, side: 'left' },
+      { textureKey: 'poster2', wallIndex: 1, side: 'top' },
+      { textureKey: 'poster3', wallIndex: 6, side: 'top' },
+      { textureKey: 'poster4', wallIndex: 11, side: 'top' },
+      { textureKey: 'poster5', wallIndex: 4, side: 'right' },
     ];
 
     for (const { textureKey, wallIndex, side } of posters) {
