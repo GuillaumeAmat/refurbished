@@ -81,6 +81,13 @@ export class Stage {
         weight: 600,
         priority: 'high',
       },
+      ivarSoft: {
+        type: 'webFont',
+        path: '/game/font/IvarSoft-SemiBold.woff2',
+        family: 'IvarSoft',
+        weight: 600,
+        priority: 'high',
+      },
       // bmDupletTXT: {
       //   type: 'webFont',
       //   path: '/game/font/BMDupletTXT-Regular.woff2',
