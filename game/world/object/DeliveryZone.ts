@@ -1,7 +1,8 @@
-import type { Group } from 'three';
-import { Vector3 } from 'three';
+import type { Group, LineLoop } from 'three';
+import { Box3, RectAreaLight, Vector3 } from 'three';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
-import { TILE_SIZE } from '../../constants';
+import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
 import type { ResourceState, ResourceType } from '../../types';
 import { Physics } from '../../util/Physics';
 import { Resources } from '../../util/Resources';
@@ -19,6 +20,16 @@ export interface DeliveryZoneParams {
 type Edge = 'top' | 'bottom' | 'left' | 'right';
 
 export class DeliveryZone extends LevelObject {
+  static #lights: RectAreaLight[] = [];
+  static get lights(): RectAreaLight[] {
+    return DeliveryZone.#lights;
+  }
+
+  static #helpers: LineLoop[] = [];
+  static get helpers(): LineLoop[] {
+    return DeliveryZone.#helpers;
+  }
+
   #params: DeliveryZoneParams;
 
   constructor(params: DeliveryZoneParams) {
@@ -50,8 +61,20 @@ export class DeliveryZone extends LevelObject {
     this.cloneMaterials(mesh);
     this.setupShadows(mesh);
 
+    RectAreaLightUniformsLib.init();
+    const meshBox = new Box3().setFromObject(mesh);
+    const meshSize = meshBox.getSize(new Vector3());
+    const rectLight = new RectAreaLight(LIGHT_COLOR, 6, 0.4, 2 * TILE_SIZE);
+
+    const lightOffset = new Vector3(TILE_SIZE, meshSize.y - 0.6, TILE_SIZE / 2);
+    lightOffset.applyEuler(mesh.rotation);
+    rectLight.position.copy(mesh.position).add(lightOffset);
+    rectLight.rotation.x = -Math.PI / 2;
+    DeliveryZone.#lights.push(rectLight);
+
     this.mesh = mesh;
     group.add(mesh);
+    group.add(rectLight);
 
     // Create physics collider based on edge orientation
     this.#createEdgePhysics(xIndex, zIndex, xIndex2, zIndex2, edge);
@@ -94,13 +117,7 @@ export class DeliveryZone extends LevelObject {
     }
   }
 
-  #createEdgePhysics(
-    xIndex: number,
-    zIndex: number,
-    xIndex2: number,
-    zIndex2: number,
-    edge: Edge,
-  ): void {
+  #createEdgePhysics(xIndex: number, zIndex: number, xIndex2: number, zIndex2: number, edge: Edge): void {
     const physics = Physics.getInstance();
 
     let position: Vector3;

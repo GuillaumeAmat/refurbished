@@ -4,6 +4,7 @@ import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } fro
 import { BACKGROUND_COLOR, LIGHT_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
+import { DeliveryZone } from './object/DeliveryZone';
 import { NeonWall } from './object/NeonWall';
 import { Poster } from './object/Poster';
 
@@ -191,6 +192,15 @@ export class Environment {
         for (const light of Poster.lights) light.decay = value;
         updatePosterHelpers();
         debug.save();
+      });
+
+    const deliveryZoneFolder = lightsFolder.addFolder('Delivery Zone');
+    const deliveryZoneParams = { intensity: 1 };
+    deliveryZoneFolder
+      .add(deliveryZoneParams, 'intensity', 0, 20, 0.1)
+      .name('Intensity')
+      .onChange((value: number) => {
+        for (const light of DeliveryZone.lights) light.intensity = value;
       });
 
     const neonFolder = lightsFolder.addFolder('Neon');

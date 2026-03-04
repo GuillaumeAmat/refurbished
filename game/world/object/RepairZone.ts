@@ -1,6 +1,6 @@
-import { Box3, Group, Vector3 } from 'three';
+import { Box3, Group, SpotLight, Vector3 } from 'three';
 
-import { TILE_SIZE } from '../../constants';
+import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -48,6 +48,12 @@ export class RepairZone extends LevelObject {
     repairZone.position.y = workbenchBox.max.y;
     repairZone.position.z = workbenchCenter.z;
     container.add(repairZone);
+
+    const light = new SpotLight(LIGHT_COLOR, 5, 2, Math.PI / 4, 0.5, 0);
+    light.position.set(0.8, 1.8, 0.7);
+    light.target.position.set(0.95, 1.2, 1.3);
+    container.add(light);
+    container.add(light.target);
 
     // Position container in level
     container.position.x = xIndex * TILE_SIZE;
