@@ -1,6 +1,5 @@
 import type { Group, LineLoop } from 'three';
 import { Box3, RectAreaLight, Vector3 } from 'three';
-import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
 import type { ResourceState, ResourceType } from '../../types';
@@ -61,10 +60,9 @@ export class DeliveryZone extends LevelObject {
     this.cloneMaterials(mesh);
     this.setupShadows(mesh);
 
-    RectAreaLightUniformsLib.init();
     const meshBox = new Box3().setFromObject(mesh);
     const meshSize = meshBox.getSize(new Vector3());
-    const rectLight = new RectAreaLight(LIGHT_COLOR, 6, 0.4, 2 * TILE_SIZE);
+    const rectLight = new RectAreaLight(LIGHT_COLOR, 8, 0.4, 2 * TILE_SIZE);
 
     const lightOffset = new Vector3(TILE_SIZE, meshSize.y - 0.6, TILE_SIZE / 2);
     lightOffset.applyEuler(mesh.rotation);

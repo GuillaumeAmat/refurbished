@@ -35,8 +35,8 @@ export const HIGHLIGHT_EMISSIVE = 0x444444;
 
 export const SMOKE_POOL_SIZE = 50;
 export const SMOKE_PARTICLE_LIFETIME = 0.4;
-export const SMOKE_SPAWN_INTERVAL = 0.2;
-export const SMOKE_COLOR = 0xcccccc;
+export const SMOKE_SPAWN_INTERVAL = 0.05;
+export const SMOKE_COLOR = 0xffffff;
 export const SMOKE_DASH_ARC_COUNT = 9;
 export const SMOKE_DASH_ARC_ANGLE = 2.8;
 

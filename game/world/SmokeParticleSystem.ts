@@ -1,11 +1,6 @@
 import { Group, IcosahedronGeometry, Mesh, MeshStandardMaterial, type Object3D, Vector3 } from 'three';
 
-import {
-  SMOKE_COLOR,
-  SMOKE_PARTICLE_LIFETIME,
-  SMOKE_POOL_SIZE,
-  SMOKE_SPAWN_INTERVAL,
-} from '../constants';
+import { SMOKE_COLOR, SMOKE_PARTICLE_LIFETIME, SMOKE_POOL_SIZE, SMOKE_SPAWN_INTERVAL } from '../constants';
 import { Time } from '../util/Time';
 
 interface SmokeParticle {
@@ -82,10 +77,7 @@ export class SmokeParticleSystem {
       .set(-movementDirection.z, 0, movementDirection.x)
       .normalize()
       .multiplyScalar((Math.random() - 0.5) * 0.4);
-    this.#tempSpawnPos
-      .copy(position)
-      .add(this.#tempBaseOffset)
-      .add(this.#tempPerpendicular);
+    this.#tempSpawnPos.copy(position).add(this.#tempBaseOffset).add(this.#tempPerpendicular);
     this.#tempSpawnPos.y = 0.3 + Math.random() * 0.4;
 
     particle.mesh.position.copy(this.#tempSpawnPos);
@@ -123,17 +115,17 @@ export class SmokeParticleSystem {
       const dirZ = behindX * sin + behindZ * cos;
 
       const radius = 0.35 + Math.random() * 0.15;
-      this.#tempSpawnPos.set(
-        position.x + dirX * radius,
-        0.1 + Math.random() * 0.2,
-        position.z + dirZ * radius,
-      );
+      this.#tempSpawnPos.set(position.x + dirX * radius, 0.1 + Math.random() * 0.2, position.z + dirZ * radius);
 
       particle.mesh.position.copy(this.#tempSpawnPos);
       particle.mesh.scale.setScalar(0.25 + Math.random() * 0.35);
       particle.mesh.visible = true;
 
-      particle.velocity.set(dirX * (1.5 + Math.random() * 1.0), 0.4 + Math.random() * 0.4, dirZ * (1.5 + Math.random() * 1.0));
+      particle.velocity.set(
+        dirX * (1.5 + Math.random() * 1.0),
+        0.4 + Math.random() * 0.4,
+        dirZ * (1.5 + Math.random() * 1.0),
+      );
 
       particle.age = 0;
       particle.maxAge = SMOKE_PARTICLE_LIFETIME + (Math.random() - 0.5) * 0.15;

@@ -69,10 +69,12 @@ export class Renderer {
     this.#renderer.shadowMap.enabled = true;
     this.#renderer.shadowMap.type = PCFSoftShadowMap;
 
-    // Bloom composer — renders full scene with non-bloom objects darkened, no background
-    const bloomRenderTarget = new WebGLRenderTarget(this.#sizes.width, this.#sizes.height, {
-      type: HalfFloatType,
-    });
+    // Bloom composer at half resolution — bloom is inherently blurry, no need for full res
+    const bloomRenderTarget = new WebGLRenderTarget(
+      Math.ceil(this.#sizes.width / 2),
+      Math.ceil(this.#sizes.height / 2),
+      { type: HalfFloatType },
+    );
     this.#bloomComposer = new EffectComposer(this.#renderer, bloomRenderTarget);
     this.#bloomComposer.renderToScreen = false;
     this.#bloomComposer.addPass(new RenderPass(this.#scene, this.#camera.camera));
@@ -129,21 +131,23 @@ export class Renderer {
   public setSizesAndRatio() {
     this.#renderer.setSize(this.#sizes.width, this.#sizes.height);
     this.#renderer.setPixelRatio(this.#sizes.pixelRatio);
-    this.#bloomComposer.setSize(this.#sizes.width, this.#sizes.height);
-    this.#bloomComposer.setPixelRatio(this.#sizes.pixelRatio);
+    this.#bloomComposer.setSize(Math.ceil(this.#sizes.width / 2), Math.ceil(this.#sizes.height / 2));
+    this.#bloomComposer.setPixelRatio(1);
     this.#finalComposer.setSize(this.#sizes.width, this.#sizes.height);
     this.#finalComposer.setPixelRatio(this.#sizes.pixelRatio);
   }
 
   public update() {
-    // Bloom pass: darken non-bloom objects so only neons contribute bloom.
+    // Bloom pass: single traverse to darken non-bloom objects, collect refs for restore.
     // Transparent objects get an invisible material (no depth write) so they
     // don't occlude bloom-layer meshes behind them in the depth buffer.
+    const darkened: Mesh[] = [];
     this.#scene.traverse((obj) => {
       if (obj instanceof Mesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
         this.#materialCache.set(obj.uuid, obj.material);
         const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
         obj.material = mat?.transparent ? this.#darkTransparentMaterial : this.#darkMaterial;
+        darkened.push(obj);
       }
     });
     const savedBackground = this.#scene.background;
@@ -151,16 +155,14 @@ export class Renderer {
     this.#bloomComposer.render();
     this.#scene.background = savedBackground;
 
-    // Restore materials before final pass
-    this.#scene.traverse((obj) => {
-      if (obj instanceof Mesh) {
-        const saved = this.#materialCache.get(obj.uuid);
-        if (saved !== undefined) {
-          obj.material = saved as Material;
-          this.#materialCache.delete(obj.uuid);
-        }
+    // Restore materials from collected refs (no second traverse)
+    for (const mesh of darkened) {
+      const saved = this.#materialCache.get(mesh.uuid);
+      if (saved !== undefined) {
+        mesh.material = saved as Material;
+        this.#materialCache.delete(mesh.uuid);
       }
-    });
+    }
 
     // Final pass: normal materials, mixes in bloom texture
     this.#finalComposer.render();

@@ -1,5 +1,6 @@
 import type { CubeTexture, Scene } from 'three';
 import { AmbientLight, Color, DirectionalLight, Mesh, MeshStandardMaterial } from 'three';
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 
 import { BACKGROUND_COLOR, LIGHT_COLOR } from '../constants';
 import type { LevelInfo } from '../levels';
@@ -30,6 +31,7 @@ export class Environment {
     this.#scene = scene;
     this.#levelInfo = levelInfo;
 
+    RectAreaLightUniformsLib.init();
     this.setupLights();
     this.setupEnvironment();
     this.setupDebug();
@@ -140,7 +142,17 @@ export class Environment {
     addIntensityFolder('Poster Lights', 10, (v) => { for (const light of Poster.lights) light.intensity = v; });
     addIntensityFolder('Delivery Zone', 6, (v) => { for (const light of DeliveryZone.lights) light.intensity = v; });
     addIntensityFolder('Repair Zone', 5, (v) => { for (const light of RepairZone.lights) light.intensity = v; });
-    addIntensityFolder('Neon', 1, (v) => { for (const light of NeonWall.lights) light.intensity = v; });
+    addIntensityFolder('Neon Emissive', 2.0, (v) => { NeonWall.setEmissiveIntensity(v); });
+    addIntensityFolder('Neon Lights', 1, (v) => { for (const light of NeonWall.lights) light.intensity = v; });
+
+    const neonHelperState = { visible: false };
+    lightsFolder
+      .add(neonHelperState, 'visible')
+      .name('Neon Helpers')
+      .onChange((v: boolean) => {
+        for (const helper of NeonWall.helpers) helper.visible = v;
+        debug.save();
+      });
   }
 
   public updateMeshesMaterial() {

@@ -1,9 +1,9 @@
 import type { MeshStandardMaterial } from 'three';
-import { Box3, Group, Mesh, RectAreaLight, Vector3 } from 'three';
-import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
+import { Box3, Group, Mesh, PointLight, PointLightHelper, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import type { NeonWallVariant } from '../../levels';
+import { Debug } from '../../util/Debug';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
 
@@ -19,12 +19,17 @@ export interface NeonWallParams {
 }
 
 export class NeonWall extends LevelObject {
-  static #lights: RectAreaLight[] = [];
-  static get lights(): RectAreaLight[] {
-    return NeonWall.#lights;
-  }
   static #emissiveIntensity = 2.0;
   static #neonMaterials: MeshStandardMaterial[] = [];
+  static #lights: PointLight[] = [];
+  static get lights(): PointLight[] {
+    return NeonWall.#lights;
+  }
+
+  static #helpers: PointLightHelper[] = [];
+  static get helpers(): PointLightHelper[] {
+    return NeonWall.#helpers;
+  }
 
   static setEmissiveIntensity(value: number): void {
     NeonWall.#emissiveIntensity = value;
@@ -94,21 +99,23 @@ export class NeonWall extends LevelObject {
       NeonWall.#neonMaterials.push(mat);
     });
 
-    // Rect area light matching neon face, projecting inward
-    RectAreaLightUniformsLib.init();
     const lightColor = variant === 'blue' ? 0x4488ff : 0xffdd00;
-    const rectLight = new RectAreaLight(lightColor, 1, 3, 1.5);
-
-    const lightOffset = new Vector3(TILE_SIZE / 2, wallSize.y * 0.6, wallSize.z + 0.01);
+    const light = new PointLight(lightColor, 1, 3, 1.8);
+    const lightOffset = new Vector3(TILE_SIZE / 2, wallSize.y - 0.6, wallSize.z + 0.6);
     lightOffset.applyEuler(mesh.rotation);
-    rectLight.position.copy(mesh.position).add(lightOffset);
-    rectLight.rotation.y = mesh.rotation.y + Math.PI;
-
-    NeonWall.#lights.push(rectLight);
+    light.position.copy(mesh.position).add(lightOffset);
+    NeonWall.#lights.push(light);
 
     const container = new Group();
     container.add(mesh);
-    container.add(rectLight);
+    container.add(light);
+
+    if (Debug.getInstance().active) {
+      const helper = new PointLightHelper(light, 0.3);
+      helper.visible = false;
+      container.add(helper);
+      NeonWall.#helpers.push(helper);
+    }
 
     // Second row: wallTop for bottom, stacked classic wall + wallTop for others
     const wallTopModel = Resources.getInstance().getGLTFAsset('wallTopRegularModel');
