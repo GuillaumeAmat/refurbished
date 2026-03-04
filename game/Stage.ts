@@ -259,27 +259,27 @@ export class Stage {
       },
       posterSayItStraight: {
         type: 'texture',
-        path: '/game/texture/poster_say_it_straight.jpg',
+        path: '/game/texture/poster_say_it_straight.webp',
         priority: 'low',
       },
       posterFiredUp: {
         type: 'texture',
-        path: '/game/texture/poster_fired_up.jpg',
+        path: '/game/texture/poster_fired_up.webp',
         priority: 'low',
       },
       posterHumbleHearts: {
         type: 'texture',
-        path: '/game/texture/poster_humble_hearts.jpg',
+        path: '/game/texture/poster_humble_hearts.webp',
         priority: 'low',
       },
       posterNotGreenEnough: {
         type: 'texture',
-        path: '/game/texture/poster_not_green_enough.jpg',
+        path: '/game/texture/poster_not_green_enough.webp',
         priority: 'low',
       },
       posterDontFear: {
         type: 'texture',
-        path: '/game/texture/poster_dont_fear.jpg',
+        path: '/game/texture/poster_dont_fear.webp',
         priority: 'low',
       },
       // bmLogo: {
