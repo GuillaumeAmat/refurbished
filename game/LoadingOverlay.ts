@@ -10,9 +10,12 @@ export class LoadingOverlay {
   #mesh: Mesh;
 
   constructor(scene: Scene) {
-    const bgColorVec4Red = parseInt(BACKGROUND_COLOR_R, 10) / 255;
-    const bgColorVec4Green = parseInt(BACKGROUND_COLOR_G, 10) / 255;
-    const bgColorVec4Blue = parseInt(BACKGROUND_COLOR_B, 10) / 255;
+    // BACKGROUND_COLOR_* are sRGB values (0–255). Since renderer.outputColorSpace = SRGBColorSpace,
+    // Three.js expects linear values from the shader and applies linear→sRGB itself.
+    // Linearizing here (gamma ≈ 2.2) prevents double-conversion that would make the overlay brighter.
+    const bgColorVec4Red = Math.pow(parseInt(BACKGROUND_COLOR_R, 10) / 255, 2.2);
+    const bgColorVec4Green = Math.pow(parseInt(BACKGROUND_COLOR_G, 10) / 255, 2.2);
+    const bgColorVec4Blue = Math.pow(parseInt(BACKGROUND_COLOR_B, 10) / 255, 2.2);
 
     this.#scene = scene;
 
