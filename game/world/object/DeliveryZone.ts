@@ -62,7 +62,7 @@ export class DeliveryZone extends LevelObject {
 
     const meshBox = new Box3().setFromObject(mesh);
     const meshSize = meshBox.getSize(new Vector3());
-    const rectLight = new RectAreaLight(LIGHT_COLOR, 1, 0.4, 2 * TILE_SIZE);
+    const rectLight = new RectAreaLight(LIGHT_COLOR, 6, 0.4, 2 * TILE_SIZE);
 
     const lightOffset = new Vector3(TILE_SIZE, meshSize.y - 0.6, TILE_SIZE / 2);
     lightOffset.applyEuler(mesh.rotation);

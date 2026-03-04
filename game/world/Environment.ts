@@ -54,7 +54,7 @@ export class Environment {
     for (let i = 0; i < quadrants.length; i++) {
       const q = quadrants[i];
       const castShadow = i === 1 || i === 2; // diagonal: back-right + front-left
-      const light = new SpotLight(LIGHT_COLOR, 77, 35, 1.07, 0.05, 1.6);
+      const light = new SpotLight(castShadow ? '#fbf8e5' : LIGHT_COLOR, 77, 35, 1.07, 0.05, 1.6);
       light.castShadow = castShadow;
       if (castShadow) {
         light.shadow.mapSize.set(1024, 1024);
