@@ -20,6 +20,7 @@ export class WallLight extends LevelObject {
   }
 
   #params: WallLightParams;
+  #ownLights: SpotLight[] = [];
 
   constructor(params: WallLightParams) {
     super();
@@ -78,6 +79,7 @@ export class WallLight extends LevelObject {
     group.add(upLight);
     group.add(upLight.target);
     WallLight.#lights.push(upLight);
+    this.#ownLights.push(upLight);
 
     // Down light — illuminates floor below
     const downLight = new SpotLight(LIGHT_COLOR, 10, 4, Math.PI / 12, 0.4, 0.4);
@@ -86,5 +88,17 @@ export class WallLight extends LevelObject {
     group.add(downLight);
     group.add(downLight.target);
     WallLight.#lights.push(downLight);
+    this.#ownLights.push(downLight);
+  }
+
+  public override dispose(): void {
+    for (const light of this.#ownLights) {
+      light.target.removeFromParent();
+      light.removeFromParent();
+      const idx = WallLight.#lights.indexOf(light);
+      if (idx !== -1) WallLight.#lights.splice(idx, 1);
+    }
+    this.#ownLights.length = 0;
+    super.dispose();
   }
 }

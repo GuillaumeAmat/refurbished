@@ -39,6 +39,9 @@ export class NeonWall extends LevelObject {
   }
 
   #params: NeonWallParams;
+  #ownLight: PointLight | null = null;
+  #ownHelper: PointLightHelper | null = null;
+  #ownMaterials: MeshStandardMaterial[] = [];
 
   constructor(params: NeonWallParams) {
     super();
@@ -97,6 +100,7 @@ export class NeonWall extends LevelObject {
       const mat = child.material as MeshStandardMaterial;
       mat.emissiveIntensity = NeonWall.#emissiveIntensity;
       NeonWall.#neonMaterials.push(mat);
+      this.#ownMaterials.push(mat);
     });
 
     const lightColor = variant === 'blue' ? 0x4488ff : 0xffdd00;
@@ -105,6 +109,7 @@ export class NeonWall extends LevelObject {
     lightOffset.applyEuler(mesh.rotation);
     light.position.copy(mesh.position).add(lightOffset);
     NeonWall.#lights.push(light);
+    this.#ownLight = light;
 
     const container = new Group();
     container.add(mesh);
@@ -115,6 +120,7 @@ export class NeonWall extends LevelObject {
       helper.visible = false;
       container.add(helper);
       NeonWall.#helpers.push(helper);
+      this.#ownHelper = helper;
     }
 
     // Second row: wallTop for bottom, stacked classic wall + wallTop for others
@@ -178,5 +184,26 @@ export class NeonWall extends LevelObject {
 
     this.mesh = container;
     group.add(container);
+  }
+
+  public override dispose(): void {
+    if (this.#ownLight) {
+      this.#ownLight.removeFromParent();
+      const idx = NeonWall.#lights.indexOf(this.#ownLight);
+      if (idx !== -1) NeonWall.#lights.splice(idx, 1);
+      this.#ownLight = null;
+    }
+    if (this.#ownHelper) {
+      this.#ownHelper.removeFromParent();
+      const idx = NeonWall.#helpers.indexOf(this.#ownHelper);
+      if (idx !== -1) NeonWall.#helpers.splice(idx, 1);
+      this.#ownHelper = null;
+    }
+    for (const mat of this.#ownMaterials) {
+      const idx = NeonWall.#neonMaterials.indexOf(mat);
+      if (idx !== -1) NeonWall.#neonMaterials.splice(idx, 1);
+    }
+    this.#ownMaterials.length = 0;
+    super.dispose();
   }
 }

@@ -18,6 +18,7 @@ export class RepairZone extends LevelObject {
   }
 
   #params: RepairZoneParams;
+  #ownLight: SpotLight | null = null;
 
   constructor(params: RepairZoneParams) {
     super();
@@ -60,6 +61,7 @@ export class RepairZone extends LevelObject {
     container.add(light);
     container.add(light.target);
     RepairZone.#lights.push(light);
+    this.#ownLight = light;
 
     // Position container in level
     container.position.x = xIndex * TILE_SIZE;
@@ -78,6 +80,17 @@ export class RepairZone extends LevelObject {
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
     this.isInteractable = true;
+  }
+
+  public override dispose(): void {
+    if (this.#ownLight) {
+      this.#ownLight.target.removeFromParent();
+      this.#ownLight.removeFromParent();
+      const idx = RepairZone.#lights.indexOf(this.#ownLight);
+      if (idx !== -1) RepairZone.#lights.splice(idx, 1);
+      this.#ownLight = null;
+    }
+    super.dispose();
   }
 
   override getDropSurface(): Vector3 | null {

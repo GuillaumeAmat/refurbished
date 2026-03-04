@@ -197,6 +197,11 @@ export class Poster extends LevelObject {
 
   public override dispose(): void {
     Time.getInstance().removeEventListener('tick', this.#onTick);
+    for (const wire of this.#wireMeshes) {
+      const idx = Poster.#wires.indexOf(wire);
+      if (idx !== -1) Poster.#wires.splice(idx, 1);
+    }
+    this.#wireMeshes.length = 0;
     this.#pivot?.removeFromParent();
     this.#pivot = null;
     super.dispose();
