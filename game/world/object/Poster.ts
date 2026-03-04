@@ -1,4 +1,4 @@
-import { type Group, LinearMipmapNearestFilter, type SpotLightHelper } from 'three';
+import { type Group, LinearFilter, type SpotLightHelper } from 'three';
 import { Box3, Mesh, MeshStandardMaterial, PlaneGeometry, SpotLight, SRGBColorSpace, Vector3 } from 'three';
 
 import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
@@ -51,12 +51,14 @@ export class Poster extends LevelObject {
     if (!texture) return;
 
     texture.colorSpace = SRGBColorSpace;
-    // Avoid trilinear mipmap blending, which blurs at mid-range distances
-    texture.minFilter = LinearMipmapNearestFilter;
+    texture.minFilter = LinearFilter;
+    texture.generateMipmaps = false;
+    texture.anisotropy = 16;
 
     const geometry = new PlaneGeometry(posterWidth, posterHeight);
     const material = new MeshStandardMaterial({
       map: texture,
+      roughness: 0.4,
     });
 
     const TS = TILE_SIZE;
