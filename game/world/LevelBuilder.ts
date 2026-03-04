@@ -21,6 +21,7 @@ import type { LevelObject } from './object/LevelObject';
 import { NeonWall } from './object/NeonWall';
 import { Poster } from './object/Poster';
 import { RepairZone } from './object/RepairZone';
+import { WallLight } from './object/WallLight';
 import { Wall, type WallSide } from './object/Wall';
 import { Workbench, type WorkbenchParams } from './object/Workbench';
 import { WorkbenchBatch } from './object/WorkbenchBatch';
@@ -38,6 +39,7 @@ export class LevelBuilder {
     this.buildLevelObjects(group);
     this.buildWalls(group);
     this.buildPosters(group);
+    this.buildWallLights(group);
     return this.#objects;
   }
 
@@ -253,7 +255,14 @@ export class LevelBuilder {
     const levelWidth = matrix[0].length;
     const levelDepth = matrix.length;
 
-    const posters: { textureKey: string; wallIndex: number; side: WallSide; depth?: number; offsetX?: number; rotationY?: number }[] = [
+    const posters: {
+      textureKey: string;
+      wallIndex: number;
+      side: WallSide;
+      depth?: number;
+      offsetX?: number;
+      rotationY?: number;
+    }[] = [
       { textureKey: 'poster1', wallIndex: 4, side: 'left', depth: 1, offsetX: -0.2, rotationY: -27 },
       { textureKey: 'poster2', wallIndex: 1, side: 'top', depth: 1.8, offsetX: -1, rotationY: 33 },
       { textureKey: 'poster3', wallIndex: 3, side: 'top', depth: 0.6, offsetX: -0.6, rotationY: 15 },
@@ -291,32 +300,80 @@ export class LevelBuilder {
       const pFolder = folder.addFolder(label);
       const state = { depth: poster.depth, offsetX: poster.offsetX, rotationY: poster.rotationY };
 
-      pFolder.add(state, 'depth').name('Depth').step(0.01)
-        .onChange((v: number) => { poster.setDepth(v); debug.save(); });
+      pFolder
+        .add(state, 'depth')
+        .name('Depth')
+        .step(0.01)
+        .onChange((v: number) => {
+          poster.setDepth(v);
+          debug.save();
+        });
 
       const depthActions = {
-        inc: () => { state.depth = Math.round((state.depth + 0.2) * 100) / 100; poster.setDepth(state.depth); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
-        dec: () => { state.depth = Math.round((state.depth - 0.2) * 100) / 100; poster.setDepth(state.depth); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        inc: () => {
+          state.depth = Math.round((state.depth + 0.2) * 100) / 100;
+          poster.setDepth(state.depth);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
+        dec: () => {
+          state.depth = Math.round((state.depth - 0.2) * 100) / 100;
+          poster.setDepth(state.depth);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
       };
       pFolder.add(depthActions, 'inc').name('Depth +0.2');
       pFolder.add(depthActions, 'dec').name('Depth -0.2');
 
-      pFolder.add(state, 'offsetX').name('Offset X').step(0.01)
-        .onChange((v: number) => { poster.setOffsetX(v); debug.save(); });
+      pFolder
+        .add(state, 'offsetX')
+        .name('Offset X')
+        .step(0.01)
+        .onChange((v: number) => {
+          poster.setOffsetX(v);
+          debug.save();
+        });
 
       const xActions = {
-        inc: () => { state.offsetX = Math.round((state.offsetX + 0.2) * 100) / 100; poster.setOffsetX(state.offsetX); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
-        dec: () => { state.offsetX = Math.round((state.offsetX - 0.2) * 100) / 100; poster.setOffsetX(state.offsetX); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        inc: () => {
+          state.offsetX = Math.round((state.offsetX + 0.2) * 100) / 100;
+          poster.setOffsetX(state.offsetX);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
+        dec: () => {
+          state.offsetX = Math.round((state.offsetX - 0.2) * 100) / 100;
+          poster.setOffsetX(state.offsetX);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
       };
       pFolder.add(xActions, 'inc').name('X +0.2');
       pFolder.add(xActions, 'dec').name('X -0.2');
 
-      pFolder.add(state, 'rotationY').name('Rotation Y').step(0.1)
-        .onChange((v: number) => { poster.setRotationY(v); debug.save(); });
+      pFolder
+        .add(state, 'rotationY')
+        .name('Rotation Y')
+        .step(0.1)
+        .onChange((v: number) => {
+          poster.setRotationY(v);
+          debug.save();
+        });
 
       const rotActions = {
-        inc: () => { state.rotationY = Math.round((state.rotationY + 3) * 10) / 10; poster.setRotationY(state.rotationY); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
-        dec: () => { state.rotationY = Math.round((state.rotationY - 3) * 10) / 10; poster.setRotationY(state.rotationY); pFolder.controllersRecursive().forEach((c) => c.updateDisplay()); debug.save(); },
+        inc: () => {
+          state.rotationY = Math.round((state.rotationY + 3) * 10) / 10;
+          poster.setRotationY(state.rotationY);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
+        dec: () => {
+          state.rotationY = Math.round((state.rotationY - 3) * 10) / 10;
+          poster.setRotationY(state.rotationY);
+          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
+          debug.save();
+        },
       };
       pFolder.add(rotActions, 'inc').name('Rot +3°');
       pFolder.add(rotActions, 'dec').name('Rot -3°');
@@ -332,12 +389,39 @@ export class LevelBuilder {
 
     const allPosters = [...backPosters, ...sidePosters];
     const wireState = { height: 25 };
-    folder.add(wireState, 'height', 0.5, 30, 0.5)
+    folder
+      .add(wireState, 'height', 0.5, 30, 0.5)
       .name('Wire Height')
       .onChange((v: number) => {
         for (const poster of allPosters) poster.setWireHeight(v);
         debug.save();
       });
+  }
+
+  private buildWallLights(group: Group): void {
+    const { matrix } = this.#data;
+    if (!Array.isArray(matrix) || !matrix[0]) return;
+
+    const levelWidth = matrix[0].length;
+    const levelDepth = matrix.length;
+
+    const wallLights: { wallIndex: number; side: WallSide }[] = [
+      { wallIndex: 0, side: 'left' },
+      { wallIndex: 4, side: 'left' },
+      { wallIndex: 8, side: 'left' },
+      { wallIndex: 1, side: 'top' },
+      { wallIndex: 6, side: 'top' },
+      { wallIndex: 11, side: 'top' },
+      { wallIndex: 0, side: 'right' },
+      { wallIndex: 4, side: 'right' },
+      { wallIndex: 8, side: 'right' },
+    ];
+
+    for (const { wallIndex, side } of wallLights) {
+      const light = new WallLight({ wallIndex, side, levelWidth, levelDepth });
+      light.create(group);
+      this.#objects.push(light);
+    }
   }
 
   getInteractables(): LevelObject[] {

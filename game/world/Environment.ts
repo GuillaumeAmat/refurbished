@@ -7,8 +7,8 @@ import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
 import { DeliveryZone } from './object/DeliveryZone';
 import { NeonWall } from './object/NeonWall';
-import { Poster } from './object/Poster';
 import { RepairZone } from './object/RepairZone';
+import { WallLight } from './object/WallLight';
 
 type EnvironmentMap = {
   intensity: number;
@@ -100,7 +100,7 @@ export class Environment {
       .onChange((value: string) => {
         this.#ambientLight!.color.set(value);
         for (const light of this.#quadLights) light.color.set(value);
-        for (const light of Poster.lights) light.color.set(value);
+        for (const light of WallLight.lights) light.color.set(value);
         for (const light of DeliveryZone.lights) light.color.set(value);
         for (const light of RepairZone.lights) light.color.set(value);
         debug.save();
@@ -178,8 +178,8 @@ export class Environment {
       .add(quadState, 'castShadow')
       .name('Cast Shadow')
       .onChange((v: boolean) => { for (const l of this.#quadLights) l.castShadow = v; debug.save(); });
-    addIntensityFolder('Poster Lights', 10, (v) => {
-      for (const light of Poster.lights) light.intensity = v;
+    addIntensityFolder('Wall Lights', 10, (v) => {
+      for (const light of WallLight.lights) light.intensity = v;
     });
     addIntensityFolder('Delivery Zone', 6, (v) => {
       for (const light of DeliveryZone.lights) light.intensity = v;

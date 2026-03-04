@@ -1,7 +1,7 @@
-import { Group, LinearFilter, type SpotLightHelper } from 'three';
-import { Box3, CylinderGeometry, Mesh, MeshStandardMaterial, PlaneGeometry, SpotLight, SRGBColorSpace, Vector3 } from 'three';
+import { Group, LinearFilter } from 'three';
+import { Box3, CylinderGeometry, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 
-import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
+import { TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
 import { Time } from '../../util/Time';
 import { LevelObject } from './LevelObject';
@@ -18,16 +18,6 @@ export interface PosterParams {
 }
 
 export class Poster extends LevelObject {
-  static #lights: SpotLight[] = [];
-  static get lights(): SpotLight[] {
-    return Poster.#lights;
-  }
-
-  static #helpers: SpotLightHelper[] = [];
-  static get helpers(): SpotLightHelper[] {
-    return Poster.#helpers;
-  }
-
   static #wires: Mesh[] = [];
   static get wires(): Mesh[] {
     return Poster.#wires;
@@ -142,42 +132,24 @@ export class Poster extends LevelObject {
     let baseX = 0;
     let baseZ = 0;
     let baseRotY = 0;
-    let lightOffsetX = 0;
-    let lightOffsetZ = 0;
-    let lightTargetX = 0;
-    let lightTargetZ = 0;
-    let downLightTargetX = 0;
-    let downLightTargetZ = 0;
 
     if (side === 'top') {
       baseX = wallIndex * TS + TS / 2;
       baseZ = 0.01;
       baseRotY = 0;
-      lightOffsetX = baseX; lightOffsetZ = 1.2;
-      lightTargetX = baseX; lightTargetZ = 0;
-      downLightTargetX = baseX; downLightTargetZ = -0.5;
     } else if (side === 'left') {
       baseX = 0.01;
       baseZ = wallIndex * TS + TS / 2;
       baseRotY = Math.PI / 2;
-      lightOffsetX = 1.2; lightOffsetZ = baseZ;
-      lightTargetX = 0; lightTargetZ = baseZ;
-      downLightTargetX = -0.5; downLightTargetZ = baseZ;
     } else if (side === 'right') {
       baseX = levelWidth * TS - 0.01;
       baseZ = wallIndex * TS + TS / 2;
       baseRotY = -Math.PI / 2;
-      lightOffsetX = levelWidth * TS - 1.2; lightOffsetZ = baseZ;
-      lightTargetX = levelWidth * TS; lightTargetZ = baseZ;
-      downLightTargetX = levelWidth * TS + 0.5; downLightTargetZ = baseZ;
     } else {
       // bottom
       baseX = wallIndex * TS + TS / 2;
       baseZ = levelDepth * TS - 0.01;
       baseRotY = Math.PI;
-      lightOffsetX = baseX; lightOffsetZ = levelDepth * TS - 1.2;
-      lightTargetX = baseX; lightTargetZ = levelDepth * TS;
-      downLightTargetX = baseX; downLightTargetZ = levelDepth * TS + 0.5;
     }
 
     this.#basePosition = { x: baseX, z: baseZ };
@@ -200,21 +172,6 @@ export class Poster extends LevelObject {
     this.mesh = mesh;
     this.#pivot = pivot;
     group.add(pivot);
-
-    // Lights (world-space, independent of pivot)
-    const upLight = new SpotLight(LIGHT_COLOR, 10, 5.5, Math.PI / 12, 0.2, 0.4);
-    upLight.position.set(lightOffsetX, 0.3, lightOffsetZ);
-    upLight.target.position.set(lightTargetX, posterTop, lightTargetZ);
-    group.add(upLight);
-    group.add(upLight.target);
-    Poster.#lights.push(upLight);
-
-    const downLight = new SpotLight(LIGHT_COLOR, 10, 4, Math.PI / 12, 0.4, 0.4);
-    downLight.position.set(lightOffsetX, 4.5, lightOffsetZ);
-    downLight.target.position.set(downLightTargetX, 0, downLightTargetZ);
-    group.add(downLight);
-    group.add(downLight.target);
-    Poster.#lights.push(downLight);
 
     // Wires as children of pivot (local space)
     const wireRadius = 0.008;
