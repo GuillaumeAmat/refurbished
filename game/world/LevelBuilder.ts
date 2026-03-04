@@ -284,16 +284,22 @@ export class LevelBuilder {
   }
 
   private buildPosters(group: Group): void {
-    const posters: { textureKey: string; wallIndex: number }[] = [
-      { textureKey: 'posterSayItStraight', wallIndex: 2 },
-      { textureKey: 'posterFiredUp', wallIndex: 4 },
-      { textureKey: 'posterHumbleHearts', wallIndex: 6 },
-      { textureKey: 'posterNotGreenEnough', wallIndex: 8 },
-      { textureKey: 'posterDontFear', wallIndex: 10 },
+    const { matrix } = this.#data;
+    if (!Array.isArray(matrix) || !matrix[0]) return;
+
+    const levelWidth = matrix[0].length;
+    const levelDepth = matrix.length;
+
+    const posters: { textureKey: string; wallIndex: number; side: WallSide }[] = [
+      { textureKey: 'posterSayItStraight', wallIndex: 4, side: 'left' },
+      { textureKey: 'posterFiredUp', wallIndex: 1, side: 'top' },
+      { textureKey: 'posterHumbleHearts', wallIndex: 6, side: 'top' },
+      { textureKey: 'posterNotGreenEnough', wallIndex: 11, side: 'top' },
+      { textureKey: 'posterDontFear', wallIndex: 4, side: 'right' },
     ];
 
-    for (const params of posters) {
-      const poster = new Poster(params);
+    for (const { textureKey, wallIndex, side } of posters) {
+      const poster = new Poster({ textureKey, wallIndex, side, levelWidth, levelDepth });
       poster.create(group);
       this.#objects.push(poster);
     }

@@ -4,12 +4,16 @@ import { Box3, Mesh, MeshStandardMaterial, PlaneGeometry, SpotLight, SRGBColorSp
 import { LIGHT_COLOR, TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';
 import { LevelObject } from './LevelObject';
+import type { WallSide } from './Wall';
 
 const POSTER_ASPECT_RATIO = 6680 / 9449; // width / height
 
 export interface PosterParams {
   textureKey: string;
   wallIndex: number;
+  side: WallSide;
+  levelWidth: number;
+  levelDepth: number;
 }
 
 export class Poster extends LevelObject {
@@ -31,7 +35,7 @@ export class Poster extends LevelObject {
   }
 
   create(group: Group): void {
-    const { textureKey, wallIndex } = this.#params;
+    const { textureKey, wallIndex, side, levelWidth, levelDepth } = this.#params;
 
     const wallModel = Resources.getInstance().getGLTFAsset('wallModel');
     if (!wallModel) return;
@@ -55,10 +59,49 @@ export class Poster extends LevelObject {
       map: texture,
     });
 
+    const TS = TILE_SIZE;
     const mesh = new Mesh(geometry, material);
-    mesh.position.x = wallIndex * TILE_SIZE + TILE_SIZE / 2;
     mesh.position.y = wallHeight + wallHeight * 0.75 - 0.55;
-    mesh.position.z = 0.01;
+
+    let lightOffsetX = 0;
+    let lightOffsetZ = 0;
+    let lightTargetX = 0;
+    let lightTargetZ = 0;
+
+    if (side === 'top') {
+      mesh.position.x = wallIndex * TS + TS / 2;
+      mesh.position.z = 0.01;
+      mesh.rotation.y = 0;
+      lightOffsetX = mesh.position.x;
+      lightOffsetZ = 0.2;
+      lightTargetX = mesh.position.x;
+      lightTargetZ = 0;
+    } else if (side === 'left') {
+      mesh.position.x = 0.01;
+      mesh.position.z = wallIndex * TS + TS / 2;
+      mesh.rotation.y = Math.PI / 2;
+      lightOffsetX = 0.2;
+      lightOffsetZ = mesh.position.z;
+      lightTargetX = 0;
+      lightTargetZ = mesh.position.z;
+    } else if (side === 'right') {
+      mesh.position.x = levelWidth * TS - 0.01;
+      mesh.position.z = wallIndex * TS + TS / 2;
+      mesh.rotation.y = -Math.PI / 2;
+      lightOffsetX = levelWidth * TS - 0.2;
+      lightOffsetZ = mesh.position.z;
+      lightTargetX = levelWidth * TS;
+      lightTargetZ = mesh.position.z;
+    } else {
+      // bottom
+      mesh.position.x = wallIndex * TS + TS / 2;
+      mesh.position.z = levelDepth * TS - 0.01;
+      mesh.rotation.y = Math.PI;
+      lightOffsetX = mesh.position.x;
+      lightOffsetZ = levelDepth * TS - 0.2;
+      lightTargetX = mesh.position.x;
+      lightTargetZ = levelDepth * TS;
+    }
 
     this.mesh = mesh;
     group.add(mesh);
@@ -66,15 +109,15 @@ export class Poster extends LevelObject {
     const posterTop = mesh.position.y + posterHeight / 2;
 
     const upLight = new SpotLight(LIGHT_COLOR, 10, 6, Math.PI / 5, 0.2, 0.3);
-    upLight.position.set(mesh.position.x, 1.9, 0.2);
-    upLight.target.position.set(mesh.position.x, posterTop, 0);
+    upLight.position.set(lightOffsetX, 1.9, lightOffsetZ);
+    upLight.target.position.set(lightTargetX, posterTop, lightTargetZ);
     group.add(upLight);
     group.add(upLight.target);
     Poster.#lights.push(upLight);
 
     const downLight = new SpotLight(LIGHT_COLOR, 10, 1.7, Math.PI / 6, 0.4, 0.4);
-    downLight.position.set(mesh.position.x, 2.5, 0.2);
-    downLight.target.position.set(mesh.position.x, 0, 0);
+    downLight.position.set(lightOffsetX, 2.5, lightOffsetZ);
+    downLight.target.position.set(lightTargetX, 0, lightTargetZ);
     group.add(downLight);
     group.add(downLight.target);
     Poster.#lights.push(downLight);
