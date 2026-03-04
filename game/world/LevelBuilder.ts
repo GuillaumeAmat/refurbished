@@ -273,9 +273,6 @@ export class LevelBuilder {
       { textureKey: 'poster8', wallIndex: 4, side: 'right', depth: 0.8, offsetX: 0.2, rotationY: 30 },
     ];
 
-    const backPosters: Poster[] = [];
-    const sidePosters: Poster[] = [];
-
     for (const { textureKey, wallIndex, side, depth, offsetX, rotationY } of posters) {
       const poster = new Poster({ textureKey, wallIndex, side, levelWidth, levelDepth });
       poster.create(group);
@@ -283,119 +280,7 @@ export class LevelBuilder {
       if (offsetX) poster.setOffsetX(offsetX);
       if (rotationY) poster.setRotationY(rotationY);
       this.#objects.push(poster);
-      if (side === 'top') backPosters.push(poster);
-      if (side === 'left' || side === 'right') sidePosters.push(poster);
     }
-
-    this.setupPosterDebug(backPosters, sidePosters);
-  }
-
-  private setupPosterDebug(backPosters: Poster[], sidePosters: Poster[]) {
-    const debug = Debug.getInstance();
-    if (!debug.active) return;
-
-    const folder = debug.gui.addFolder('Poster Positions');
-
-    const addPosterFolder = (poster: Poster, label: string) => {
-      const pFolder = folder.addFolder(label);
-      const state = { depth: poster.depth, offsetX: poster.offsetX, rotationY: poster.rotationY };
-
-      pFolder
-        .add(state, 'depth')
-        .name('Depth')
-        .step(0.01)
-        .onChange((v: number) => {
-          poster.setDepth(v);
-          debug.save();
-        });
-
-      const depthActions = {
-        inc: () => {
-          state.depth = Math.round((state.depth + 0.2) * 100) / 100;
-          poster.setDepth(state.depth);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-        dec: () => {
-          state.depth = Math.round((state.depth - 0.2) * 100) / 100;
-          poster.setDepth(state.depth);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-      };
-      pFolder.add(depthActions, 'inc').name('Depth +0.2');
-      pFolder.add(depthActions, 'dec').name('Depth -0.2');
-
-      pFolder
-        .add(state, 'offsetX')
-        .name('Offset X')
-        .step(0.01)
-        .onChange((v: number) => {
-          poster.setOffsetX(v);
-          debug.save();
-        });
-
-      const xActions = {
-        inc: () => {
-          state.offsetX = Math.round((state.offsetX + 0.2) * 100) / 100;
-          poster.setOffsetX(state.offsetX);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-        dec: () => {
-          state.offsetX = Math.round((state.offsetX - 0.2) * 100) / 100;
-          poster.setOffsetX(state.offsetX);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-      };
-      pFolder.add(xActions, 'inc').name('X +0.2');
-      pFolder.add(xActions, 'dec').name('X -0.2');
-
-      pFolder
-        .add(state, 'rotationY')
-        .name('Rotation Y')
-        .step(0.1)
-        .onChange((v: number) => {
-          poster.setRotationY(v);
-          debug.save();
-        });
-
-      const rotActions = {
-        inc: () => {
-          state.rotationY = Math.round((state.rotationY + 3) * 10) / 10;
-          poster.setRotationY(state.rotationY);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-        dec: () => {
-          state.rotationY = Math.round((state.rotationY - 3) * 10) / 10;
-          poster.setRotationY(state.rotationY);
-          pFolder.controllersRecursive().forEach((c) => c.updateDisplay());
-          debug.save();
-        },
-      };
-      pFolder.add(rotActions, 'inc').name('Rot +3°');
-      pFolder.add(rotActions, 'dec').name('Rot -3°');
-    };
-
-    for (let i = 0; i < backPosters.length; i++) {
-      addPosterFolder(backPosters[i]!, `Back ${i + 1}`);
-    }
-
-    for (let i = 0; i < sidePosters.length; i++) {
-      addPosterFolder(sidePosters[i]!, `Side ${i + 1}`);
-    }
-
-    const allPosters = [...backPosters, ...sidePosters];
-    const wireState = { height: 25 };
-    folder
-      .add(wireState, 'height', 0.5, 30, 0.5)
-      .name('Wire Height')
-      .onChange((v: number) => {
-        for (const poster of allPosters) poster.setWireHeight(v);
-        debug.save();
-      });
   }
 
   private buildWallLights(group: Group): void {
@@ -422,6 +307,78 @@ export class LevelBuilder {
       light.create(group);
       this.#objects.push(light);
     }
+
+    this.setupWallLightDebug();
+  }
+
+  private setupWallLightDebug() {
+    const debug = Debug.getInstance();
+    if (!debug.active) return;
+
+    const lights = WallLight.lights;
+    const ref = lights[0];
+    if (!ref) return;
+
+    const folder = debug.gui.addFolder('Wall Lights');
+    const colorState = { color: `#${ref.color.getHexString()}` };
+    folder
+      .addColor(colorState, 'color')
+      .name('Color')
+      .onChange((v: string) => {
+        for (const l of lights) l.color.set(v);
+        debug.save();
+      });
+
+    const state = {
+      intensity: ref.intensity,
+      distance: ref.distance,
+      decay: ref.decay,
+      height: ref.position.y,
+    };
+
+    const apply = (key: keyof typeof state, value: number) => {
+      state[key] = value;
+      for (const l of lights) {
+        if (key === 'height') l.position.y = value;
+        else if (key === 'intensity') l.intensity = value;
+        else if (key === 'distance') l.distance = value;
+        else if (key === 'decay') l.decay = value;
+      }
+      folder.controllersRecursive().forEach((c) => c.updateDisplay());
+      debug.save();
+    };
+
+    folder.add(state, 'intensity', 0, 20, 0.1).name('Intensity').onChange((v: number) => apply('intensity', v));
+    const intActions = {
+      inc: () => apply('intensity', Math.round((state.intensity + 1) * 10) / 10),
+      dec: () => apply('intensity', Math.round((state.intensity - 1) * 10) / 10),
+    };
+    folder.add(intActions, 'inc').name('Intensity +1');
+    folder.add(intActions, 'dec').name('Intensity -1');
+
+    folder.add(state, 'distance', 0, 20, 0.1).name('Distance').onChange((v: number) => apply('distance', v));
+    const distActions = {
+      inc: () => apply('distance', Math.round((state.distance + 0.5) * 10) / 10),
+      dec: () => apply('distance', Math.round((state.distance - 0.5) * 10) / 10),
+    };
+    folder.add(distActions, 'inc').name('Distance +0.5');
+    folder.add(distActions, 'dec').name('Distance -0.5');
+
+    folder.add(state, 'decay', 0, 5, 0.1).name('Decay').onChange((v: number) => apply('decay', v));
+    const decayActions = {
+      inc: () => apply('decay', Math.round((state.decay + 0.1) * 10) / 10),
+      dec: () => apply('decay', Math.round((state.decay - 0.1) * 10) / 10),
+    };
+    folder.add(decayActions, 'inc').name('Decay +0.1');
+    folder.add(decayActions, 'dec').name('Decay -0.1');
+
+    folder.add(state, 'height', 0, 8, 0.1).name('Height').onChange((v: number) => apply('height', v));
+    const heightActions = {
+      inc: () => apply('height', Math.round((state.height + 0.2) * 10) / 10),
+      dec: () => apply('height', Math.round((state.height - 0.2) * 10) / 10),
+    };
+    folder.add(heightActions, 'inc').name('Height +0.2');
+    folder.add(heightActions, 'dec').name('Height -0.2');
   }
 
   getInteractables(): LevelObject[] {

@@ -178,9 +178,6 @@ export class Environment {
       .add(quadState, 'castShadow')
       .name('Cast Shadow')
       .onChange((v: boolean) => { for (const l of this.#quadLights) l.castShadow = v; debug.save(); });
-    addIntensityFolder('Wall Lights', 10, (v) => {
-      for (const light of WallLight.lights) light.intensity = v;
-    });
     addIntensityFolder('Delivery Zone', 6, (v) => {
       for (const light of DeliveryZone.lights) light.intensity = v;
     });
