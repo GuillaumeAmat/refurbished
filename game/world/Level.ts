@@ -2,6 +2,7 @@ import { Group, type Scene, Vector3 } from 'three';
 
 import type { LevelInfo } from '../levels';
 import { Physics } from '../util/Physics';
+import { Time } from '../util/Time';
 import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
 import { Floor } from './object/Floor';
@@ -95,7 +96,7 @@ export class Level {
 
   public update() {
     if (!this.#interactive) return;
-    this.#physics.update();
+    this.#physics.update(Time.getInstance().delta);
     this.#player1?.update();
     this.#player2?.update();
     this.#interactionSystem.update();

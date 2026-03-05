@@ -56,7 +56,7 @@ export class Floor extends LevelObject {
     const planeSize = 200;
     const geometry = new PlaneGeometry(planeSize, planeSize);
     const material = new MeshStandardMaterial({
-      color: 0x121016,
+      color: 0xf7f7f7,
       roughness: 1,
       metalness: 0,
     });
@@ -70,7 +70,7 @@ export class Floor extends LevelObject {
 
     const debug = Debug.getInstance();
     if (debug.active) {
-      const params = { exteriorFloorColor: '#121016' };
+      const params = { exteriorFloorColor: '#f7f7f7' };
       debug.gui
         .addColor(params, 'exteriorFloorColor')
         .name('Exterior Floor Color')
