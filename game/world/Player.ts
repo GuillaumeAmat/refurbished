@@ -9,6 +9,7 @@ import { Physics } from '../util/Physics';
 import { Resources } from '../util/Resources';
 import { Time } from '../util/Time';
 import { Crate } from './object/Crate';
+import { RepairAnimation } from './RepairAnimation';
 import { SmokeParticleSystem } from './SmokeParticleSystem';
 
 const PLAYER_COLORS = new Map<PlayerId, number>([
@@ -25,6 +26,12 @@ const GRIP_CONFIGS: Record<ResourceType, GripConfig> = {
 };
 
 export class Player {
+  static #screwdriverOffset = new Vector3(-0.76, 0.85, 0.79);
+  static #screwdriverRot = new Vector3(2.2884, -0.6415, 0.2);
+  static #screwdriverScale = 1.1;
+  static #handRepairRot = new Vector3(-1.4, 0, 0);
+  static #screwdriverDebugSetup = false;
+
   #screenGroup: Group;
   #scene: Scene;
   #resources: Resources;
@@ -83,6 +90,11 @@ export class Player {
   #smokeSystem: SmokeParticleSystem | null = null;
   #hasDashBurst = false;
 
+  #screwdriverMesh: Object3D | null = null;
+  #repairAnimation = new RepairAnimation();
+  #repairZonePos = new Vector3();
+  #isRepairing = false;
+
   #interactCallback: (() => void) | null = null;
 
   #gamepadManager: GamepadManager;
@@ -135,13 +147,18 @@ export class Player {
     this.#setupSmokeSystem();
 
     this.#setupAnimationDebug();
+    Player.#setupScrewdriverDebug();
   }
 
   public onInteract(callback: () => void): void {
     this.#interactCallback = callback;
   }
 
-  public cleanup(): void {}
+  public cleanup(): void {
+    this.#repairAnimation.stop();
+    this.#screwdriverMesh?.removeFromParent();
+    this.#screwdriverMesh = null;
+  }
 
   #updateInteract(): void {
     const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
@@ -191,6 +208,25 @@ export class Player {
     gripFolder.add(GRIP_CONFIGS.screen, 'handRotationZ', -1.5, 1.5, 0.01).name('Hand Rot Z');
     folder.close();
   }
+
+  static #setupScrewdriverDebug(): void {
+    if (Player.#screwdriverDebugSetup) return;
+    const debug = Debug.getInstance();
+    if (!debug?.active) return;
+    Player.#screwdriverDebugSetup = true;
+
+    const off = Player.#screwdriverOffset;
+    const rot = Player.#screwdriverRot;
+    const folder = debug.gui.addFolder('Screwdriver (hand)');
+
+    for (const axis of ['x', 'y', 'z'] as const) {
+      folder.add(off, axis, -3, 3, 0.01).name(`Pos ${axis.toUpperCase()}`);
+    }
+    for (const axis of ['x', 'y', 'z'] as const) {
+      folder.add(rot, axis, -Math.PI, Math.PI, 0.01).name(`Rot ${axis.toUpperCase()}`);
+    }
+  }
+
 
   private createMesh() {
     const modelName = this.#playerId === 1 ? 'pigModel' : 'crocoModel';
@@ -266,6 +302,7 @@ export class Player {
 
   private updateMovement() {
     if (!this.#rigidBody) return;
+    if (this.#isRepairing) return;
 
     const inputSource = this.#gamepadManager.getInputSource(this.#playerId);
     if (!inputSource?.connected) return;
@@ -414,6 +451,56 @@ export class Player {
     return { type, state };
   }
 
+  public startRepairing(onHit: () => void, screwdriverMesh: Object3D, repairZonePos: Vector3): void {
+    if (this.#isRepairing || !this.#handRight) return;
+    this.#isRepairing = true;
+    this.#screwdriverMesh = screwdriverMesh;
+    this.#repairZonePos.copy(repairZonePos);
+
+    // Parent screwdriver to handRight so it follows hand animation automatically
+    this.#handRight.add(screwdriverMesh);
+    screwdriverMesh.position.copy(Player.#screwdriverOffset);
+    screwdriverMesh.rotation.set(Player.#screwdriverRot.x, Player.#screwdriverRot.y, Player.#screwdriverRot.z);
+    screwdriverMesh.scale.setScalar(Player.#screwdriverScale);
+    Player.#setupScrewdriverDebug();
+
+    this.#repairAnimation.onHit(() => {
+      onHit();
+      this.#spawnRepairSmoke();
+    });
+    this.#repairAnimation.start();
+  }
+
+  public stopRepairing(): void {
+    if (!this.#isRepairing) return;
+    this.#isRepairing = false;
+
+    // Detach and dispose cloned screwdriver to free GPU memory
+    if (this.#screwdriverMesh) {
+      this.#screwdriverMesh.removeFromParent();
+      this.#screwdriverMesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry.dispose();
+          if (child.material instanceof MeshStandardMaterial) {
+            child.material.dispose();
+          }
+        }
+      });
+      this.#screwdriverMesh = null;
+    }
+
+    this.#repairAnimation.stop();
+  }
+
+  #spawnRepairSmoke(): void {
+    if (!this.#smokeSystem) return;
+    this.#smokeSystem.spawnImpact(this.#repairZonePos, 6);
+  }
+
+  public get isRepairing(): boolean {
+    return this.#isRepairing;
+  }
+
   #updateAnimation(): void {
     if (!this.#rigidBody) return;
 
@@ -433,39 +520,83 @@ export class Player {
     const currentTwistFreq = isHolding ? holdingBodyTwistFreq : bodyTwistFreq;
     const currentTwistAmp = isHolding ? holdingBodyTwistAmp : bodyTwistAmp;
 
-    // Body & Head: tilt forward when moving
-    const targetTilt = isMoving ? currentBodyTilt : 0;
-    this.#currentBodyTilt += (targetTilt - this.#currentBodyTilt) * lerpFactor;
+    // Body & Head: tilt forward when moving (skipped during repair — handled below)
+    if (!this.#isRepairing) {
+      const targetTilt = isMoving ? currentBodyTilt : 0;
+      this.#currentBodyTilt += (targetTilt - this.#currentBodyTilt) * lerpFactor;
 
-    if (this.#body) {
-      this.#body.rotation.x = this.#currentBodyTilt;
+      if (this.#body) {
+        this.#body.rotation.x = this.#currentBodyTilt;
+        if (isMoving) {
+          const twistWave = Math.sin(time * currentTwistFreq);
+          this.#body.rotation.y = twistWave * currentTwistAmp;
+        } else {
+          this.#body.rotation.y *= 1 - lerpFactor;
+        }
+      }
+
+      // Head animation (independent of holding state)
       if (isMoving) {
-        const twistWave = Math.sin(time * currentTwistFreq);
-        this.#body.rotation.y = twistWave * currentTwistAmp;
+        if (this.#head) {
+          const headBobWave = Math.sin(time * headBobFreq);
+          const headSwayWave = Math.sin(time * headSwayFreq);
+          this.#head.rotation.x = this.#currentBodyTilt + headBobWave * headBobAmp;
+          this.#head.rotation.y = headSwayWave * headSwayAmp;
+        }
       } else {
-        this.#body.rotation.y *= 1 - lerpFactor;
+        if (this.#head) {
+          this.#head.rotation.x += (this.#currentBodyTilt - this.#head.rotation.x) * lerpFactor;
+          this.#head.rotation.y *= 1 - lerpFactor;
+        }
       }
     }
 
-    // Head animation (independent of holding state)
-    if (isMoving) {
-      if (this.#head) {
-        const headBobWave = Math.sin(time * headBobFreq);
-        const headSwayWave = Math.sin(time * headSwayFreq);
-        this.#head.rotation.x = this.#currentBodyTilt + headBobWave * headBobAmp;
-        this.#head.rotation.y = headSwayWave * headSwayAmp;
-      }
-    } else {
-      if (this.#head) {
-        this.#head.rotation.x += (this.#currentBodyTilt - this.#head.rotation.x) * lerpFactor;
-        this.#head.rotation.y *= 1 - lerpFactor;
-      }
-    }
-
-    // Hands animation - different behavior when holding
+    // Hands animation - different behavior when holding/repairing
     const handLerpFactor = 1 - Math.pow(1 - 0.8, dt60);
 
-    if (isHolding && this.#carriedResource) {
+    if (this.#isRepairing) {
+      this.#repairAnimation.update(this.#time.delta);
+
+      // Body & head oscillate with the repair motion (body leads the hand)
+      const bodyTarget = this.#repairAnimation.bodyTiltX;
+      if (this.#body) {
+        this.#body.rotation.x += (bodyTarget - this.#body.rotation.x) * handLerpFactor;
+        this.#body.rotation.y *= 1 - handLerpFactor;
+      }
+      if (this.#head) {
+        this.#head.rotation.x += (bodyTarget - this.#head.rotation.x) * handLerpFactor;
+        this.#head.rotation.y *= 1 - handLerpFactor;
+      }
+
+      if (this.#handRight && this.#handRightRestPos) {
+        const offset = this.#repairAnimation.targetOffset;
+        const targetPos = this.#cachedRightGripTarget.copy(this.#handRightRestPos).add(offset);
+        // Shift forward for "working on the object" posture
+        targetPos.z += 0.3;
+        targetPos.x = Math.abs(targetPos.x) * 0.5;
+
+        this.#handRight.position.lerp(targetPos, handLerpFactor);
+        this.#handRight.rotation.x += (this.#repairAnimation.targetRotationX + Player.#handRepairRot.x - this.#handRight.rotation.x) * handLerpFactor;
+        this.#handRight.rotation.y += (Player.#handRepairRot.y - this.#handRight.rotation.y) * handLerpFactor;
+        this.#handRight.rotation.z += (Player.#handRepairRot.z - this.#handRight.rotation.z) * handLerpFactor;
+      }
+
+      // Screwdriver follows handRight automatically — apply debug-tunable offset/rotation each frame
+      if (this.#screwdriverMesh) {
+        this.#screwdriverMesh.position.copy(Player.#screwdriverOffset);
+        this.#screwdriverMesh.rotation.set(Player.#screwdriverRot.x, Player.#screwdriverRot.y, Player.#screwdriverRot.z);
+      }
+
+      // Left hand: return to rest
+      if (this.#handLeft) {
+        this.#handLeft.rotation.x *= 1 - lerpFactor;
+        this.#handLeft.rotation.y *= 1 - lerpFactor;
+        this.#handLeft.rotation.z *= 1 - lerpFactor;
+        if (this.#handLeftRestPos) {
+          this.#handLeft.position.lerp(this.#handLeftRestPos, handLerpFactor);
+        }
+      }
+    } else if (isHolding && this.#carriedResource) {
       // When holding: hands move to grip position, no swing
       // Read grip config dynamically for real-time debug adjustments
       const grip = GRIP_CONFIGS[this.#carriedResource.type];

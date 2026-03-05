@@ -142,6 +142,11 @@ export class Stage {
         path: '/game/model/environment/repair_zone.glb',
         priority: 'low',
       },
+      screwdriverModel: {
+        type: 'gltf',
+        path: '/game/model/environment/screwdriver.glb',
+        priority: 'low',
+      },
       deliveryZoneModel: {
         type: 'gltf',
         path: '/game/model/environment/delivery_zone.glb',

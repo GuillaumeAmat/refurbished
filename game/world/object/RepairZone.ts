@@ -19,6 +19,7 @@ export class RepairZone extends LevelObject {
 
   #params: RepairZoneParams;
   #ownLight: SpotLight | null = null;
+  #screwdriver: Group | null = null;
 
   constructor(params: RepairZoneParams) {
     super();
@@ -55,6 +56,17 @@ export class RepairZone extends LevelObject {
     repairZone.position.z = workbenchCenter.z;
     container.add(repairZone);
 
+    // Place screwdriver on the mat
+    const screwdriverModel = Resources.getInstance().getGLTFAsset('screwdriverModel');
+    if (screwdriverModel) {
+      this.#screwdriver = screwdriverModel.scene.clone();
+      this.#screwdriver.position.set(1.55, 1.25, 1.20);
+      this.#screwdriver.scale.setScalar(1.2);
+      this.cloneMaterials(this.#screwdriver);
+      this.setupShadows(this.#screwdriver);
+      container.add(this.#screwdriver);
+    }
+
     const light = new SpotLight(LIGHT_COLOR, 5, 2, Math.PI / 4, 0.5, 0);
     light.position.set(0.8, 1.8, 0.7);
     light.target.position.set(0.95, 1.2, 1.3);
@@ -90,7 +102,19 @@ export class RepairZone extends LevelObject {
       if (idx !== -1) RepairZone.#lights.splice(idx, 1);
       this.#ownLight = null;
     }
+    if (this.#screwdriver) {
+      this.#screwdriver.removeFromParent();
+      this.#screwdriver = null;
+    }
     super.dispose();
+  }
+
+  public hideScrewdriver(): void {
+    if (this.#screwdriver) this.#screwdriver.visible = false;
+  }
+
+  public showScrewdriver(): void {
+    if (this.#screwdriver) this.#screwdriver.visible = true;
   }
 
   override getDropSurface(): Vector3 | null {

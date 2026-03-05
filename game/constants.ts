@@ -33,7 +33,7 @@ export const INTERACTION_DISTANCE = 1.4;
 export const INTERACTION_FACING_THRESHOLD = 0.5;
 export const HIGHLIGHT_EMISSIVE = 0x444444;
 
-export const SMOKE_POOL_SIZE = 50;
+export const SMOKE_POOL_SIZE = 80;
 export const SMOKE_PARTICLE_LIFETIME = 0.4;
 export const SMOKE_SPAWN_INTERVAL = 0.05;
 export const SMOKE_COLOR = 0xffffff;

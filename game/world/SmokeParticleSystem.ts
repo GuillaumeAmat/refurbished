@@ -98,6 +98,37 @@ export class SmokeParticleSystem {
     }
   }
 
+  spawnImpact(position: Vector3, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const particle = this.#getInactiveParticle();
+      if (!particle) return;
+
+      // Spread around impact point to cover the object
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 0.6;
+      this.#tempSpawnPos.set(
+        position.x + Math.cos(angle) * radius,
+        position.y + (Math.random() - 0.5) * 0.3,
+        position.z + Math.sin(angle) * radius,
+      );
+
+      particle.mesh.position.copy(this.#tempSpawnPos);
+      particle.mesh.scale.setScalar(0.6 + Math.random() * 0.6);
+      particle.mesh.visible = true;
+
+      // Drift outward and upward
+      particle.velocity.set(
+        Math.cos(angle) * (0.5 + Math.random() * 0.5),
+        1.6 + Math.random() * 1.2,
+        Math.sin(angle) * (0.5 + Math.random() * 0.5),
+      );
+
+      particle.age = 0;
+      particle.maxAge = SMOKE_PARTICLE_LIFETIME + Math.random() * 0.2;
+      particle.active = true;
+    }
+  }
+
   spawnArc(position: Vector3, dashDirection: Vector3, count: number, arcAngle: number): void {
     const mag = Math.sqrt(dashDirection.x * dashDirection.x + dashDirection.z * dashDirection.z);
     const behindX = mag > 0 ? -dashDirection.x / mag : -1;
