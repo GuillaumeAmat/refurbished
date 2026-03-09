@@ -12,6 +12,7 @@ import {
   type LevelData,
   type NeonWallDef,
 } from '../levels';
+import { Debug } from '../util/Debug';
 import { Resources } from '../util/Resources';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
@@ -20,6 +21,7 @@ import type { LevelObject } from './object/LevelObject';
 import { NeonWall } from './object/NeonWall';
 import { Poster } from './object/Poster';
 import { RepairZone } from './object/RepairZone';
+import { WallLight } from './object/WallLight';
 import { Wall, type WallSide } from './object/Wall';
 import { Workbench, type WorkbenchParams } from './object/Workbench';
 import { WorkbenchBatch } from './object/WorkbenchBatch';
@@ -37,6 +39,7 @@ export class LevelBuilder {
     this.buildLevelObjects(group);
     this.buildWalls(group);
     this.buildPosters(group);
+    this.buildWallLights(group);
     return this.#objects;
   }
 
@@ -252,22 +255,130 @@ export class LevelBuilder {
     const levelWidth = matrix[0].length;
     const levelDepth = matrix.length;
 
-    const posters: { textureKey: string; wallIndex: number; side: WallSide }[] = [
-      { textureKey: 'poster1', wallIndex: 4, side: 'left' },
-      { textureKey: 'poster2', wallIndex: 1, side: 'top' },
-      { textureKey: 'poster3', wallIndex: 3, side: 'top' },
-      { textureKey: 'poster4', wallIndex: 5, side: 'top' },
-      { textureKey: 'poster5', wallIndex: 7, side: 'top' },
-      { textureKey: 'poster1', wallIndex: 9, side: 'top' },
-      { textureKey: 'poster2', wallIndex: 11, side: 'top' },
-      { textureKey: 'poster5', wallIndex: 4, side: 'right' },
+    const posters: {
+      textureKey: string;
+      wallIndex: number;
+      side: WallSide;
+      depth?: number;
+      offsetX?: number;
+      rotationY?: number;
+    }[] = [
+      { textureKey: 'poster1', wallIndex: 4, side: 'left', depth: 1, offsetX: -0.2, rotationY: -27 },
+      { textureKey: 'poster2', wallIndex: 1, side: 'top', depth: 1.8, offsetX: -1, rotationY: 33 },
+      { textureKey: 'poster3', wallIndex: 3, side: 'top', depth: 0.6, offsetX: -0.6, rotationY: 15 },
+      { textureKey: 'poster4', wallIndex: 5, side: 'top', depth: 1.8, offsetX: -0.8, rotationY: -9 },
+      { textureKey: 'poster5', wallIndex: 7, side: 'top', depth: 1.2, offsetX: 0.6, rotationY: 9 },
+      { textureKey: 'poster6', wallIndex: 9, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
+      { textureKey: 'poster7', wallIndex: 11, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
+      { textureKey: 'poster8', wallIndex: 4, side: 'right', depth: 0.8, offsetX: 0.2, rotationY: 30 },
     ];
 
-    for (const { textureKey, wallIndex, side } of posters) {
+    for (const { textureKey, wallIndex, side, depth, offsetX, rotationY } of posters) {
       const poster = new Poster({ textureKey, wallIndex, side, levelWidth, levelDepth });
       poster.create(group);
+      if (depth) poster.setDepth(depth);
+      if (offsetX) poster.setOffsetX(offsetX);
+      if (rotationY) poster.setRotationY(rotationY);
       this.#objects.push(poster);
     }
+  }
+
+  private buildWallLights(group: Group): void {
+    const { matrix } = this.#data;
+    if (!Array.isArray(matrix) || !matrix[0]) return;
+
+    const levelWidth = matrix[0].length;
+    const levelDepth = matrix.length;
+
+    const wallLights: { wallIndex: number; side: WallSide }[] = [
+      { wallIndex: 0, side: 'left' },
+      { wallIndex: 4, side: 'left' },
+      { wallIndex: 8, side: 'left' },
+      { wallIndex: 1, side: 'top' },
+      { wallIndex: 6, side: 'top' },
+      { wallIndex: 11, side: 'top' },
+      { wallIndex: 0, side: 'right' },
+      { wallIndex: 4, side: 'right' },
+      { wallIndex: 8, side: 'right' },
+    ];
+
+    for (const { wallIndex, side } of wallLights) {
+      const light = new WallLight({ wallIndex, side, levelWidth, levelDepth });
+      light.create(group);
+      this.#objects.push(light);
+    }
+
+    this.setupWallLightDebug();
+  }
+
+  private setupWallLightDebug() {
+    const debug = Debug.getInstance();
+    if (!debug.active) return;
+
+    const lights = WallLight.lights;
+    const ref = lights[0];
+    if (!ref) return;
+
+    const folder = debug.gui.addFolder('Wall Lights');
+    const colorState = { color: `#${ref.color.getHexString()}` };
+    folder
+      .addColor(colorState, 'color')
+      .name('Color')
+      .onChange((v: string) => {
+        for (const l of lights) l.color.set(v);
+        debug.save();
+      });
+
+    const state = {
+      intensity: ref.intensity,
+      distance: ref.distance,
+      decay: ref.decay,
+      height: ref.position.y,
+    };
+
+    const apply = (key: keyof typeof state, value: number) => {
+      state[key] = value;
+      for (const l of lights) {
+        if (key === 'height') l.position.y = value;
+        else if (key === 'intensity') l.intensity = value;
+        else if (key === 'distance') l.distance = value;
+        else if (key === 'decay') l.decay = value;
+      }
+      folder.controllersRecursive().forEach((c) => c.updateDisplay());
+      debug.save();
+    };
+
+    folder.add(state, 'intensity', 0, 20, 0.1).name('Intensity').onChange((v: number) => apply('intensity', v));
+    const intActions = {
+      inc: () => apply('intensity', Math.round((state.intensity + 1) * 10) / 10),
+      dec: () => apply('intensity', Math.round((state.intensity - 1) * 10) / 10),
+    };
+    folder.add(intActions, 'inc').name('Intensity +1');
+    folder.add(intActions, 'dec').name('Intensity -1');
+
+    folder.add(state, 'distance', 0, 20, 0.1).name('Distance').onChange((v: number) => apply('distance', v));
+    const distActions = {
+      inc: () => apply('distance', Math.round((state.distance + 0.5) * 10) / 10),
+      dec: () => apply('distance', Math.round((state.distance - 0.5) * 10) / 10),
+    };
+    folder.add(distActions, 'inc').name('Distance +0.5');
+    folder.add(distActions, 'dec').name('Distance -0.5');
+
+    folder.add(state, 'decay', 0, 5, 0.1).name('Decay').onChange((v: number) => apply('decay', v));
+    const decayActions = {
+      inc: () => apply('decay', Math.round((state.decay + 0.1) * 10) / 10),
+      dec: () => apply('decay', Math.round((state.decay - 0.1) * 10) / 10),
+    };
+    folder.add(decayActions, 'inc').name('Decay +0.1');
+    folder.add(decayActions, 'dec').name('Decay -0.1');
+
+    folder.add(state, 'height', 0, 8, 0.1).name('Height').onChange((v: number) => apply('height', v));
+    const heightActions = {
+      inc: () => apply('height', Math.round((state.height + 0.2) * 10) / 10),
+      dec: () => apply('height', Math.round((state.height - 0.2) * 10) / 10),
+    };
+    folder.add(heightActions, 'inc').name('Height +0.2');
+    folder.add(heightActions, 'dec').name('Height -0.2');
   }
 
   getInteractables(): LevelObject[] {

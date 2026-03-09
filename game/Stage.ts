@@ -149,6 +149,11 @@ export class Stage {
         path: '/game/model/environment/repair_zone.glb',
         priority: 'low',
       },
+      screwdriverModel: {
+        type: 'gltf',
+        path: '/game/model/environment/screwdriver.glb',
+        priority: 'low',
+      },
       deliveryZoneModel: {
         type: 'gltf',
         path: '/game/model/environment/delivery_zone.glb',
@@ -287,6 +292,41 @@ export class Stage {
       poster5: {
         type: 'texture',
         path: '/game/texture/poster_5.webp',
+        priority: 'low',
+      },
+      poster6: {
+        type: 'texture',
+        path: '/game/texture/poster_6.webp',
+        priority: 'low',
+      },
+      poster7: {
+        type: 'texture',
+        path: '/game/texture/poster_7.webp',
+        priority: 'low',
+      },
+      poster8: {
+        type: 'texture',
+        path: '/game/texture/poster_8.webp',
+        priority: 'low',
+      },
+      poster9: {
+        type: 'texture',
+        path: '/game/texture/poster_9.webp',
+        priority: 'low',
+      },
+      poster10: {
+        type: 'texture',
+        path: '/game/texture/poster_10.webp',
+        priority: 'low',
+      },
+      poster11: {
+        type: 'texture',
+        path: '/game/texture/poster_11.webp',
+        priority: 'low',
+      },
+      poster12: {
+        type: 'texture',
+        path: '/game/texture/poster_12.webp',
         priority: 'low',
       },
       // bmLogo: {

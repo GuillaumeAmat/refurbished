@@ -4,6 +4,7 @@ import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants
 import { type LevelData, isWorkbench } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
+import { Resources } from '../util/Resources';
 import { Time } from '../util/Time';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
@@ -12,8 +13,9 @@ import { DroppedResource } from './object/DroppedResource';
 import type { LevelObject } from './object/LevelObject';
 import { RepairZone } from './object/RepairZone';
 import type { Player } from './Player';
+import { REPAIR_HIT_COUNT } from './RepairAnimation';
 
-const REPAIR_HOLD_DURATION = 2000;
+const REPAIR_HOLD_DURATION = 2800;
 const ASSEMBLE_HOLD_DURATION = 2000;
 
 export class InteractionSystem {
@@ -33,6 +35,7 @@ export class InteractionSystem {
   #activeRepairTargets = new Set<DroppedResource>();
   #activeAssemblyTargets = new Set<BlueWorkZone>();
   #objectsWithResources = new Set<LevelObject>();
+  #repairingPlayers = new Set<PlayerId>();
 
   constructor(levelGroup: Group, levelData: LevelData) {
     this.#levelGroup = levelGroup;
@@ -258,6 +261,9 @@ export class InteractionSystem {
         });
         dropped.create(this.#levelGroup);
         this.addDroppedResource(dropped, target);
+        if (target instanceof RepairZone) {
+          target.hideScrewdriver();
+        }
       } else {
         const facing = player.getFacingDirection();
         const rawDropPos = this.#tempDropPos.copy(playerPos).addScaledVector(facing, 1.0);
@@ -281,6 +287,8 @@ export class InteractionSystem {
           } else {
             parent.removeResource(target);
           }
+        } else if (parent instanceof RepairZone) {
+          parent.showScrewdriver();
         }
 
         this.removeDroppedResource(target);
@@ -307,6 +315,12 @@ export class InteractionSystem {
       const isHoldingX = inputSource.getButtonHoldDuration('x') > 0;
       const target = this.#currentTargets.get(playerId) ?? null;
 
+      // Stop repair animation when X is released or no target
+      if ((!isHoldingX || !target) && player.isRepairing) {
+        player.stopRepairing();
+        this.#repairingPlayers.delete(playerId);
+      }
+
       if (!isHoldingX || !target) continue;
 
       // Repair interaction: X on broken resource sitting on a RepairZone
@@ -316,15 +330,31 @@ export class InteractionSystem {
           // Only add progress once per object per frame (no coop bonus)
           if (!this.#activeRepairTargets.has(target)) {
             this.#activeRepairTargets.add(target);
-            target.addRepairProgress(deltaMs);
           }
 
           target.getOrCreateProgressBar(this.#levelGroup);
-          target.updateProgressBar(target.getRepairProgress() / REPAIR_HOLD_DURATION);
 
-          if (target.isRepairComplete(REPAIR_HOLD_DURATION)) {
-            target.repair();
-            target.resetRepairProgress();
+          // Start repair animation if not already repairing
+          if (!player.isRepairing) {
+            const screwdriverModel = Resources.getInstance().getGLTFAsset('screwdriverModel');
+            const repairZonePos = target.getPosition();
+            if (screwdriverModel && repairZonePos) {
+              const screwdriver = screwdriverModel.scene.clone();
+              this.#repairingPlayers.add(playerId);
+              const progressPerHit = REPAIR_HOLD_DURATION / REPAIR_HIT_COUNT;
+              player.startRepairing(() => {
+                // On each hit: add discrete chunk of progress
+                target.addRepairProgress(progressPerHit);
+                target.updateProgressBar(target.getRepairProgress() / REPAIR_HOLD_DURATION);
+
+                if (target.isRepairComplete(REPAIR_HOLD_DURATION)) {
+                  target.repair();
+                  target.resetRepairProgress();
+                  player.stopRepairing();
+                  this.#repairingPlayers.delete(playerId);
+                }
+              }, screwdriver, repairZonePos);
+            }
           }
         }
       }

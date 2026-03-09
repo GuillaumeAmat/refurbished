@@ -16,6 +16,7 @@ export class Physics {
   }
 
   public async init() {
+    this.#accumulator = 0;
     if (this.initialized) return;
 
     await RAPIER.init();
@@ -61,9 +62,21 @@ export class Physics {
     return world.createCollider(colliderDesc, rigidBody);
   }
 
-  public update() {
+  // Fixed-timestep accumulator: Rapier's step() advances by a constant dt (1/60s).
+  // Without accumulation, a single step() per frame ties physics speed to framerate —
+  // at 30 FPS characters move at half speed. The accumulator catches up by running
+  // multiple steps when frames are slow, keeping movement consistent regardless of FPS.
+  // Capped at 100ms to prevent a "spiral of death" after long pauses (e.g. tab in background).
+  #accumulator = 0;
+
+  public update(deltaMs: number) {
     if (!this.world) return;
-    this.world.step();
+    const fixedDt = this.world.timestep * 1000; // ~16.67ms
+    this.#accumulator += Math.min(deltaMs, 100);
+    while (this.#accumulator >= fixedDt) {
+      this.world.step();
+      this.#accumulator -= fixedDt;
+    }
   }
 
   public dispose(): void {

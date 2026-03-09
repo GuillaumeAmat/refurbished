@@ -30,6 +30,7 @@ export class DeliveryZone extends LevelObject {
   }
 
   #params: DeliveryZoneParams;
+  #ownLight: RectAreaLight | null = null;
 
   constructor(params: DeliveryZoneParams) {
     super();
@@ -62,13 +63,14 @@ export class DeliveryZone extends LevelObject {
 
     const meshBox = new Box3().setFromObject(mesh);
     const meshSize = meshBox.getSize(new Vector3());
-    const rectLight = new RectAreaLight(LIGHT_COLOR, 1, 0.4, 2 * TILE_SIZE);
+    const rectLight = new RectAreaLight(LIGHT_COLOR, 6, 0.4, 2 * TILE_SIZE);
 
     const lightOffset = new Vector3(TILE_SIZE, meshSize.y - 0.6, TILE_SIZE / 2);
     lightOffset.applyEuler(mesh.rotation);
     rectLight.position.copy(mesh.position).add(lightOffset);
     rectLight.rotation.x = -Math.PI / 2;
     DeliveryZone.#lights.push(rectLight);
+    this.#ownLight = rectLight;
 
     this.mesh = mesh;
     group.add(mesh);
@@ -113,6 +115,16 @@ export class DeliveryZone extends LevelObject {
         mesh.position.x += TILE_SIZE;
         break;
     }
+  }
+
+  public override dispose(): void {
+    if (this.#ownLight) {
+      this.#ownLight.removeFromParent();
+      const idx = DeliveryZone.#lights.indexOf(this.#ownLight);
+      if (idx !== -1) DeliveryZone.#lights.splice(idx, 1);
+      this.#ownLight = null;
+    }
+    super.dispose();
   }
 
   #createEdgePhysics(xIndex: number, zIndex: number, xIndex2: number, zIndex2: number, edge: Edge): void {
