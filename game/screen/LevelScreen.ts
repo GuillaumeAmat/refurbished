@@ -120,9 +120,14 @@ export class LevelScreen {
   private async initLevel() {
     if (this.#levelInitialized) return;
 
+    const config = useRuntimeConfig();
+
     this.#level = new Level(this.#group, this.#scene, this.#levelInfo);
     await this.#level.init();
-    this.#level.startOnboarding();
+
+    if (config.public.onboardingEnabled) {
+      this.#level.startOnboarding();
+    }
 
     this.#levelInitialized = true;
   }

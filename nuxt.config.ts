@@ -14,6 +14,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       keyboardFallbackEnabled: true,
+      onboardingEnabled: false,
     },
   },
 
