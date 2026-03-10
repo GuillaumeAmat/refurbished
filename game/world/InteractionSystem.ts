@@ -35,7 +35,6 @@ export class InteractionSystem {
   #tempToObj = new Vector3();
   #tempDropPos = new Vector3();
   #activeRepairTargets = new Set<DroppedResource>();
-  #activeAssemblyTargets = new Set<BlueWorkZone>();
   #objectsWithResources = new Set<LevelObject>();
   #repairingPlayers = new Set<PlayerId>();
 
@@ -329,7 +328,6 @@ export class InteractionSystem {
 
     // Clear and reuse sets to track objects worked on this frame
     this.#activeRepairTargets.clear();
-    this.#activeAssemblyTargets.clear();
 
     for (const player of this.#players) {
       const playerId = player.getPlayerId();
@@ -384,39 +382,39 @@ export class InteractionSystem {
         }
       }
 
-      // Assembly interaction: X on BlueWorkZone when ready to assemble
-      if (target instanceof BlueWorkZone && target.isReadyToAssemble()) {
-        // Only add progress once per object per frame (no coop bonus)
-        if (!this.#activeAssemblyTargets.has(target)) {
-          this.#activeAssemblyTargets.add(target);
-          target.addAssemblyProgress(deltaMs);
+    }
+  }
+
+  #updateAutoAssembly(): void {
+    const deltaMs = Time.getInstance().delta;
+    for (const obj of this.#interactables) {
+      if (!(obj instanceof BlueWorkZone)) continue;
+      if (!obj.isReadyToAssemble()) continue;
+
+      obj.addAssemblyProgress(deltaMs);
+      obj.getOrCreateProgressBar(this.#levelGroup);
+      obj.updateProgressBar(obj.getAssemblyProgress() / ASSEMBLE_HOLD_DURATION);
+
+      if (obj.isAssemblyComplete(ASSEMBLE_HOLD_DURATION)) {
+        const removedResources = obj.assemble();
+        for (const res of removedResources) {
+          this.removeDroppedResource(res);
         }
 
-        target.getOrCreateProgressBar(this.#levelGroup);
-        target.updateProgressBar(target.getAssemblyProgress() / ASSEMBLE_HOLD_DURATION);
-
-        if (target.isAssemblyComplete(ASSEMBLE_HOLD_DURATION)) {
-          const removedResources = target.assemble();
-          for (const res of removedResources) {
-            this.removeDroppedResource(res);
-          }
-
-          // Spawn phone inside zone (grabbable)
-          const targetPos = target.getPosition();
-          if (targetPos) {
-            const phone = new DroppedResource({
-              resourceType: 'phone',
-              position: targetPos,
-              onTopOf: target,
-              state: 'repaired',
-              skipIcon: true,
-            });
-            phone.create(this.#levelGroup);
-            this.addDroppedResource(phone, target);
-            target.setAwaitingPackaging(phone);
-            target.showPhoneIcon();
-            this.#onboardingManager?.onPhoneAssembled();
-          }
+        const targetPos = obj.getPosition();
+        if (targetPos) {
+          const phone = new DroppedResource({
+            resourceType: 'phone',
+            position: targetPos,
+            onTopOf: obj,
+            state: 'repaired',
+            skipIcon: true,
+          });
+          phone.create(this.#levelGroup);
+          this.addDroppedResource(phone, obj);
+          obj.setAwaitingPackaging(phone);
+          obj.showPhoneIcon();
+          this.#onboardingManager?.onPhoneAssembled();
         }
       }
     }
@@ -436,6 +434,7 @@ export class InteractionSystem {
     }
 
     this.#updateHoldInteractions();
+    this.#updateAutoAssembly();
   }
 
   #findBestTarget(player: Player): LevelObject | null {
@@ -468,8 +467,6 @@ export class InteractionSystem {
           // Allow targeting if carrying a compatible resource or ready to assemble
           if (carriedType && carriedState && obj.canAcceptResource(carriedType, carriedState)) {
             // Allow targeting
-          } else if (obj.isReadyToAssemble()) {
-            // Allow targeting for assembly
           } else if (carriedType && carriedState && obj.canAcceptPackage(carriedType, carriedState)) {
             // Allow targeting for packaging
           } else {
