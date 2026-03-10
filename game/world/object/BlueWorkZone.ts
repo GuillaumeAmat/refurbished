@@ -1,9 +1,10 @@
-import { type Group, Mesh, Vector3 } from 'three';
+import { Box3, BoxGeometry, type Group, Mesh, MeshStandardMaterial, PointLight, Vector3 } from 'three';
 
-import { TILE_SIZE } from '../../constants';
+import { BLOOM_LAYER, TILE_SIZE } from '../../constants';
 import { ProgressBar } from '../../hud/ProgressBar';
 import { createIconPlane, type IconPlaneResult } from '../../lib/createIconPlane';
 import type { ResourceState, ResourceType } from '../../types';
+import { Debug } from '../../util/Debug';
 import { Resources } from '../../util/Resources';
 import type { DroppedResource } from './DroppedResource';
 import { LevelObject } from './LevelObject';
@@ -17,6 +18,20 @@ export interface BlueWorkZoneParams {
 
 type AssemblyResourceType = 'battery' | 'frame' | 'screen';
 const ASSEMBLY_RESOURCES: AssemblyResourceType[] = ['battery', 'screen', 'frame'];
+
+const LED_COLORS = {
+  empty: 0xff2200,
+  partial: 0xff5500,
+  assembling: 0x2244ff,
+  ready: 0x55ff00,
+} as const;
+const LED_INTENSITIES: Record<keyof typeof LED_COLORS, number> = {
+  empty: 3.95,
+  partial: 3.2,
+  assembling: 15,
+  ready: 2.0,
+};
+type LedState = keyof typeof LED_COLORS;
 
 const RESOURCE_ICON_MAP: Record<AssemblyResourceType, string> = {
   battery: 'batteryFilledIcon',
@@ -33,6 +48,9 @@ export class BlueWorkZone extends LevelObject {
   #awaitingPackaging: boolean = false;
   #phoneResource: DroppedResource | null = null;
   #zoneIcon: IconPlaneResult | null = null;
+  #ledMesh: Mesh | null = null;
+  #ledMaterial: MeshStandardMaterial | null = null;
+  #ledLight: PointLight | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
@@ -55,6 +73,7 @@ export class BlueWorkZone extends LevelObject {
   public setResource(resource: DroppedResource | null): void {
     if (!resource) {
       this.#containedResources.clear();
+      this.#updateLed();
       this.#createIndicators();
       this.resetAssemblyProgress();
       return;
@@ -62,6 +81,7 @@ export class BlueWorkZone extends LevelObject {
     const type = resource.getResourceType() as AssemblyResourceType;
     if (ASSEMBLY_RESOURCES.includes(type)) {
       this.#containedResources.set(type, resource);
+      this.#updateLed();
       this.#setSlotIcon(type, RESOURCE_ICON_MAP[type]);
       this.resetAssemblyProgress();
 
@@ -76,10 +96,16 @@ export class BlueWorkZone extends LevelObject {
     for (const [type, r] of this.#containedResources) {
       if (r === resource) {
         this.#containedResources.delete(type);
+        this.#updateLed();
         this.#setSlotIcon(type, 'plusIcon');
         break;
       }
     }
+  }
+
+  public override setHighlight(enabled: boolean): void {
+    super.setHighlight(enabled);
+    this.#updateLed();
   }
 
   public canAcceptResource(type: ResourceType, state: ResourceState): boolean {
@@ -96,6 +122,7 @@ export class BlueWorkZone extends LevelObject {
 
   public setAwaitingPackaging(phone: DroppedResource): void {
     this.#awaitingPackaging = true;
+    this.#updateLed();
     this.#phoneResource = phone;
 
     // Hide phone model mesh
@@ -107,6 +134,7 @@ export class BlueWorkZone extends LevelObject {
   public clearAwaitingPackaging(): DroppedResource | null {
     const phone = this.#phoneResource;
     this.#awaitingPackaging = false;
+    this.#updateLed();
     this.#phoneResource = null;
     this.hidePhoneIcon();
     return phone;
@@ -124,11 +152,7 @@ export class BlueWorkZone extends LevelObject {
 
     const texture = Resources.getInstance().getTextureAsset('phoneIcon');
     if (!texture) return;
-    const anchor = new Vector3(
-      this.mesh.position.x + TILE_SIZE / 2,
-      2.8,
-      this.mesh.position.z + TILE_SIZE / 2,
-    );
+    const anchor = new Vector3(this.mesh.position.x + TILE_SIZE / 2, 2.8, this.mesh.position.z + TILE_SIZE / 2);
     this.#zoneIcon = createIconPlane(texture, 0.3, anchor);
     this.mesh.parent?.add(this.#zoneIcon.mesh);
   }
@@ -145,11 +169,7 @@ export class BlueWorkZone extends LevelObject {
 
   public override getDropSurface(): Vector3 | null {
     if (!this.mesh) return null;
-    return new Vector3(
-      this.mesh.position.x + TILE_SIZE / 2,
-      0.5,
-      this.mesh.position.z + TILE_SIZE / 2,
-    );
+    return new Vector3(this.mesh.position.x + TILE_SIZE / 2, 0.5, this.mesh.position.z + TILE_SIZE / 2);
   }
 
   public canAcceptPackage(type: ResourceType, state: ResourceState): boolean {
@@ -163,6 +183,7 @@ export class BlueWorkZone extends LevelObject {
   public assemble(): DroppedResource[] {
     const removed = Array.from(this.#containedResources.values());
     this.#containedResources.clear();
+    this.#updateLed();
     this.#progressBar?.dispose();
     this.#progressBar = null;
     return removed;
@@ -207,11 +228,7 @@ export class BlueWorkZone extends LevelObject {
     const spacing = 1.2;
     const totalWidth = spacing * (ASSEMBLY_RESOURCES.length - 1);
     const startX = TILE_SIZE * 0.5 - totalWidth / 2;
-    return new Vector3(
-      this.mesh!.position.x + startX + index * spacing,
-      2.8,
-      this.mesh!.position.z + TILE_SIZE * 0.5,
-    );
+    return new Vector3(this.mesh!.position.x + startX + index * spacing, 2.8, this.mesh!.position.z + TILE_SIZE * 0.5);
   }
 
   #setSlotIcon(type: AssemblyResourceType, textureName: string): void {
@@ -253,9 +270,85 @@ export class BlueWorkZone extends LevelObject {
     group.add(mesh);
 
     this.#createIndicators();
+    this.#createLed();
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
     this.isInteractable = true;
+  }
+
+  #getLedState(): LedState {
+    if (this.#awaitingPackaging) return 'ready';
+    if (this.isReadyToAssemble()) return 'assembling';
+    if (this.#containedResources.size > 0) return 'partial';
+    return 'empty';
+  }
+
+  #updateLed(): void {
+    if (!this.#ledMaterial || !this.#ledLight) return;
+    const state = this.#getLedState();
+    const color = LED_COLORS[state];
+    this.#ledMaterial.emissive.setHex(color);
+    this.#ledMaterial.emissiveIntensity = LED_INTENSITIES[state];
+    this.#ledLight.color.setHex(color);
+  }
+
+  #createLed(): void {
+    if (!this.mesh) return;
+    const model = Resources.getInstance().getGLTFAsset('blueWorkZoneModel');
+    if (!model) return;
+    const modelSize = new Box3().setFromObject(model.scene).getSize(new Vector3());
+
+    const geo = new BoxGeometry(0.76, 0.2, 0.04);
+    const mat = new MeshStandardMaterial({
+      color: 0x111111,
+      emissive: LED_COLORS.empty,
+      emissiveIntensity: 2.0,
+      roughness: 0.3,
+      metalness: 0.6,
+    });
+    const ledMesh = new Mesh(geo, mat);
+    ledMesh.position.set(TILE_SIZE / 2, 1.85, 1.4);
+    ledMesh.rotation.x = -Math.PI / 5;
+    ledMesh.frustumCulled = false;
+    ledMesh.layers.enable(BLOOM_LAYER);
+    this.mesh.add(ledMesh);
+
+    const light = new PointLight(LED_COLORS.empty, 0.4, 1.5);
+    light.position.set(TILE_SIZE / 2, modelSize.y - 0.05, 0.15);
+    this.mesh.add(light);
+
+    this.#ledMesh = ledMesh;
+    this.#ledMaterial = mat;
+    this.#ledLight = light;
+    this.#updateLed();
+
+    const debug = Debug.getInstance();
+    if (debug?.active) {
+      const folder = debug.gui.addFolder('BlueWorkZone LED');
+      const pos = ledMesh.position;
+      folder
+        .add(pos, 'x', -2, 4, 0.01)
+        .name('pos x')
+        .onChange(() => {
+          light.position.x = pos.x;
+        });
+      folder
+        .add(pos, 'y', 0, 4, 0.01)
+        .name('pos y')
+        .onChange(() => {
+          light.position.y = pos.y;
+        });
+      folder
+        .add(pos, 'z', -2, 2, 0.01)
+        .name('pos z')
+        .onChange(() => {
+          light.position.z = pos.z;
+        });
+      folder.add(ledMesh.rotation, 'x', -Math.PI, Math.PI, 0.01).name('rot x');
+      folder.add(ledMesh.rotation, 'y', -Math.PI, Math.PI, 0.01).name('rot y');
+      folder.add(ledMesh.rotation, 'z', -Math.PI, Math.PI, 0.01).name('rot z');
+      folder.open();
+    }
   }
 
   #createIndicators(): void {
@@ -272,5 +365,12 @@ export class BlueWorkZone extends LevelObject {
     this.#slotIcons.clear();
     this.#progressBar?.dispose();
     this.hidePhoneIcon();
+    this.#ledMesh?.removeFromParent();
+    this.#ledMesh?.geometry.dispose();
+    this.#ledMaterial?.dispose();
+    this.#ledMesh = null;
+    this.#ledMaterial = null;
+    this.#ledLight?.removeFromParent();
+    this.#ledLight = null;
   }
 }
