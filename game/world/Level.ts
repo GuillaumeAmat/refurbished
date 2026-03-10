@@ -7,6 +7,7 @@ import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
 import { Floor } from './object/Floor';
 import type { LevelObject } from './object/LevelObject';
+import { OnboardingManager } from './OnboardingManager';
 import { Player } from './Player';
 
 export class Level {
@@ -20,6 +21,7 @@ export class Level {
   #player1: Player | null = null;
   #player2: Player | null = null;
   #interactionSystem!: InteractionSystem;
+  #onboardingManager!: OnboardingManager;
   #physics: Physics;
 
   #interactive = true;
@@ -51,6 +53,9 @@ export class Level {
     this.#interactionSystem.registerPlayer(this.#player1);
     this.#interactionSystem.registerPlayer(this.#player2);
     this.#interactionSystem.setInteractables(this.#levelBuilder.getInteractables());
+
+    this.#onboardingManager = new OnboardingManager(this.#group, this.#levelBuilder.getInteractables());
+    this.#interactionSystem.setOnboardingManager(this.#onboardingManager);
 
     this.#setupInputCallbacks();
   }
@@ -86,9 +91,14 @@ export class Level {
     this.#interactive = interactive;
   }
 
+  public startOnboarding(): void {
+    this.#onboardingManager.start();
+  }
+
   public dispose(): void {
     this.#player1?.cleanup();
     this.#player2?.cleanup();
+    this.#onboardingManager.dispose();
     this.#floor.dispose();
     this.#levelBuilder.dispose();
     this.#group.removeFromParent();
@@ -100,5 +110,6 @@ export class Level {
     this.#player1?.update();
     this.#player2?.update();
     this.#interactionSystem.update();
+    this.#onboardingManager.update();
   }
 }

@@ -122,6 +122,7 @@ export class LevelScreen {
 
     this.#level = new Level(this.#group, this.#scene, this.#levelInfo);
     await this.#level.init();
+    this.#level.startOnboarding();
 
     this.#levelInitialized = true;
   }

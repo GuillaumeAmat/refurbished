@@ -12,6 +12,7 @@ import { DeliveryZone } from './object/DeliveryZone';
 import { DroppedResource } from './object/DroppedResource';
 import type { LevelObject } from './object/LevelObject';
 import { RepairZone } from './object/RepairZone';
+import type { OnboardingManager } from './OnboardingManager';
 import type { Player } from './Player';
 import { REPAIR_HIT_COUNT } from './RepairAnimation';
 
@@ -28,6 +29,7 @@ export class InteractionSystem {
   #levelData: LevelData;
   #gamepadManager: GamepadManager;
   #orderManager: OrderManager;
+  #onboardingManager: OnboardingManager | null = null;
 
   // Cached objects to avoid allocations in hot loops
   #tempToObj = new Vector3();
@@ -46,6 +48,10 @@ export class InteractionSystem {
 
   setInteractables(objects: LevelObject[]): void {
     this.#interactables = objects;
+  }
+
+  setOnboardingManager(manager: OnboardingManager): void {
+    this.#onboardingManager = manager;
   }
 
   registerPlayer(player: Player): void {
@@ -191,6 +197,7 @@ export class InteractionSystem {
       if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
         this.#orderManager.completeNextOrder();
+        this.#onboardingManager?.onDeliveryCompleted();
         return;
       }
 
@@ -206,6 +213,7 @@ export class InteractionSystem {
 
         // Auto-grab closed package
         player.grabResource('package', 'repaired');
+        this.#onboardingManager?.onPackageFilled();
         return;
       }
 
@@ -294,8 +302,24 @@ export class InteractionSystem {
         this.removeDroppedResource(target);
         this.#currentTargets.set(playerId, null);
       } else if (target instanceof Crate) {
-        player.grabResource(target.getResourceType(), 'broken');
+        const resourceType = target.getResourceType();
+        player.grabResource(resourceType, 'broken');
         target.openLid();
+
+        if (resourceType === 'package') {
+          let phonePos: Vector3 | null = null;
+          for (const obj of this.#interactables) {
+            if (obj instanceof BlueWorkZone && obj.isAwaitingPackaging()) {
+              phonePos = obj.getPosition();
+              break;
+            }
+          }
+          if (phonePos) {
+            this.#onboardingManager?.onPackageGrabbed(phonePos);
+          }
+        } else {
+          this.#onboardingManager?.onResourceGrabbed();
+        }
       }
     }
   }
@@ -355,6 +379,7 @@ export class InteractionSystem {
                 }
               }, screwdriver, repairZonePos);
             }
+            this.#onboardingManager?.onResourceRepaired();
           }
         }
       }
@@ -390,6 +415,7 @@ export class InteractionSystem {
             this.addDroppedResource(phone, target);
             target.setAwaitingPackaging(phone);
             target.showPhoneIcon();
+            this.#onboardingManager?.onPhoneAssembled();
           }
         }
       }
