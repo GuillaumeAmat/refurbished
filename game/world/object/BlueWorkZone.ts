@@ -134,6 +134,7 @@ export class BlueWorkZone extends LevelObject {
   public clearAwaitingPackaging(): DroppedResource | null {
     const phone = this.#phoneResource;
     this.#awaitingPackaging = false;
+    this.#containedResources.clear();
     this.#updateLed();
     this.#phoneResource = null;
     this.hidePhoneIcon();
