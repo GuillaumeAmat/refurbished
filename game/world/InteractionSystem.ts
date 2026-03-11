@@ -1,7 +1,7 @@
 import { type Group, Vector3 } from 'three';
 
 import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
-import { type LevelData, isWorkbench } from '../levels';
+import { isWorkbench, type LevelData } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Resources } from '../util/Resources';
@@ -85,7 +85,10 @@ export class InteractionSystem {
     if (parent) {
       let stillHasResource = false;
       for (const p of this.#resourceParents.values()) {
-        if (p === parent) { stillHasResource = true; break; }
+        if (p === parent) {
+          stillHasResource = true;
+          break;
+        }
       }
       if (!stillHasResource) this.#objectsWithResources.delete(parent);
     }
@@ -116,7 +119,11 @@ export class InteractionSystem {
         const dx = cx - rawPos.x;
         const dz = cz - rawPos.z;
         const d = dx * dx + dz * dz;
-        if (d < bestDist) { bestDist = d; rx = cx; rz = cz; }
+        if (d < bestDist) {
+          bestDist = d;
+          rx = cx;
+          rz = cz;
+        }
       }
     }
 
@@ -134,7 +141,11 @@ export class InteractionSystem {
         const dx = cx - playerPos.x;
         const dz = cz - playerPos.z;
         const d = dx * dx + dz * dz;
-        if (d < bestDist) { bestDist = d; bestX = cx; bestZ = cz; }
+        if (d < bestDist) {
+          bestDist = d;
+          bestX = cx;
+          bestZ = cz;
+        }
       }
       rx = bestX;
       rz = bestZ;
@@ -364,24 +375,27 @@ export class InteractionSystem {
               const screwdriver = screwdriverModel.scene.clone();
               this.#repairingPlayers.add(playerId);
               const progressPerHit = REPAIR_HOLD_DURATION / REPAIR_HIT_COUNT;
-              player.startRepairing(() => {
-                // On each hit: add discrete chunk of progress
-                target.addRepairProgress(progressPerHit);
-                target.updateProgressBar(target.getRepairProgress() / REPAIR_HOLD_DURATION);
+              player.startRepairing(
+                () => {
+                  // On each hit: add discrete chunk of progress
+                  target.addRepairProgress(progressPerHit);
+                  target.updateProgressBar(target.getRepairProgress() / REPAIR_HOLD_DURATION);
 
-                if (target.isRepairComplete(REPAIR_HOLD_DURATION)) {
-                  target.repair();
-                  target.resetRepairProgress();
-                  player.stopRepairing();
-                  this.#repairingPlayers.delete(playerId);
-                }
-              }, screwdriver, repairZonePos);
+                  if (target.isRepairComplete(REPAIR_HOLD_DURATION)) {
+                    target.repair();
+                    target.resetRepairProgress();
+                    player.stopRepairing();
+                    this.#repairingPlayers.delete(playerId);
+                  }
+                },
+                screwdriver,
+                repairZonePos,
+              );
             }
             this.#onboardingManager?.onResourceRepaired();
           }
         }
       }
-
     }
   }
 
@@ -477,7 +491,11 @@ export class InteractionSystem {
         }
       }
 
-      const objPos = obj.getClosestPoint(playerPos);
+      // For DroppedResources on a bench, use the parent's closest point so
+      // distance/facing are measured from the bench edge (same as the bench
+      // itself), not from the resource's own centre which may be far away.
+      const proxyObj = obj instanceof DroppedResource ? (this.#getParentObject(obj) ?? obj) : obj;
+      const objPos = proxyObj.getClosestPoint(playerPos);
       if (!objPos) continue;
 
       const dx = objPos.x - playerPos.x;
@@ -496,7 +514,7 @@ export class InteractionSystem {
       if (obj instanceof DroppedResource) priorityBonus = 10;
       else if (obj instanceof Crate) priorityBonus = 5;
 
-      const score = dot - distanceXZ * 0.5 + priorityBonus;
+      const score = -distanceXZ + priorityBonus;
       if (score > bestScore) {
         bestScore = score;
         bestTarget = obj;
