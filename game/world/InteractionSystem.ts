@@ -191,6 +191,14 @@ export class InteractionSystem {
           player.dropResource();
           this.removeDroppedResource(target);
 
+          // Phone on a BlueWorkZone: mirror the BlueWorkZone path
+          if (parent instanceof BlueWorkZone && parent.isAwaitingPackaging()) {
+            parent.clearAwaitingPackaging();
+            player.grabResource('package', 'repaired');
+            this.#onboardingManager?.onPackageFilled();
+            return;
+          }
+
           const closedPkg = new DroppedResource({
             resourceType: 'package',
             position: targetPos,
