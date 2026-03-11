@@ -31,6 +31,7 @@ export class DeliveryZone extends LevelObject {
 
   #params: DeliveryZoneParams;
   #ownLight: RectAreaLight | null = null;
+  #zoneCenter: Vector3 | null = null;
 
   constructor(params: DeliveryZoneParams) {
     super();
@@ -149,5 +150,10 @@ export class DeliveryZone extends LevelObject {
 
     this.rigidBody = physics.createStaticRigidBody(position);
     physics.createBoxCollider(this.rigidBody, halfExtents, 0.0);
+    this.#zoneCenter = position.clone();
+  }
+
+  public getZoneCenter(): Vector3 | null {
+    return this.#zoneCenter;
   }
 }

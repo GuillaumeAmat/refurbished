@@ -33,6 +33,10 @@ export const SMOKE_DASH_ARC_ANGLE = 2.8;
 
 export const AUDIO_TRACK_FADE_MS = 100;
 
+// Delivery animation
+export const DELIVERY_ANIM_DURATION = 0.5; // s — package visible before smoke vanish
+export const DELIVERY_SMOKE_COUNT = 12; // particles spawned on vanish
+
 // Order system
 export const ORDER_BASE_POINTS = 20;
 export const ORDER_DURATION_MS = 60_000;

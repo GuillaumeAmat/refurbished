@@ -1,6 +1,6 @@
-import { type Group, Vector3 } from 'three';
+import { type Group, type Object3D, Vector3 } from 'three';
 
-import { INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
+import { DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
 import { isWorkbench, type LevelData } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -15,6 +15,7 @@ import { RepairZone } from './object/RepairZone';
 import type { OnboardingManager } from './OnboardingManager';
 import type { Player } from './Player';
 import { REPAIR_HIT_COUNT } from './RepairAnimation';
+import { SmokeParticleSystem } from './SmokeParticleSystem';
 
 const REPAIR_HOLD_DURATION = 2800;
 const ASSEMBLE_HOLD_DURATION = 2000;
@@ -31,6 +32,9 @@ export class InteractionSystem {
   #orderManager: OrderManager;
   #onboardingManager: OnboardingManager | null = null;
 
+  #smokeSystem: SmokeParticleSystem;
+  #deliveryAnims: { mesh: Object3D; timer: number }[] = [];
+
   // Cached objects to avoid allocations in hot loops
   #tempToObj = new Vector3();
   #tempDropPos = new Vector3();
@@ -43,6 +47,7 @@ export class InteractionSystem {
     this.#levelData = levelData;
     this.#gamepadManager = GamepadManager.getInstance();
     this.#orderManager = OrderManager.getInstance();
+    this.#smokeSystem = new SmokeParticleSystem(levelGroup);
   }
 
   setInteractables(objects: LevelObject[]): void {
@@ -215,6 +220,17 @@ export class InteractionSystem {
       // Delivery zone: only accept closed packages
       if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
+        const zoneCenter = target.getZoneCenter();
+        if (zoneCenter) {
+          const model = Resources.getInstance().getGLTFAsset('packageClosedModel');
+          if (model) {
+            const mesh = model.scene.clone();
+            mesh.position.set(zoneCenter.x, 1, zoneCenter.z);
+            mesh.scale.setScalar(1.2);
+            this.#levelGroup.add(mesh);
+            this.#deliveryAnims.push({ mesh, timer: 0 });
+          }
+        }
         this.#orderManager.completeNextOrder();
         this.#onboardingManager?.onDeliveryCompleted();
         return;
@@ -442,6 +458,18 @@ export class InteractionSystem {
   }
 
   update(): void {
+    const dt = Time.getInstance().delta * 0.001;
+    for (let i = this.#deliveryAnims.length - 1; i >= 0; i--) {
+      const anim = this.#deliveryAnims[i]!;
+      anim.timer += dt;
+      if (anim.timer >= DELIVERY_ANIM_DURATION) {
+        this.#smokeSystem.spawnImpact(anim.mesh.position, DELIVERY_SMOKE_COUNT);
+        anim.mesh.removeFromParent();
+        this.#deliveryAnims.splice(i, 1);
+      }
+    }
+    this.#smokeSystem.update(null, null, false);
+
     for (const player of this.#players) {
       const bestTarget = this.#findBestTarget(player);
       const playerId = player.getPlayerId();
