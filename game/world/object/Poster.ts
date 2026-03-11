@@ -1,5 +1,4 @@
-import { Group, LinearFilter } from 'three';
-import { Box3, CylinderGeometry, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
+import { Box3, CylinderGeometry, Group, LinearFilter, Mesh, MeshStandardMaterial, PlaneGeometry, SRGBColorSpace, Vector3  } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Resources } from '../../util/Resources';

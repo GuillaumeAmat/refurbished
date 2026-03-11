@@ -21,8 +21,8 @@ import type { LevelObject } from './object/LevelObject';
 import { NeonWall } from './object/NeonWall';
 import { Poster } from './object/Poster';
 import { RepairZone } from './object/RepairZone';
-import { WallLight } from './object/WallLight';
 import { Wall, type WallSide } from './object/Wall';
+import { WallLight } from './object/WallLight';
 import { Workbench, type WorkbenchParams } from './object/Workbench';
 import { WorkbenchBatch } from './object/WorkbenchBatch';
 

@@ -207,7 +207,6 @@ export class DroppedResource extends LevelObject {
     const bbox = new Box3().setFromObject(meshObject);
 
     let iconX: number;
-    let iconZ: number;
 
     const onTopOf = this.#params.onTopOf;
     if (onTopOf?.getMesh()) {
@@ -215,12 +214,10 @@ export class DroppedResource extends LevelObject {
       const tileOffset = new Vector3(TILE_SIZE / 2, 0, TILE_SIZE / 2);
       tileOffset.applyAxisAngle(new Vector3(0, 1, 0), parentMesh.rotation.y);
       iconX = parentMesh.position.x + tileOffset.x;
-      iconZ = parentMesh.position.z + tileOffset.z;
     } else {
       const center = new Vector3();
       bbox.getCenter(center);
       iconX = center.x;
-      iconZ = center.z;
     }
 
     const anchor = new Vector3(iconX, bbox.max.y, bbox.min.z);

@@ -3,8 +3,8 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { PauseOverlayHUD } from '../hud/PauseOverlayHUD';
-import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
+import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 
 export class PauseScreen {

@@ -1,12 +1,12 @@
 import { type Group, Vector3 } from 'three';
 
 import { Time } from '../util/Time';
-import { OnboardingHighlight } from './OnboardingHighlight';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import { DeliveryZone } from './object/DeliveryZone';
 import type { LevelObject } from './object/LevelObject';
 import { RepairZone } from './object/RepairZone';
+import { OnboardingHighlight } from './OnboardingHighlight';
 
 enum Step {
   IDLE,

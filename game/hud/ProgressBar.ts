@@ -1,15 +1,14 @@
-import { Group, Mesh, MeshBasicMaterial, PlaneGeometry, Vector3 } from 'three';
+import type { Vector3 } from 'three';
+import { Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 
 export class ProgressBar {
   #group: Group;
   #backgroundMesh: Mesh;
   #fillMesh: Mesh;
   #width: number;
-  #height: number;
 
   constructor(width = 1, height = 0.1) {
     this.#width = width;
-    this.#height = height;
     this.#group = new Group();
 
     const bgGeometry = new PlaneGeometry(width, height);

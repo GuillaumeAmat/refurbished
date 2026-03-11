@@ -187,6 +187,7 @@ export class InteractionSystem {
         if ((carriedIsPhone && targetIsOpenPkg) || (carriedIsOpenPkg && targetIsPhone)) {
           const parent = this.#getParentObject(target) ?? undefined;
           const targetPos = target.getPosition() ?? player.getPosition();
+          if (!targetPos) return;
 
           player.dropResource();
           this.removeDroppedResource(target);
@@ -343,8 +344,6 @@ export class InteractionSystem {
   }
 
   #updateHoldInteractions(): void {
-    const deltaMs = Time.getInstance().delta;
-
     // Clear and reuse sets to track objects worked on this frame
     this.#activeRepairTargets.clear();
 
