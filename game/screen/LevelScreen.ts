@@ -209,8 +209,13 @@ export class LevelScreen {
       this.#checkPauseInput();
     }
 
-    const midpoint = this.#level?.getPlayerMidpoint() ?? null;
-    const dist = this.#level?.getPlayerDistance() ?? null;
+    const config = useRuntimeConfig();
+    const midpoint = config.public.cameraDynamicsEnabled
+      ? (this.#level?.getPlayerMidpoint() ?? null)
+      : null;
+    const dist = config.public.cameraDynamicsEnabled
+      ? (this.#level?.getPlayerDistance() ?? null)
+      : null;
     const zoomFactor =
       dist !== null ? Math.max(-1, Math.min(1, (this.#spawnDist - dist) / this.#spawnDist)) : 0;
     this.#camera.setFollowTarget(midpoint, zoomFactor);

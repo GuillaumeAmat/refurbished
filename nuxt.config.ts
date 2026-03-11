@@ -15,6 +15,7 @@ export default defineNuxtConfig({
     public: {
       keyboardFallbackEnabled: true,
       onboardingEnabled: false,
+      cameraDynamicsEnabled: false,
     },
   },
 
