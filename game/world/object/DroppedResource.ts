@@ -88,7 +88,7 @@ export class DroppedResource extends LevelObject {
 
   public getOrCreateProgressBar(levelGroup: Group): ProgressBar {
     if (!this.#progressBar) {
-      this.#progressBar = new ProgressBar(1.2, 0.15);
+      this.#progressBar = new ProgressBar(0.5, 0.075);
       const pos = this.getPosition();
       if (pos) {
         this.#progressBar.setPosition(new Vector3(pos.x, 2.5, pos.z));
