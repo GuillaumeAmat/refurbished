@@ -1,68 +1,88 @@
 import { Group } from 'three';
 
+import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
+import { createRichTextPlane, type RichTextPlaneResult } from '../lib/createRichTextPlane';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
-import { HUDBackdrop } from './HUDBackdrop';
 import type { IHUDItem } from './IHUDItem';
 
 export class MenuOverlayHUD implements IHUDItem {
   static readonly OVERLAY_HEIGHT = 0.8;
-  static readonly TITLE_HEIGHT = 0.15;
-  static readonly OPTION_HEIGHT = 0.08;
+  static readonly TITLE_HEIGHT = 0.44;
+  static readonly SUBTITLE_HEIGHT = 0.12;
+  static readonly BUTTON_HEIGHT = 0.22;
 
   #group: Group;
-  #backdrop: HUDBackdrop;
   #titleText: TextPlaneResult | null = null;
-  #playText: TextPlaneResult | null = null;
-  #leaderboardText: TextPlaneResult | null = null;
+  #subtitleText: RichTextPlaneResult | null = null;
+  #playButton: PillButtonPlaneResult | null = null;
+  #leaderboardButton: PillButtonPlaneResult | null = null;
 
   #selectedOption: 'play' | 'leaderboard' = 'play';
 
   constructor() {
     this.#group = new Group();
-    this.#backdrop = new HUDBackdrop(2.5, MenuOverlayHUD.OVERLAY_HEIGHT);
-    this.#group.add(this.#backdrop.getGroup());
     this.#createContent();
   }
 
   #createContent() {
-    this.#titleText = createTextPlane('Main Menu', {
+    this.#titleText = createTextPlane('Refurbished!', {
       height: MenuOverlayHUD.TITLE_HEIGHT,
-      fontSize: 72,
-      color: '#FBD954',
+      fontFamily: 'IvarSoft, serif',
+      fontWeight: '600',
+      fontStyle: 'italic',
+      fontSize: 360,
+      color: '#000000',
     });
     this.#titleText.mesh.position.y = 0.25;
     this.#group.add(this.#titleText.mesh);
 
-    this.#playText = createTextPlane('> Play', {
-      height: MenuOverlayHUD.OPTION_HEIGHT,
-      fontSize: 40,
-      color: '#FBD954',
-    });
-    this.#playText.mesh.position.set(0, 0.05, 0);
-    this.#group.add(this.#playText.mesh);
+    this.#subtitleText = createRichTextPlane(
+      [{ text: 'An ' }, { text: 'Overcooked!', fontStyle: 'italic' }, { text: ' tribute' }],
+      {
+        height: MenuOverlayHUD.SUBTITLE_HEIGHT,
+        fontFamily: 'BMDupletTXT, system-ui, sans-serif',
+        fontSize: 72,
+        color: '#000000',
+      },
+    );
+    this.#subtitleText.mesh.position.x = (this.#titleText.width - this.#subtitleText.width) / 2;
+    this.#subtitleText.mesh.position.y = -0.04;
+    this.#group.add(this.#subtitleText.mesh);
 
-    this.#leaderboardText = createTextPlane('  Leaderboard', {
-      height: MenuOverlayHUD.OPTION_HEIGHT,
-      fontSize: 40,
-      color: '#888888',
+    const fixedHeight = 160;
+    const buttonOptions = {
+      height: MenuOverlayHUD.BUTTON_HEIGHT,
+      fontFamily: 'BMDupletTXT, system-ui, sans-serif',
+      fontWeight: '600',
+      fontSize: 64,
+      fixedHeight,
+    };
+
+    // Measure both buttons to find the widest, then recreate with uniform width
+    const playProbe = createPillButtonPlane('Play', buttonOptions);
+    const lbProbe = createPillButtonPlane('Leaderboard', buttonOptions);
+    const maxWidth = Math.max(playProbe.width, lbProbe.width);
+    const minCanvasWidth = (maxWidth / MenuOverlayHUD.BUTTON_HEIGHT) * fixedHeight;
+    playProbe.dispose();
+    lbProbe.dispose();
+
+    this.#playButton = createPillButtonPlane('Play', { ...buttonOptions, minCanvasWidth });
+    this.#playButton.mesh.position.y = -0.52;
+    this.#group.add(this.#playButton.mesh);
+
+    this.#leaderboardButton = createPillButtonPlane('Leaderboard', {
+      ...buttonOptions,
+      minCanvasWidth,
+      transparent: true,
     });
-    this.#leaderboardText.mesh.position.set(0, -0.1, 0);
-    this.#group.add(this.#leaderboardText.mesh);
+    this.#leaderboardButton.mesh.position.y = -0.82;
+    this.#group.add(this.#leaderboardButton.mesh);
   }
 
   setSelectedOption(option: 'play' | 'leaderboard') {
     this.#selectedOption = option;
-    if (option === 'play') {
-      this.#playText?.updateText('> Play');
-      this.#playText?.updateColor('#FBD954');
-      this.#leaderboardText?.updateText('  Leaderboard');
-      this.#leaderboardText?.updateColor('#888888');
-    } else {
-      this.#playText?.updateText('  Play');
-      this.#playText?.updateColor('#888888');
-      this.#leaderboardText?.updateText('> Leaderboard');
-      this.#leaderboardText?.updateColor('#FBD954');
-    }
+    this.#playButton?.updateState(option === 'play');
+    this.#leaderboardButton?.updateState(option === 'leaderboard');
   }
 
   getSelectedOption(): 'play' | 'leaderboard' {
@@ -94,9 +114,9 @@ export class MenuOverlayHUD implements IHUDItem {
   update() {}
 
   dispose() {
-    this.#backdrop.dispose();
     this.#titleText?.dispose();
-    this.#playText?.dispose();
-    this.#leaderboardText?.dispose();
+    this.#subtitleText?.dispose();
+    this.#playButton?.dispose();
+    this.#leaderboardButton?.dispose();
   }
 }

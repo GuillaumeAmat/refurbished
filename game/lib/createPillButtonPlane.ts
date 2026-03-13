@@ -9,6 +9,7 @@ export interface PillButtonPlaneOptions extends Omit<PillButtonTextureOptions, '
 export interface PillButtonPlaneResult {
   mesh: Mesh;
   width: number;
+  updateState: (active: boolean) => void;
   dispose: () => void;
 }
 
@@ -18,12 +19,12 @@ export function createPillButtonPlane(
 ): PillButtonPlaneResult {
   const { height, ...textureOptions } = options;
 
-  const result = createPillButtonTexture({ text, ...textureOptions });
-  const planeWidth = height * result.aspectRatio;
-  const geometry = new PlaneGeometry(planeWidth, height);
+  let currentResult = createPillButtonTexture({ text, ...textureOptions });
+  let currentWidth = height * currentResult.aspectRatio;
+  let geometry = new PlaneGeometry(currentWidth, height);
 
   const material = new MeshBasicMaterial({
-    map: result.texture,
+    map: currentResult.texture,
     transparent: true,
     depthTest: false,
     depthWrite: false,
@@ -33,8 +34,25 @@ export function createPillButtonPlane(
   const mesh = new Mesh(geometry, material);
   mesh.renderOrder = 999;
 
+  const updateState = (active: boolean) => {
+    currentResult.texture.dispose();
+    geometry.dispose();
+
+    currentResult = createPillButtonTexture({
+      text,
+      ...textureOptions,
+      transparent: !active,
+    });
+    currentWidth = height * currentResult.aspectRatio;
+    geometry = new PlaneGeometry(currentWidth, height);
+
+    material.map = currentResult.texture;
+    material.needsUpdate = true;
+    mesh.geometry = geometry;
+  };
+
   const dispose = () => {
-    result.texture.dispose();
+    currentResult.texture.dispose();
     geometry.dispose();
     material.dispose();
   };
@@ -42,8 +60,9 @@ export function createPillButtonPlane(
   return {
     mesh,
     get width() {
-      return planeWidth;
+      return currentWidth;
     },
+    updateState,
     dispose,
   };
 }

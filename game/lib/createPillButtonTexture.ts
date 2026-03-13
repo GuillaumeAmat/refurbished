@@ -12,6 +12,8 @@ export interface PillButtonTextureOptions {
   paddingX?: number;
   paddingY?: number;
   fixedHeight?: number;
+  transparent?: boolean;
+  minCanvasWidth?: number;
 }
 
 export function createPillButtonTexture(options: PillButtonTextureOptions): TextTextureResult {
@@ -20,12 +22,16 @@ export function createPillButtonTexture(options: PillButtonTextureOptions): Text
     fontSize = 36,
     fontFamily = 'BMDupletTXT, system-ui, sans-serif',
     fontWeight = '600',
-    color = '#FFFFFF',
+    color,
     backgroundColor = '#000000',
     paddingX = 64,
     paddingY = 24,
     fixedHeight,
+    transparent = false,
+    minCanvasWidth,
   } = options;
+
+  const resolvedColor = color ?? (transparent ? '#000000' : '#FFFFFF');
 
   const dpr = Math.min(window.devicePixelRatio, 2);
   const scaledFontSize = fontSize * dpr;
@@ -48,24 +54,29 @@ export function createPillButtonTexture(options: PillButtonTextureOptions): Text
   canvas.width = Math.ceil(textWidth + scaledPaddingX * 2 + r * 2 - scaledPaddingX * 2);
   // Ensure minimum width so semicircles don't overlap
   canvas.width = Math.max(canvas.width, Math.ceil(textWidth + r * 2));
+  if (minCanvasWidth) {
+    canvas.width = Math.max(canvas.width, Math.ceil(minCanvasWidth * dpr));
+  }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw stadium shape (rect with perfect semicircle caps)
-  const cy = canvas.height / 2;
-  ctx.beginPath();
-  ctx.arc(r, cy, r, Math.PI / 2, -Math.PI / 2);
-  ctx.lineTo(canvas.width - r, 0);
-  ctx.arc(canvas.width - r, cy, r, -Math.PI / 2, Math.PI / 2);
-  ctx.lineTo(r, canvas.height);
-  ctx.closePath();
-  ctx.fillStyle = backgroundColor;
-  ctx.fill();
+  if (!transparent) {
+    // Draw stadium shape (rect with perfect semicircle caps)
+    const cy = canvas.height / 2;
+    ctx.beginPath();
+    ctx.arc(r, cy, r, Math.PI / 2, -Math.PI / 2);
+    ctx.lineTo(canvas.width - r, 0);
+    ctx.arc(canvas.width - r, cy, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(r, canvas.height);
+    ctx.closePath();
+    ctx.fillStyle = backgroundColor;
+    ctx.fill();
+  }
 
   // Draw centered text
   ctx.font = fontString;
   ctx.textBaseline = 'top';
-  ctx.fillStyle = color;
+  ctx.fillStyle = resolvedColor;
   const tx = (canvas.width - textWidth) / 2;
   const ty = (canvas.height - textHeight) / 2;
   ctx.fillText(text, tx, ty);
