@@ -1,7 +1,7 @@
+import gsap from 'gsap';
 import { Group } from 'three';
 
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
-import { HUDBackdrop } from './HUDBackdrop';
 import type { IHUDItem } from './IHUDItem';
 
 export class LoadingOverlayHUD implements IHUDItem {
@@ -9,23 +9,27 @@ export class LoadingOverlayHUD implements IHUDItem {
   static readonly TEXT_HEIGHT = 0.12;
 
   #group: Group;
-  #backdrop: HUDBackdrop;
   #text: TextPlaneResult | null = null;
+  #tween: gsap.core.Tween | null = null;
 
   constructor() {
     this.#group = new Group();
-    this.#backdrop = new HUDBackdrop(2.5, LoadingOverlayHUD.OVERLAY_HEIGHT);
-    this.#group.add(this.#backdrop.getGroup());
     this.#createContent();
   }
 
   #createContent() {
-    this.#text = createTextPlane('Loading...', {
+    this.#text = createTextPlane('LOADING...', {
       height: LoadingOverlayHUD.TEXT_HEIGHT,
       fontSize: 56,
-      color: '#FBD954',
+      color: '#000000',
     });
     this.#group.add(this.#text.mesh);
+
+    this.#tween = gsap.fromTo(
+      this.#text.mesh.material,
+      { opacity: 0.5 },
+      { opacity: 1, duration: 2, yoyo: true, repeat: -1 },
+    );
   }
 
   getGroup(): Group {
@@ -47,7 +51,7 @@ export class LoadingOverlayHUD implements IHUDItem {
   update() {}
 
   dispose() {
-    this.#backdrop.dispose();
+    this.#tween?.kill();
     this.#text?.dispose();
   }
 }
