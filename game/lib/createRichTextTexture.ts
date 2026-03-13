@@ -1,7 +1,16 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
 
-export interface TextTextureOptions {
+import type { TextTextureResult } from './createTextTexture';
+
+export interface RichTextSegment {
   text: string;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+}
+
+export interface RichTextTextureOptions {
+  segments: RichTextSegment[];
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
@@ -10,18 +19,11 @@ export interface TextTextureOptions {
   padding?: number;
 }
 
-export interface TextTextureResult {
-  texture: CanvasTexture;
-  width: number;
-  height: number;
-  aspectRatio: number;
-}
-
-export function createTextTexture(options: TextTextureOptions): TextTextureResult {
+export function createRichTextTexture(options: RichTextTextureOptions): TextTextureResult {
   const {
-    text,
+    segments,
     fontSize = 48,
-    fontFamily = 'BMDupletDSP, system-ui, sans-serif',
+    fontFamily = 'BMDupletTXT, system-ui, sans-serif',
     fontWeight = '',
     fontStyle = '',
     color = '#FFFFFF',
@@ -38,23 +40,36 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
     throw new Error('Failed to get 2D context');
   }
 
-  const fontString = `${fontStyle ? fontStyle + ' ' : ''}${fontWeight ? fontWeight + ' ' : ''}${scaledFontSize}px ${fontFamily}`;
-  ctx.font = fontString;
-  const metrics = ctx.measureText(text || ' ');
-  const textWidth = Math.max(metrics.width, 1);
+  const buildFontString = (seg: RichTextSegment) => {
+    const fs = seg.fontStyle ?? fontStyle;
+    const fw = seg.fontWeight ?? fontWeight;
+    const ff = seg.fontFamily ?? fontFamily;
+    return `${fs ? fs + ' ' : ''}${fw ? fw + ' ' : ''}${scaledFontSize}px ${ff}`;
+  };
+
+  // Measure total width
+  let totalWidth = 0;
+  for (const seg of segments) {
+    ctx.font = buildFontString(seg);
+    totalWidth += ctx.measureText(seg.text).width;
+  }
+
+  totalWidth = Math.max(totalWidth, 1);
   const textHeight = scaledFontSize;
 
-  canvas.width = Math.ceil(textWidth + scaledPadding * 2);
+  canvas.width = Math.ceil(totalWidth + scaledPadding * 2);
   canvas.height = Math.ceil(textHeight + scaledPadding * 2);
 
-  // Clear to transparent
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Re-apply font after resize
-  ctx.font = fontString;
   ctx.textBaseline = 'top';
   ctx.fillStyle = color;
-  ctx.fillText(text, scaledPadding, scaledPadding);
+
+  let x = scaledPadding;
+  for (const seg of segments) {
+    ctx.font = buildFontString(seg);
+    ctx.fillText(seg.text, x, scaledPadding);
+    x += ctx.measureText(seg.text).width;
+  }
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearFilter;

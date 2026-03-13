@@ -88,20 +88,36 @@ export class Stage {
         weight: 600,
         priority: 'high',
       },
-      // bmDupletTXT: {
-      //   type: 'webFont',
-      //   path: '/game/font/BMDupletTXT-Regular.woff2',
-      //   family: 'BMDupletTXT',
-      //   weight: 400,
-      //   priority: 'high',
-      // },
-      // bmDupletTXTSemibold: {
-      //   type: 'webFont',
-      //   path: '/game/font/BMDupletTXT-Semibold.woff2',
-      //   family: 'BMDupletTXT',
-      //   weight: 600,
-      //   priority: 'high',
-      // },
+      bmDupletTXT: {
+        type: 'webFont',
+        path: '/game/font/BMDupletTXT-Regular.woff2',
+        family: 'BMDupletTXT',
+        weight: 400,
+        priority: 'high',
+      },
+      bmDupletTXTSemibold: {
+        type: 'webFont',
+        path: '/game/font/BMDupletTXT-Semibold.woff2',
+        family: 'BMDupletTXT',
+        weight: 600,
+        priority: 'high',
+      },
+      bmDupletTXTItalic: {
+        type: 'webFont',
+        path: '/game/font/BMDupletTXT-Italic.woff2',
+        family: 'BMDupletTXT',
+        weight: 400,
+        style: 'italic',
+        priority: 'high',
+      },
+      ivarSoftItalic: {
+        type: 'webFont',
+        path: '/game/font/IvarSoft-SemiBoldItalic.woff2',
+        family: 'IvarSoft',
+        weight: 600,
+        style: 'italic',
+        priority: 'high',
+      },
 
       // Low priorities, `done` event will be emitted when loaded
       pigModel: {

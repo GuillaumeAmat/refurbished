@@ -20,6 +20,7 @@ type Asset =
       path: string;
       family: string;
       weight?: number;
+      style?: string;
       priority: 'low' | 'high';
     };
 
@@ -167,6 +168,7 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
       } else if (asset.type === 'webFont') {
         const fontFace = new FontFace(asset.family, `url(${asset.path})`, {
           weight: String(asset.weight ?? 400),
+          ...(asset.style ? { style: asset.style } : {}),
         });
         fontFace.load().then((loadedFont) => {
           document.fonts.add(loadedFont);
