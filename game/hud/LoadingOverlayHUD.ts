@@ -18,7 +18,7 @@ export class LoadingOverlayHUD implements IHUDItem {
   }
 
   #createContent() {
-    this.#text = createTextPlane('LOADING...', {
+    this.#text = createTextPlane('LOADING', {
       height: LoadingOverlayHUD.TEXT_HEIGHT,
       fontSize: 56,
       color: '#000000',
