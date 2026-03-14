@@ -112,6 +112,14 @@ export function createLeaderboardTableTexture(
       // Score (right-aligned)
       ctx.textAlign = 'right';
       ctx.fillText(`${entry.score}`, scoreX, textY);
+    } else {
+      // Placeholder names
+      ctx.textAlign = 'center';
+      ctx.fillText('.........', namesCenter, textY);
+
+      // Placeholder score
+      ctx.textAlign = 'right';
+      ctx.fillText('0', scoreX, textY);
     }
   }
 
