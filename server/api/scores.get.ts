@@ -11,24 +11,32 @@ export default defineEventHandler(async (event) => {
 
   const redis = useRedis();
 
-  const ids = await redis.zrange<string[]>(LEADERBOARD_KEY, 0, max - 1, { rev: true });
+  // ZRANGE WITHSCORES returns a flat alternating array: [member, score, member, score, ...]
+  const flat = await redis.zrange<(string | number)[]>(
+    LEADERBOARD_KEY, 0, max - 1, { rev: true, withScores: true }
+  );
 
-  if (!ids.length) return [];
+  if (!flat.length) return [];
+
+  const entries: { member: string; score: number }[] = [];
+  for (let i = 0; i < flat.length; i += 2) {
+    entries.push({ member: flat[i] as string, score: Number(flat[i + 1]) });
+  }
 
   const pipeline = redis.pipeline();
-  for (const id of ids) {
-    pipeline.hgetall(scoreKey(id));
+  for (const { member } of entries) {
+    pipeline.hgetall(scoreKey(member));
   }
   const records = await pipeline.exec();
 
-  return ids.map((id, i) => {
-    const record = records[i] as { player1: string; player2: string; score: string; stars: string; date: string } | null;
+  return entries.map(({ member, score }, i) => {
+    const record = records[i] as { player1: string; player2: string; stars: string; date: string } | null;
     if (!record) return null;
     return {
-      id,
+      id: member,
       player1: record.player1,
       player2: record.player2,
-      score: Number(record.score),
+      score,
       stars: Number(record.stars),
       date: record.date,
       rank: i + 1,
