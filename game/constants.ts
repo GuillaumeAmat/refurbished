@@ -66,6 +66,7 @@ export const LIGHT_COLOR = '#ffffff';
 export const BLOOM_LAYER = 1;
 
 export const LEADERBOARD_REFRESH_MS = 60_000;
+export const LEADERBOARD_LIMIT = 15;
 
 // Camera
 export const CAMERA_DEFAULT_FOV = 35;

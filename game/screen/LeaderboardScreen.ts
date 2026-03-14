@@ -15,16 +15,20 @@ export class LeaderboardScreen {
   #hudManager: HUDRegionManager;
   #overlay: LeaderboardOverlayHUD;
   #sizes: Sizes;
+  #camera: PerspectiveCamera;
   #onResize: () => void;
 
   #visible = false;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
+    this.#camera = camera;
     this.#gamepadManager = GamepadManager.getInstance();
 
     this.#hudManager = new HUDRegionManager(camera);
-    this.#overlay = new LeaderboardOverlayHUD();
+
+    const { visibleWidth, visibleHeight } = this.#computeFrustumBounds();
+    this.#overlay = new LeaderboardOverlayHUD({ visibleWidth, visibleHeight });
     this.#hudManager.add('center', this.#overlay);
     this.#hudManager.hide();
 
@@ -37,8 +41,20 @@ export class LeaderboardScreen {
     });
 
     this.#sizes = Sizes.getInstance();
-    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#onResize = () => {
+      this.#hudManager.updatePositions();
+      const bounds = this.#computeFrustumBounds();
+      this.#overlay.updateBounds(bounds.visibleWidth, bounds.visibleHeight);
+    };
     this.#sizes.addEventListener('resize', this.#onResize);
+  }
+
+  #computeFrustumBounds() {
+    const distance = HUDRegionManager.HUD_DISTANCE;
+    const vFov = (this.#camera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    const visibleWidth = visibleHeight * this.#camera.aspect;
+    return { visibleWidth, visibleHeight };
   }
 
   private show() {

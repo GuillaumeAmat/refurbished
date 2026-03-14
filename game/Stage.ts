@@ -118,6 +118,20 @@ export class Stage {
         style: 'italic',
         priority: 'high',
       },
+      robotoMono: {
+        type: 'webFont',
+        path: '/game/font/RobotoMono-Regular.woff2',
+        family: 'RobotoMono',
+        weight: 400,
+        priority: 'high',
+      },
+      robotoMonoBold: {
+        type: 'webFont',
+        path: '/game/font/RobotoMono-Bold.woff2',
+        family: 'RobotoMono',
+        weight: 700,
+        priority: 'high',
+      },
 
       // Low priorities, `done` event will be emitted when loaded
       pigModel: {
