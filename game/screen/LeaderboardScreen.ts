@@ -1,6 +1,7 @@
 import type { PerspectiveCamera } from 'three';
 import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
+import { useRuntimeConfig } from '#imports';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { LeaderboardOverlayHUD } from '../hud/LeaderboardOverlayHUD';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
@@ -28,7 +29,8 @@ export class LeaderboardScreen {
     this.#hudManager = new HUDRegionManager(camera);
 
     const { visibleWidth, visibleHeight } = this.#computeFrustumBounds();
-    this.#overlay = new LeaderboardOverlayHUD({ visibleWidth, visibleHeight });
+    const { leaderboardAutoRefreshEnabled } = useRuntimeConfig().public;
+    this.#overlay = new LeaderboardOverlayHUD({ visibleWidth, visibleHeight, autoRefresh: leaderboardAutoRefreshEnabled });
     this.#hudManager.add('center', this.#overlay);
     this.#hudManager.hide();
 

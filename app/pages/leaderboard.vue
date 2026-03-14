@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 
-import { definePageMeta, useAsyncData } from '#imports';
+import { definePageMeta, useAsyncData, useRuntimeConfig } from '#imports';
 
 definePageMeta({
   layout: false,
@@ -49,14 +49,18 @@ async function doRefresh() {
 
 lastUpdated.value = new Date();
 
-const timer = setInterval(async () => {
-  countdown.value -= 1;
-  if (countdown.value <= 0) {
-    await doRefresh();
-  }
-}, 1_000);
+const { leaderboardAutoRefreshEnabled } = useRuntimeConfig().public;
 
-onUnmounted(() => clearInterval(timer));
+const timer = leaderboardAutoRefreshEnabled
+  ? setInterval(async () => {
+      countdown.value -= 1;
+      if (countdown.value <= 0) {
+        await doRefresh();
+      }
+    }, 1_000)
+  : null;
+
+onUnmounted(() => { if (timer !== null) clearInterval(timer); });
 </script>
 
 <template>
@@ -135,7 +139,7 @@ onUnmounted(() => clearInterval(timer));
     </main>
 
     <footer class="py-4 px-4 text-center text-white/30 text-xs border-t border-white/10 space-y-1">
-      <p>Refreshing in <span class="text-yellow-400 font-mono">{{ countdown }}s</span></p>
+      <p v-if="leaderboardAutoRefreshEnabled">Refreshing in <span class="text-yellow-400 font-mono">{{ countdown }}s</span></p>
       <p v-if="lastUpdated">Last updated {{ formatTime(lastUpdated) }}</p>
     </footer>
   </div>

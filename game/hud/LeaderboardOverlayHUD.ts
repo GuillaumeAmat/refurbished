@@ -45,10 +45,13 @@ export class LeaderboardOverlayHUD implements IHUDItem {
   #refreshInterval: ReturnType<typeof setInterval> | null = null;
   #lastScores: ScoreEntry[] = [];
 
-  constructor({ visibleWidth, visibleHeight }: { visibleWidth: number; visibleHeight: number }) {
+  #autoRefresh: boolean;
+
+  constructor({ visibleWidth, visibleHeight, autoRefresh = false }: { visibleWidth: number; visibleHeight: number; autoRefresh?: boolean }) {
     this.#group = new Group();
     this.#visibleWidth = visibleWidth;
     this.#visibleHeight = visibleHeight;
+    this.#autoRefresh = autoRefresh;
 
     this.#createBackground();
     this.#createTop15Badge();
@@ -292,7 +295,9 @@ export class LeaderboardOverlayHUD implements IHUDItem {
   show() {
     this.#group.visible = true;
     this.#fetchScores();
-    this.#refreshInterval = setInterval(() => this.#fetchScores(), LEADERBOARD_REFRESH_MS);
+    if (this.#autoRefresh) {
+      this.#refreshInterval = setInterval(() => this.#fetchScores(), LEADERBOARD_REFRESH_MS);
+    }
   }
 
   async #fetchScores() {
