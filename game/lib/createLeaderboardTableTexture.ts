@@ -53,14 +53,14 @@ export function createLeaderboardTableTexture(
   const rankColWidth = fontSize * 2.4;
   const scoreColWidth = fontSize * 3;
   const rankX = paddingX + rankColWidth / 2;
-  const scoreX = canvas.width - paddingX;
+  const scoreX = canvas.width - paddingX - fontSize * 0.5;
   const namesCenter = paddingX + rankColWidth + (canvas.width - paddingX * 2 - rankColWidth - scoreColWidth) / 2;
 
   // Draw one continuous lilac pill (stadium shape) behind ranks 1–5
   if (maxRows >= TOP_5_COUNT) {
     const firstRowY = paddingY;
     const lastRowY = paddingY + (TOP_5_COUNT - 1) * rowHeight;
-    const pillMargin = fontSize * 0.15;
+    const pillMargin = fontSize * 0.08;
     const fullW = rankColWidth + pillMargin * 2;
     const pillW = fullW * 2 / 3;
     const pillX = paddingX - pillMargin + (fullW - pillW) / 2;

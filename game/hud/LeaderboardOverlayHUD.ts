@@ -10,10 +10,7 @@ import {
 } from 'three';
 
 import { COLORS, LEADERBOARD_LIMIT, LEADERBOARD_REFRESH_MS } from '../constants';
-import {
-  createLeaderboardTableTexture,
-  type ScoreEntry,
-} from '../lib/createLeaderboardTableTexture';
+import { createLeaderboardTableTexture, type ScoreEntry } from '../lib/createLeaderboardTableTexture';
 import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
 import { createQRCodePlane, type QRCodePlaneResult } from '../lib/createQRCodePlane';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
@@ -47,7 +44,15 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
   #autoRefresh: boolean;
 
-  constructor({ visibleWidth, visibleHeight, autoRefresh = false }: { visibleWidth: number; visibleHeight: number; autoRefresh?: boolean }) {
+  constructor({
+    visibleWidth,
+    visibleHeight,
+    autoRefresh = false,
+  }: {
+    visibleWidth: number;
+    visibleHeight: number;
+    autoRefresh?: boolean;
+  }) {
     this.#group = new Group();
     this.#visibleWidth = visibleWidth;
     this.#visibleHeight = visibleHeight;
@@ -89,7 +94,9 @@ export class LeaderboardOverlayHUD implements IHUDItem {
     ctx.font = fontString;
     const metrics = ctx.measureText(text);
     const textWidth = metrics.width;
-    const textHeight = fontSize;
+    const ascent = metrics.actualBoundingBoxAscent;
+    const descent = metrics.actualBoundingBoxDescent;
+    const textHeight = ascent + descent;
 
     canvas.width = Math.ceil(textWidth + pad * 2);
     canvas.height = Math.ceil(textHeight + pad * 2);
@@ -114,9 +121,9 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
     // Black text
     ctx.font = fontString;
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#000000';
-    ctx.fillText(text, pad, pad);
+    ctx.fillText(text, pad, pad + ascent);
 
     const texture = new CanvasTexture(canvas);
     texture.minFilter = LinearFilter;
@@ -127,7 +134,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
     const width = canvas.width / dpr;
     const height = canvas.height / dpr;
-    const worldHeight = 0.1;
+    const worldHeight = 0.07;
     const worldWidth = worldHeight * (width / height);
 
     const geometry = new PlaneGeometry(worldWidth, worldHeight);
@@ -247,21 +254,17 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
     // "The" — below TOP 15
     if (this.#titleThe) {
-      this.#titleThe.mesh.position.set(left + this.#titleThe.width / 2, top - 0.3, 0);
+      this.#titleThe.mesh.position.set(left + this.#titleThe.width / 2, top - 0.27, 0);
     }
 
     // "Leaderboard." — below "The"
     if (this.#titleLeaderboard) {
-      this.#titleLeaderboard.mesh.position.set(
-        left + this.#titleLeaderboard.width / 2,
-        top - 0.57,
-        0,
-      );
+      this.#titleLeaderboard.mesh.position.set(left + this.#titleLeaderboard.width / 2, top - 0.5, 0);
     }
 
-    // QR code — vertically centered, same horizontal placement (left side)
+    // QR code — below "Leaderboard." title
     if (this.#qrCode) {
-      this.#qrCode.mesh.position.set(left + this.#qrCode.width / 2 + 0.05, 0, 0);
+      this.#qrCode.mesh.position.set(left + this.#qrCode.width / 2, top - 0.92, 0);
     }
 
     // Back button — bottom-left
