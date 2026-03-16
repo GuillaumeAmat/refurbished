@@ -1,6 +1,6 @@
 import { type Group, type Object3D, Vector3 } from 'three';
 
-import { DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
+import { ASSEMBLE_HOLD_DURATION, DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
 import { isWorkbench, type LevelData } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -18,7 +18,6 @@ import { REPAIR_HIT_COUNT } from './RepairAnimation';
 import { SmokeParticleSystem } from './SmokeParticleSystem';
 
 const REPAIR_HOLD_DURATION = 2800;
-const ASSEMBLE_HOLD_DURATION = 2000;
 
 export class InteractionSystem {
   #interactables: LevelObject[] = [];

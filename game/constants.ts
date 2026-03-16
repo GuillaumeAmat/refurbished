@@ -37,6 +37,9 @@ export const AUDIO_TRACK_FADE_MS = 100;
 export const DELIVERY_ANIM_DURATION = 0.5; // s — package visible before smoke vanish
 export const DELIVERY_SMOKE_COUNT = 12; // particles spawned on vanish
 
+// Assembly
+export const ASSEMBLE_HOLD_DURATION = 15_000; // ms
+
 // Progress bars
 export const PROGRESS_BAR_FILL_COLOR = 0x00ff00;
 
