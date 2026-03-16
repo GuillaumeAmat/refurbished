@@ -2,8 +2,13 @@ import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
 
 import type { TextTextureResult } from './createTextTexture';
 
+export type TextSegment = { type: 'text'; value: string };
+export type BadgeSegment = { type: 'badge'; label: string; color: string };
+export type ButtonSegment = TextSegment | BadgeSegment;
+
 export interface PillButtonTextureOptions {
   text: string;
+  segments?: ButtonSegment[];
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: string;
@@ -19,6 +24,7 @@ export interface PillButtonTextureOptions {
 export function createPillButtonTexture(options: PillButtonTextureOptions): TextTextureResult {
   const {
     text,
+    segments,
     fontSize = 36,
     fontFamily = 'BMDupletTXT, system-ui, sans-serif',
     fontWeight = '600',
@@ -44,42 +50,114 @@ export function createPillButtonTexture(options: PillButtonTextureOptions): Text
   }
 
   const fontString = `${fontWeight ? fontWeight + ' ' : ''}${scaledFontSize}px ${fontFamily}`;
-  ctx.font = fontString;
-  const metrics = ctx.measureText(text);
-  const textWidth = Math.max(metrics.width, 1);
-  const textHeight = scaledFontSize;
+  const badgeDiameter = scaledFontSize * 1.15;
+  const segmentGap = scaledFontSize * 0.25;
 
-  canvas.height = fixedHeight ? Math.ceil(fixedHeight * dpr) : Math.ceil(textHeight + scaledPaddingY * 2);
-  const r = canvas.height / 2;
-  canvas.width = Math.ceil(textWidth + scaledPaddingX * 2 + r * 2 - scaledPaddingX * 2);
-  // Ensure minimum width so semicircles don't overlap
-  canvas.width = Math.max(canvas.width, Math.ceil(textWidth + r * 2));
-  if (minCanvasWidth) {
-    canvas.width = Math.max(canvas.width, Math.ceil(minCanvasWidth * dpr));
-  }
+  if (segments && segments.length > 0) {
+    ctx.font = fontString;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Measure each segment
+    const segmentWidths = segments.map((seg) => {
+      if (seg.type === 'text') return Math.max(ctx.measureText(seg.value).width, 1);
+      return badgeDiameter;
+    });
 
-  if (!transparent) {
-    // Draw stadium shape (rect with perfect semicircle caps)
+    const totalContentWidth =
+      segmentWidths.reduce((a, b) => a + b, 0) + segmentGap * (segments.length - 1);
+    const textHeight = scaledFontSize;
+
+    canvas.height = fixedHeight ? Math.ceil(fixedHeight * dpr) : Math.ceil(textHeight + scaledPaddingY * 2);
+    const r = canvas.height / 2;
+    canvas.width = Math.ceil(totalContentWidth + r * 2);
+    if (minCanvasWidth) {
+      canvas.width = Math.max(canvas.width, Math.ceil(minCanvasWidth * dpr));
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!transparent) {
+      const cy = canvas.height / 2;
+      ctx.beginPath();
+      ctx.arc(r, cy, r, Math.PI / 2, -Math.PI / 2);
+      ctx.lineTo(canvas.width - r, 0);
+      ctx.arc(canvas.width - r, cy, r, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(r, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = backgroundColor;
+      ctx.fill();
+    }
+
     const cy = canvas.height / 2;
-    ctx.beginPath();
-    ctx.arc(r, cy, r, Math.PI / 2, -Math.PI / 2);
-    ctx.lineTo(canvas.width - r, 0);
-    ctx.arc(canvas.width - r, cy, r, -Math.PI / 2, Math.PI / 2);
-    ctx.lineTo(r, canvas.height);
-    ctx.closePath();
-    ctx.fillStyle = backgroundColor;
-    ctx.fill();
-  }
+    let x = (canvas.width - totalContentWidth) / 2;
 
-  // Draw centered text
-  ctx.font = fontString;
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = resolvedColor;
-  const tx = (canvas.width - textWidth) / 2;
-  const ty = (canvas.height - textHeight) / 2;
-  ctx.fillText(text, tx, ty);
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const segW = segmentWidths[i];
+
+      if (seg.type === 'text') {
+        ctx.font = fontString;
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = resolvedColor;
+        const ty = cy - scaledFontSize / 2;
+        ctx.fillText(seg.value, x, ty);
+      } else {
+        // Badge: filled circle
+        const cx = x + badgeDiameter / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, badgeDiameter / 2, 0, Math.PI * 2);
+        ctx.fillStyle = seg.color;
+        ctx.fill();
+
+        // White letter centered
+        const badgeFontSize = scaledFontSize * 0.8;
+        ctx.font = `600 ${badgeFontSize}px ${fontFamily}`;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(seg.label, cx, cy);
+        ctx.textAlign = 'left';
+      }
+
+      x += segW + (i < segments.length - 1 ? segmentGap : 0);
+    }
+  } else {
+    ctx.font = fontString;
+    const metrics = ctx.measureText(text);
+    const textWidth = Math.max(metrics.width, 1);
+    const textHeight = scaledFontSize;
+
+    canvas.height = fixedHeight ? Math.ceil(fixedHeight * dpr) : Math.ceil(textHeight + scaledPaddingY * 2);
+    const r = canvas.height / 2;
+    canvas.width = Math.ceil(textWidth + scaledPaddingX * 2 + r * 2 - scaledPaddingX * 2);
+    // Ensure minimum width so semicircles don't overlap
+    canvas.width = Math.max(canvas.width, Math.ceil(textWidth + r * 2));
+    if (minCanvasWidth) {
+      canvas.width = Math.max(canvas.width, Math.ceil(minCanvasWidth * dpr));
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!transparent) {
+      // Draw stadium shape (rect with perfect semicircle caps)
+      const cy = canvas.height / 2;
+      ctx.beginPath();
+      ctx.arc(r, cy, r, Math.PI / 2, -Math.PI / 2);
+      ctx.lineTo(canvas.width - r, 0);
+      ctx.arc(canvas.width - r, cy, r, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(r, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = backgroundColor;
+      ctx.fill();
+    }
+
+    // Draw centered text
+    ctx.font = fontString;
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = resolvedColor;
+    const tx = (canvas.width - textWidth) / 2;
+    const ty = (canvas.height - textHeight) / 2;
+    ctx.fillText(text, tx, ty);
+  }
 
   const texture = new CanvasTexture(canvas);
   texture.minFilter = LinearFilter;

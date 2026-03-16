@@ -1,8 +1,12 @@
 import { DoubleSide, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 
-import { createPillButtonTexture, type PillButtonTextureOptions } from './createPillButtonTexture';
+import {
+  createPillButtonTexture,
+  type ButtonSegment,
+  type PillButtonTextureOptions,
+} from './createPillButtonTexture';
 
-export interface PillButtonPlaneOptions extends Omit<PillButtonTextureOptions, 'text'> {
+export interface PillButtonPlaneOptions extends Omit<PillButtonTextureOptions, 'text' | 'segments'> {
   height: number;
 }
 
@@ -14,12 +18,14 @@ export interface PillButtonPlaneResult {
 }
 
 export function createPillButtonPlane(
-  text: string,
+  label: string | ButtonSegment[],
   options: PillButtonPlaneOptions,
 ): PillButtonPlaneResult {
   const { height, ...textureOptions } = options;
+  const text = typeof label === 'string' ? label : '';
+  const segments = Array.isArray(label) ? label : undefined;
 
-  let currentResult = createPillButtonTexture({ text, ...textureOptions });
+  let currentResult = createPillButtonTexture({ text, segments, ...textureOptions });
   let currentWidth = height * currentResult.aspectRatio;
   let geometry = new PlaneGeometry(currentWidth, height);
 
@@ -40,6 +46,7 @@ export function createPillButtonPlane(
 
     currentResult = createPillButtonTexture({
       text,
+      segments,
       ...textureOptions,
       transparent: !active,
     });

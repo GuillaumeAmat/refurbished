@@ -191,13 +191,21 @@ export class LeaderboardOverlayHUD implements IHUDItem {
 
   #createBackButton() {
     // Same size as start screen button
-    this.#backButton = createPillButtonPlane('Main menu (A)', {
-      height: 0.22,
-      fontFamily: 'BMDupletTXT, system-ui, sans-serif',
-      fontWeight: '600',
-      fontSize: 64,
-      fixedHeight: 160,
-    });
+    this.#backButton = createPillButtonPlane(
+      [
+        { type: 'text', value: 'Main menu ' },
+        { type: 'badge', label: 'A', color: '#107C10' },
+        { type: 'text', value: '/' },
+        { type: 'badge', label: 'B', color: '#CC0000' },
+      ],
+      {
+        height: 0.22,
+        fontFamily: 'BMDupletTXT, system-ui, sans-serif',
+        fontWeight: '600',
+        fontSize: 64,
+        fixedHeight: 160,
+      },
+    );
     this.#group.add(this.#backButton.mesh);
   }
 
