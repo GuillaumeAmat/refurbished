@@ -70,8 +70,8 @@ export class HUDRegion {
         itemGroup.position.y = yOffset;
         yOffset -= itemHeight + this.#itemSpacing;
       } else if (this.#verticalAlignment === 'bottom') {
-        // Stack upward from bottom
-        itemGroup.position.y = yOffset;
+        // Stack upward from bottom, bottom edge anchored at region origin
+        itemGroup.position.y = yOffset + itemHeight / 2;
         yOffset += itemHeight + this.#itemSpacing;
       } else {
         // Center: stack downward from center

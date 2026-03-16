@@ -80,10 +80,10 @@ export class HUDRegionManager {
     this.#regions.get('center')?.updateLayout({ x: 0, y: 0 }, distance);
     this.#regions.get('middleRight')?.updateLayout({ x: bounds.right - padding, y: 0 }, distance);
 
-    // Bottom row
-    this.#regions.get('bottomLeft')?.updateLayout({ x: bounds.left + padding, y: bounds.bottom + padding }, distance);
-    this.#regions.get('bottomCenter')?.updateLayout({ x: 0, y: bounds.bottom + padding }, distance);
-    this.#regions.get('bottomRight')?.updateLayout({ x: bounds.right - padding, y: bounds.bottom + padding }, distance);
+    // Bottom row (no y padding — items anchor their bottom edge at the screen bottom)
+    this.#regions.get('bottomLeft')?.updateLayout({ x: bounds.left + padding, y: bounds.bottom }, distance);
+    this.#regions.get('bottomCenter')?.updateLayout({ x: 0, y: bounds.bottom }, distance);
+    this.#regions.get('bottomRight')?.updateLayout({ x: bounds.right - padding, y: bounds.bottom }, distance);
   }
 
   show() {

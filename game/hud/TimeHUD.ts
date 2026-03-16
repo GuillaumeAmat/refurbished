@@ -1,11 +1,12 @@
 import { Group } from 'three';
 
+import { COLORS } from '../constants';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { SessionManager } from '../state/SessionManager';
 import type { IHUDItem } from './IHUDItem';
 
 export class TimeHUD implements IHUDItem {
-  static readonly TEXT_HEIGHT = 0.08;
+  static readonly TEXT_HEIGHT = 0.32;
 
   #group: Group;
   #text: TextPlaneResult | null = null;
@@ -27,14 +28,20 @@ export class TimeHUD implements IHUDItem {
   #formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `Time: ${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
   #createText(seconds: number) {
     this.#text = createTextPlane(this.#formatTime(seconds), {
       height: TimeHUD.TEXT_HEIGHT,
-      fontSize: 48,
+      fontSize: 164,
       color: '#000000',
+      backgroundColor: COLORS.mindaro,
+      borderRadius: 12,
+      backgroundPaddingX: 48,
+      backgroundPaddingY: 48,
+      backgroundPaddingTop: 64,
+      referenceText: '0000',
     });
     // Right-align: offset by -width/2 so text extends to the left
     this.#text.mesh.position.x = -this.#text.width / 2;
