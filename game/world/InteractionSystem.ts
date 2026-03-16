@@ -429,6 +429,7 @@ export class InteractionSystem {
       if (!obj.isReadyToAssemble()) continue;
 
       obj.addAssemblyProgress(deltaMs);
+      obj.updateAnimation(deltaMs);
       obj.getOrCreateProgressBar(this.#levelGroup);
       obj.updateProgressBar(obj.getAssemblyProgress() / ASSEMBLE_HOLD_DURATION);
 

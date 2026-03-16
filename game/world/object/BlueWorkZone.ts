@@ -6,6 +6,7 @@ import { createIconPlane, type IconPlaneResult } from '../../lib/createIconPlane
 import type { ResourceState, ResourceType } from '../../types';
 import { Debug } from '../../util/Debug';
 import { Resources } from '../../util/Resources';
+import { AssemblyAnimation } from '../AssemblyAnimation';
 import type { DroppedResource } from './DroppedResource';
 import { LevelObject } from './LevelObject';
 
@@ -51,6 +52,7 @@ export class BlueWorkZone extends LevelObject {
   #ledMesh: Mesh | null = null;
   #ledMaterial: MeshStandardMaterial | null = null;
   #ledLight: PointLight | null = null;
+  #assemblyAnim: AssemblyAnimation | null = null;
 
   constructor(params: BlueWorkZoneParams) {
     super();
@@ -182,6 +184,7 @@ export class BlueWorkZone extends LevelObject {
   }
 
   public assemble(): DroppedResource[] {
+    this.#assemblyAnim?.stop();
     const removed = Array.from(this.#containedResources.values());
     this.#containedResources.clear();
     this.#updateLed();
@@ -199,9 +202,17 @@ export class BlueWorkZone extends LevelObject {
   }
 
   public resetAssemblyProgress(): void {
+    this.#assemblyAnim?.stop();
     this.#assemblyProgress = 0;
     this.#progressBar?.dispose();
     this.#progressBar = null;
+  }
+
+  public updateAnimation(deltaMs: number): void {
+    if (this.isReadyToAssemble()) {
+      if (!this.#assemblyAnim!.active) this.#assemblyAnim!.start(this.mesh!);
+      this.#assemblyAnim!.update(deltaMs);
+    }
   }
 
   public isAssemblyComplete(requiredDuration: number): boolean {
@@ -275,6 +286,7 @@ export class BlueWorkZone extends LevelObject {
 
     this.createPhysics(xIndex, zIndex, TILE_SIZE);
     this.isInteractable = true;
+    this.#assemblyAnim = new AssemblyAnimation();
   }
 
   #getLedState(): LedState {
@@ -359,6 +371,7 @@ export class BlueWorkZone extends LevelObject {
   }
 
   override dispose(): void {
+    this.#assemblyAnim?.stop();
     for (const icon of this.#slotIcons.values()) {
       icon.mesh.removeFromParent();
       icon.dispose();
