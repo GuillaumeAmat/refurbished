@@ -10,6 +10,8 @@ export interface GripConfig {
   objectRotationX: number;
   objectRotationY: number;
   objectRotationZ: number;
+  // Object scale
+  objectScale: number;
   // Hand position settings
   handOffsetX: number;
   handOffsetY: number;

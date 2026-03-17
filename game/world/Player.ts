@@ -17,12 +17,36 @@ const PLAYER_COLORS = new Map<PlayerId, number>([
   [2, 0x00ff00],
 ]);
 
-const GRIP_CONFIGS: Record<ResourceType, GripConfig> = {
-  battery: { objectOffsetX: 0, objectOffsetY: 0.71, objectOffsetZ: 1.09, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.82, handOffsetY: 0.82, handOffsetZ: 0.62, handRotationX: 0.2, handRotationY: -0.01, handRotationZ: -0.62 },
-  frame: { objectOffsetX: -0.03, objectOffsetY: 0.98, objectOffsetZ: 1.09, objectRotationX: -0.7, objectRotationY: 0.24, objectRotationZ: 0.07, handOffsetX: 0.67, handOffsetY: 0.69, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
-  screen: { objectOffsetX: -0.03, objectOffsetY: 0.98, objectOffsetZ: 1.09, objectRotationX: -0.7, objectRotationY: 0.24, objectRotationZ: 0.07, handOffsetX: 0.67, handOffsetY: 0.69, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
-  phone: { objectOffsetX: 0, objectOffsetY: 0.15, objectOffsetZ: 0.35, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.12, handOffsetY: 0.15, handOffsetZ: 0.35, handRotationX: 0.35, handRotationY: 0, handRotationZ: 0 },
-  package: { objectOffsetX: 0, objectOffsetY: 0.05, objectOffsetZ: 0.5, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, handOffsetX: 0.3, handOffsetY: 0.05, handOffsetZ: 0.5, handRotationX: 0.5, handRotationY: 0, handRotationZ: 0 },
+type GripKey = `${ResourceType}_${ResourceState}`;
+
+function gripKey(type: ResourceType, state: ResourceState): GripKey {
+  return `${type}_${state}`;
+}
+
+const GRIP_LABELS: Record<GripKey, string> = {
+  battery_broken: 'Battery (empty)',
+  battery_repaired: 'Battery (full)',
+  frame_broken: 'Frame (broken)',
+  frame_repaired: 'Frame (repaired)',
+  screen_broken: 'Screen (broken)',
+  screen_repaired: 'Screen (repaired)',
+  phone_broken: 'Phone',
+  phone_repaired: 'Phone',
+  package_broken: 'Package (open)',
+  package_repaired: 'Package (closed)',
+};
+
+const GRIP_CONFIGS: Record<GripKey, GripConfig> = {
+  battery_broken: { objectOffsetX: 0, objectOffsetY: 0.59, objectOffsetZ: 1.09, objectRotationX: 0.1, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.71, handOffsetY: 0.82, handOffsetZ: 0.61, handRotationX: 0.2, handRotationY: -0.01, handRotationZ: -0.62 },
+  battery_repaired: { objectOffsetX: 0, objectOffsetY: 0.59, objectOffsetZ: 1.09, objectRotationX: 0.1, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.71, handOffsetY: 0.82, handOffsetZ: 0.61, handRotationX: 0.2, handRotationY: -0.01, handRotationZ: -0.62 },
+  frame_broken: { objectOffsetX: 0.02, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.67, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  frame_repaired: { objectOffsetX: 0.02, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.67, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  screen_broken: { objectOffsetX: -0.09, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.62, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  screen_repaired: { objectOffsetX: 0.02, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.67, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  phone_broken: { objectOffsetX: 0, objectOffsetY: 0.15, objectOffsetZ: 0.35, objectRotationX: 0, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.12, handOffsetY: 0.15, handOffsetZ: 0.35, handRotationX: 0.35, handRotationY: 0, handRotationZ: 0 },
+  phone_repaired: { objectOffsetX: 0.02, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.67, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
+  package_broken: { objectOffsetX: 0.04, objectOffsetY: 0.92, objectOffsetZ: 1.3, objectRotationX: -0.23, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.03, handOffsetX: 0.48, handOffsetY: 0.23, handOffsetZ: 0.89, handRotationX: -0.9, handRotationY: -0.19, handRotationZ: -0.42 },
+  package_repaired: { objectOffsetX: 0.02, objectOffsetY: 1, objectOffsetZ: 1.28, objectRotationX: -1.05, objectRotationY: 0, objectRotationZ: 0, objectScale: 1.33, handOffsetX: 0.52, handOffsetY: 0.51, handOffsetZ: 0.46, handRotationX: -0.46, handRotationY: -0.21, handRotationZ: -0.62 },
 };
 
 export class Player {
@@ -53,15 +77,15 @@ export class Player {
 
   // Animation parameters (tunable via debug GUI)
   #animParams = {
-    headBobFreq: 9,
-    headBobAmp: 0.06,
-    headSwayFreq: 14,
-    headSwayAmp: 0.16,
-    handsFreq: 32,
-    handsAmp: 0.2,
-    bodyTilt: 0.5,
-    bodyTwistFreq: 16,
-    bodyTwistAmp: 0.41,
+    headBobFreq: 12,
+    headBobAmp: 0.13,
+    headSwayFreq: 13,
+    headSwayAmp: 0.07,
+    handsFreq: 31,
+    handsAmp: 0.14,
+    bodyTilt: 0.36,
+    bodyTwistFreq: 15,
+    bodyTwistAmp: 0.3,
     // Body params when holding an object
     holdingBodyTilt: 0.4,
     holdingBodyTwistFreq: 14,
@@ -193,19 +217,37 @@ export class Player {
     bodyFolder.add(this.#animParams, 'bodyTwistFreq', 1, 30, 1).name('Twist Freq');
     bodyFolder.add(this.#animParams, 'bodyTwistAmp', 0, 0.5, 0.01).name('Twist Amp');
 
-    const gripFolder = folder.addFolder('Grip (Screen)');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetX', -0.5, 0.5, 0.01).name('Object X');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetY', -0.5, 1, 0.01).name('Object Y');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectOffsetZ', 0, 1.5, 0.01).name('Object Z');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationX', -3.14, 3.14, 0.01).name('Object Rot X');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationY', -3.14, 3.14, 0.01).name('Object Rot Y');
-    gripFolder.add(GRIP_CONFIGS.screen, 'objectRotationZ', -3.14, 3.14, 0.01).name('Object Rot Z');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetX', 0, 1, 0.01).name('Hand X (width)');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetY', -0.5, 1, 0.01).name('Hand Y');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handOffsetZ', 0, 1.5, 0.01).name('Hand Z');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationX', -1.5, 1.5, 0.01).name('Hand Rot X');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationY', -1.5, 1.5, 0.01).name('Hand Rot Y');
-    gripFolder.add(GRIP_CONFIGS.screen, 'handRotationZ', -1.5, 1.5, 0.01).name('Hand Rot Z');
+    const gripFolder = folder.addFolder('Grip');
+    const gripKeys = Object.keys(GRIP_CONFIGS) as GripKey[];
+    const gripSelectOptions = Object.fromEntries(gripKeys.map(k => [GRIP_LABELS[k], k]));
+    const gripState = { resource: 'screen_broken' as GripKey };
+    const gripControllers: { destroy(): void }[] = [];
+
+    const buildGripSliders = (key: GripKey) => {
+      for (const c of gripControllers) c.destroy();
+      gripControllers.length = 0;
+      const grip = GRIP_CONFIGS[key];
+      gripControllers.push(
+        gripFolder.add(grip, 'objectOffsetX', -0.5, 0.5, 0.01).name('Object X'),
+        gripFolder.add(grip, 'objectOffsetY', -0.5, 1, 0.01).name('Object Y'),
+        gripFolder.add(grip, 'objectOffsetZ', 0, 1.5, 0.01).name('Object Z'),
+        gripFolder.add(grip, 'objectRotationX', -3.14, 3.14, 0.01).name('Object Rot X'),
+        gripFolder.add(grip, 'objectRotationY', -3.14, 3.14, 0.01).name('Object Rot Y'),
+        gripFolder.add(grip, 'objectRotationZ', -3.14, 3.14, 0.01).name('Object Rot Z'),
+        gripFolder.add(grip, 'objectScale', 0.1, 3, 0.01).name('Object Scale'),
+        gripFolder.add(grip, 'handOffsetX', 0, 1, 0.01).name('Hand X (width)'),
+        gripFolder.add(grip, 'handOffsetY', -0.5, 1, 0.01).name('Hand Y'),
+        gripFolder.add(grip, 'handOffsetZ', 0, 1.5, 0.01).name('Hand Z'),
+        gripFolder.add(grip, 'handRotationX', -1.5, 1.5, 0.01).name('Hand Rot X'),
+        gripFolder.add(grip, 'handRotationY', -1.5, 1.5, 0.01).name('Hand Rot Y'),
+        gripFolder.add(grip, 'handRotationZ', -1.5, 1.5, 0.01).name('Hand Rot Z'),
+      );
+    };
+
+    gripFolder.add(gripState, 'resource', gripSelectOptions).name('Resource').onChange((v: GripKey) => {
+      buildGripSliders(v);
+    });
+    buildGripSliders(gripState.resource);
     folder.close();
   }
 
@@ -426,7 +468,7 @@ export class Player {
     const model = this.#resources.getGLTFAsset(modelName);
     if (!model) return;
 
-    const grip = GRIP_CONFIGS[type];
+    const grip = GRIP_CONFIGS[gripKey(type, state)];
     const resourceMesh = model.scene.clone();
     resourceMesh.position.set(grip.objectOffsetX, grip.objectOffsetY, grip.objectOffsetZ);
 
@@ -599,11 +641,12 @@ export class Player {
     } else if (isHolding && this.#carriedResource) {
       // When holding: hands move to grip position, no swing
       // Read grip config dynamically for real-time debug adjustments
-      const grip = GRIP_CONFIGS[this.#carriedResource.type];
+      const grip = GRIP_CONFIGS[gripKey(this.#carriedResource.type, this.#carriedResource.state)];
 
-      // Update carried resource position and rotation from current grip config
+      // Update carried resource position, rotation and scale from current grip config
       this.#carriedResource.mesh.position.set(grip.objectOffsetX, grip.objectOffsetY, grip.objectOffsetZ);
       this.#carriedResource.mesh.rotation.set(grip.objectRotationX, grip.objectRotationY, grip.objectRotationZ);
+      this.#carriedResource.mesh.scale.setScalar(grip.objectScale);
 
       // Calculate hand target positions from independent hand offsets
       const leftTarget = this.#cachedLeftGripTarget.set(-grip.handOffsetX, grip.handOffsetY, grip.handOffsetZ);
