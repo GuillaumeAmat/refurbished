@@ -39,6 +39,12 @@ export class KeyboardController implements InputSource {
     return this.#isButtonInSet(button, this.#keysJustPressed);
   }
 
+  public isAnyButtonJustPressed(): boolean {
+    if (this.#locked) return false;
+    const buttons = ['a', 'b', 'x', 'y', 'start', 'back', 'leftBumper', 'rightBumper'];
+    return buttons.some(btn => this.#isButtonInSet(btn, this.#keysJustPressed));
+  }
+
   #isButtonInSet(button: string, set: Set<string>): boolean {
     if (button === 'b') {
       if (this.#keySet === 'player1') {

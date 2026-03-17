@@ -7,6 +7,7 @@ export interface InputSource {
   getMovement(): InputVector;
   isButtonPressed(button: string): boolean;
   isButtonJustPressed(button: string): boolean;
+  isAnyButtonJustPressed(): boolean;
   getButtonHoldDuration(button: string): number;
   onButtonUp(callback: (button: string) => void): void;
   cleanup(): void;

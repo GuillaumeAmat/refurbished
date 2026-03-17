@@ -59,6 +59,10 @@ export class GamepadController implements InputSource {
     return this.#justPressedButtons.has(button);
   }
 
+  isAnyButtonJustPressed(): boolean {
+    return this.#justPressedButtons.size > 0;
+  }
+
   getButtonHoldDuration(button: string): number {
     if (!this.isButtonPressed(button)) {
       this.#buttonHoldStart.delete(button);

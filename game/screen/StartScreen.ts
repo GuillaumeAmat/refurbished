@@ -57,7 +57,7 @@ export class StartScreen {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
 
-      if (input.isButtonJustPressed('a') || input.isButtonJustPressed('start')) {
+      if (input.isAnyButtonJustPressed()) {
         this.#stageActor.send({ type: 'start' });
         return;
       }
