@@ -26,6 +26,7 @@ export class SoundManager {
 
   constructor() {
     SoundManager.#instance = this;
+    Howler.volume(0.6);
   }
 
   static getInstance(): SoundManager {
