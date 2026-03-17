@@ -27,8 +27,8 @@ export class LoadingOverlayHUD implements IHUDItem {
 
     this.#tween = gsap.fromTo(
       this.#text.mesh.material,
-      { opacity: 0.5 },
-      { opacity: 1, duration: 2, yoyo: true, repeat: -1 },
+      { opacity: 1 },
+      { opacity: 0.5, duration: 2, yoyo: true, repeat: -1, ease: 'power2.inOut' },
     );
   }
 
