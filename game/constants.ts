@@ -32,6 +32,7 @@ export const SMOKE_DASH_ARC_COUNT = 9;
 export const SMOKE_DASH_ARC_ANGLE = 2.8;
 
 export const AUDIO_TRACK_FADE_MS = 100;
+export const MENU_TRACK_LOOP_DELAY_MS = 3000;
 
 // Delivery animation
 export const DELIVERY_ANIM_DURATION = 0.5; // s — package visible before smoke vanish

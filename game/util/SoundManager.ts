@@ -1,16 +1,17 @@
 import { Howl, Howler } from 'howler';
 
-import { AUDIO_TRACK_FADE_MS } from '../constants';
+import { AUDIO_TRACK_FADE_MS, MENU_TRACK_LOOP_DELAY_MS } from '../constants';
 
 export class SoundManager {
   static #instance: SoundManager;
 
   #muted = false;
+  #menuLoopTimer: ReturnType<typeof setTimeout> | null = null;
 
   #sounds: Record<string, Howl> = {
     menuTrack: new Howl({
       src: ['/game/audio/track/menu.opus', '/game/audio/track/menu.mp3'],
-      loop: true,
+      loop: false,
       preload: true,
     }),
     levelTrack: new Howl({
@@ -39,6 +40,13 @@ export class SoundManager {
 
   stopTrack(name: string): void {
     const howl = this.#sounds[name];
+    if (name === 'menuTrack') {
+      if (this.#menuLoopTimer !== null) {
+        clearTimeout(this.#menuLoopTimer);
+        this.#menuLoopTimer = null;
+      }
+      howl?.off('end');
+    }
     if (!howl || !howl.playing()) return;
     howl.fade(howl.volume(), 0, AUDIO_TRACK_FADE_MS);
     howl.once('fade', () => howl.pause());
@@ -47,12 +55,17 @@ export class SoundManager {
   resumeTrack(name: string, loop = true, resetOnResume = false): void {
     const howl = this.#sounds[name];
     if (!howl) return;
-    howl.loop(loop);
+    howl.loop(false);
     if (howl.playing()) return;
     if (resetOnResume) howl.seek(0);
     howl.volume(0);
     howl.play();
     howl.fade(0, 1, AUDIO_TRACK_FADE_MS);
+    if (name === 'menuTrack' && loop) {
+      howl.once('end', () => {
+        this.#menuLoopTimer = setTimeout(() => this.resumeTrack(name, loop), MENU_TRACK_LOOP_DELAY_MS);
+      });
+    }
   }
 
   waitForLoad(): Promise<void> {
