@@ -101,7 +101,7 @@ export class OnboardingManager {
           this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
         }
       } else {
-        for (const pos of this.#collectPositions(this.#blueWorkZones)) {
+        for (const pos of this.#collectPositions(this.#blueWorkZones, 1)) {
           this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
         }
       }
@@ -170,27 +170,27 @@ export class OnboardingManager {
       case Step.HIGHLIGHT_REPAIR_ZONES:
         return this.#collectPositions(this.#repairZones);
       case Step.HIGHLIGHT_BLUE_WORK_ZONE:
-        return this.#collectPositions(this.#blueWorkZones);
+        return this.#collectPositions(this.#blueWorkZones, 1);
       case Step.HIGHLIGHT_PACKAGE_CRATE:
         return this.#collectPositions(this.#packageCrates);
       case Step.HIGHLIGHT_BWZ_POST_ASSEMBLY:
-        return this.#collectPositions(this.#blueWorkZones);
+        return this.#collectPositions(this.#blueWorkZones, 1);
       case Step.HIGHLIGHT_PKG_OR_OPEN_PKG:
         return this.#collectPositions(this.#packageCrates);
       case Step.HIGHLIGHT_DELIVERY_ZONE:
-        return this.#collectPositions(this.#deliveryZones);
+        return this.#collectPositions(this.#deliveryZones, 1);
       default:
         return [];
     }
   }
 
-  #collectPositions(objects: LevelObject[]): Vector3[] {
+  #collectPositions(objects: LevelObject[], fixedY?: number): Vector3[] {
     const result: Vector3[] = [];
     for (const obj of objects) {
       const pos = obj.getPosition();
       if (pos) {
         // getPosition() returns bounding box center; double Y to estimate top
-        result.push(new Vector3(pos.x, pos.y * 2, pos.z));
+        result.push(new Vector3(pos.x, fixedY ?? pos.y * 2, pos.z));
       }
     }
     return result;
