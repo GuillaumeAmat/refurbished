@@ -10,14 +10,14 @@ import { OnboardingHighlight } from './OnboardingHighlight';
 
 enum Step {
   IDLE,
-  HIGHLIGHT_CRATES,            // 1: start
-  HIGHLIGHT_REPAIR_ZONES,      // 2: first resource grabbed
-  HIGHLIGHT_BLUE_WORK_ZONE,    // 3: first resource repaired
-  HIGHLIGHT_PACKAGE_CRATE,     // 4: BWZ fully filled (assembling starts)
+  HIGHLIGHT_CRATES, // 1: start
+  HIGHLIGHT_REPAIR_ZONES, // 2: first resource grabbed
+  HIGHLIGHT_BLUE_WORK_ZONE, // 3: first resource repaired
+  HIGHLIGHT_PACKAGE_CRATE, // 4: BWZ fully filled (assembling starts)
   HIGHLIGHT_BWZ_POST_ASSEMBLY, // 5: first phone assembled
-  HIGHLIGHT_BWZ_OR_PHONE,      // 6: first package grabbed
-  HIGHLIGHT_PKG_OR_OPEN_PKG,   // 7: first phone grabbed
-  HIGHLIGHT_DELIVERY_ZONE,     // 8: first closed package made
+  HIGHLIGHT_BWZ_OR_PHONE, // 6: first package grabbed
+  HIGHLIGHT_PKG_OR_OPEN_PKG, // 7: first phone grabbed
+  HIGHLIGHT_DELIVERY_ZONE, // 8: first closed package made
   DONE,
 }
 
@@ -54,7 +54,7 @@ export class OnboardingManager {
 
   start(): void {
     console.log('[Onboarding] start — crates:', this.#resourceCrates.length);
-    this.#setStep(Step.HIGHLIGHT_CRATES);
+    setTimeout(() => requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES)), 2000);
   }
 
   onResourceGrabbed(): void {
@@ -159,7 +159,12 @@ export class OnboardingManager {
     this.#step = step;
 
     const positions = this.#getPositionsForStep(step);
-    console.log('[Onboarding] step', Step[step], '— positions:', positions.map(p => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`));
+    console.log(
+      '[Onboarding] step',
+      Step[step],
+      '— positions:',
+      positions.map((p) => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`),
+    );
     for (const pos of positions) {
       this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
     }
