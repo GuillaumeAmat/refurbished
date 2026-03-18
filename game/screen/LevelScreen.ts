@@ -3,7 +3,6 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { useRuntimeConfig } from '#app';
 
-import { ComboHUD } from '../hud/ComboHUD';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { OrderQueueHUD } from '../hud/OrderQueueHUD';
 import { PointsHUD } from '../hud/PointsHUD';
@@ -98,7 +97,6 @@ export class LevelScreen {
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
     this.#hudManager.add('topCenter', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
-    this.#hudManager.add('bottomCenter', new ComboHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
     this.#hudManager.hide();
 
