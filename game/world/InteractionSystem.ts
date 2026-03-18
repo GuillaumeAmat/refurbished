@@ -15,6 +15,7 @@ import { RepairZone } from './object/RepairZone';
 import type { OnboardingManager } from './OnboardingManager';
 import type { Player } from './Player';
 import { REPAIR_HIT_COUNT } from './RepairAnimation';
+import { PointsPopAnimation } from './PointsPopAnimation';
 import { SmokeParticleSystem } from './SmokeParticleSystem';
 
 const REPAIR_HOLD_DURATION = 2800;
@@ -32,7 +33,8 @@ export class InteractionSystem {
   #onboardingManager: OnboardingManager | null = null;
 
   #smokeSystem: SmokeParticleSystem;
-  #deliveryAnims: { mesh: Object3D; timer: number }[] = [];
+  #deliveryAnims: { mesh: Object3D; timer: number; points: number }[] = [];
+  #pointsPopAnims: PointsPopAnimation[] = [];
 
   // Cached objects to avoid allocations in hot loops
   #tempToObj = new Vector3();
@@ -219,6 +221,7 @@ export class InteractionSystem {
       // Delivery zone: only accept closed packages
       if (target instanceof DeliveryZone && carriedType === 'package' && carriedState === 'repaired') {
         player.dropResource();
+        const result = this.#orderManager.completeNextOrder();
         const zoneCenter = target.getZoneCenter();
         if (zoneCenter) {
           const model = Resources.getInstance().getGLTFAsset('packageClosedModel');
@@ -227,10 +230,9 @@ export class InteractionSystem {
             mesh.position.set(zoneCenter.x, 1, zoneCenter.z);
             mesh.scale.setScalar(1.2);
             this.#levelGroup.add(mesh);
-            this.#deliveryAnims.push({ mesh, timer: 0 });
+            this.#deliveryAnims.push({ mesh, timer: 0, points: result?.totalPoints ?? 0 });
           }
         }
-        this.#orderManager.completeNextOrder();
         this.#onboardingManager?.onDeliveryCompleted();
         return;
       }
@@ -464,11 +466,18 @@ export class InteractionSystem {
       anim.timer += dt;
       if (anim.timer >= DELIVERY_ANIM_DURATION) {
         this.#smokeSystem.spawnImpact(anim.mesh.position, DELIVERY_SMOKE_COUNT);
+        this.#pointsPopAnims.push(new PointsPopAnimation(this.#levelGroup, anim.mesh.position, anim.points));
         anim.mesh.removeFromParent();
         this.#deliveryAnims.splice(i, 1);
       }
     }
     this.#smokeSystem.update(null, null, false);
+
+    for (let i = this.#pointsPopAnims.length - 1; i >= 0; i--) {
+      if (this.#pointsPopAnims[i]!.update(dt)) {
+        this.#pointsPopAnims.splice(i, 1);
+      }
+    }
 
     for (const player of this.#players) {
       const bestTarget = this.#findBestTarget(player);
