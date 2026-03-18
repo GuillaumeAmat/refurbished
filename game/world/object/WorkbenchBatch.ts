@@ -53,7 +53,7 @@ export class WorkbenchBatch {
   }
 
   setHighlight(instanceIndex: number, enabled: boolean): void {
-    const color = enabled ? new Color(1.27, 1.27, 1.27) : new Color(1, 1, 1);
+    const color = enabled ? new Color('#F5C621').lerp(new Color(1, 1, 1), 0.6) : new Color(1, 1, 1);
     for (const mesh of this.#meshes) {
       mesh.setColorAt(instanceIndex, color);
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
