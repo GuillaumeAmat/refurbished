@@ -294,6 +294,16 @@ export class Stage {
         path: '/game/texture/phone_icon.png',
         priority: 'low',
       },
+      alphaIcon: {
+        type: 'texture',
+        path: '/game/texture/alpha_icon.png',
+        priority: 'low',
+      },
+      packageOpenIcon: {
+        type: 'texture',
+        path: '/game/texture/package_open_icon.png',
+        priority: 'low',
+      },
       plusIcon: {
         type: 'texture',
         path: '/game/texture/plus_icon.png',

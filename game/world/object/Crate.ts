@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, type Object3D, Vector3 } from 'three';
+import { Box3, Group, Mesh, MeshBasicMaterial, type Object3D, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Cell } from '../../levels';
@@ -37,6 +37,7 @@ export class Crate extends LevelObject {
   #lidAngle = 0;
   #lidState: LidState = 'idle';
   #holdTimer = 0;
+  #iconMesh: Mesh | null = null;
 
   #onTick = (): void => {
     if (!this.#lidPivot || this.#lidState === 'idle') return;
@@ -84,6 +85,11 @@ export class Crate extends LevelObject {
 
   public override dispose(): void {
     Time.getInstance().removeEventListener('tick', this.#onTick);
+    if (this.#iconMesh) {
+      (this.#iconMesh.material as MeshBasicMaterial).dispose();
+      this.#iconMesh.geometry.dispose();
+      this.#iconMesh = null;
+    }
     super.dispose();
   }
 
@@ -130,6 +136,31 @@ export class Crate extends LevelObject {
     mesh.add(pivot);
 
     this.#lidPivot = pivot;
+
+    const iconTextureName = Crate.#getIconTextureName(this.type);
+    if (iconTextureName) {
+      const texture = Resources.getInstance().getTextureAsset(iconTextureName);
+      const alphaTexture = Resources.getInstance().getTextureAsset('alphaIcon');
+      if (texture) {
+        texture.colorSpace = SRGBColorSpace;
+        const lidWidth = lidLocalBox.max.x - lidLocalBox.min.x;
+        const iconSize = lidWidth * 0.7;
+        const geometry = new PlaneGeometry(iconSize, iconSize);
+        const material = new MeshBasicMaterial({
+          map: texture,
+          alphaTest: 0.5,
+          alphaMap: alphaTexture ?? undefined,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1,
+        });
+        const iconMesh = new Mesh(geometry, material);
+        iconMesh.position.set(0, lidLocalBox.max.y - lidLocalBox.min.y, (lidLocalBox.max.z - lidLocalBox.min.z) / 2);
+        iconMesh.rotation.x = -Math.PI / 2;
+        pivot.add(iconMesh);
+        this.#iconMesh = iconMesh;
+      }
+    }
   }
 
   public getResourceType(): ResourceType {
@@ -180,6 +211,21 @@ export class Crate extends LevelObject {
         return 'phoneAssembledModel';
       case 'package':
         return 'packageClosedModel';
+      default:
+        return null;
+    }
+  }
+
+  static #getIconTextureName(type: CrateType): string | null {
+    switch (type) {
+      case Cell.CRATE_BATTERY:
+        return 'batteryEmptyIcon';
+      case Cell.CRATE_FRAME:
+        return 'frameBrokenIcon';
+      case Cell.CRATE_SCREEN:
+        return 'screenBrokenIcon';
+      case Cell.CRATE_PACKAGE:
+        return 'packageOpenIcon';
       default:
         return null;
     }
