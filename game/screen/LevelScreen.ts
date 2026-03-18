@@ -98,7 +98,7 @@ export class LevelScreen {
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
     this.#hudManager.add('topCenter', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
-    this.#hudManager.add('bottomLeft', new ComboHUD());
+    this.#hudManager.add('bottomCenter', new ComboHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
     this.#hudManager.hide();
 
@@ -210,14 +210,9 @@ export class LevelScreen {
     }
 
     const config = useRuntimeConfig();
-    const midpoint = config.public.cameraDynamicsEnabled
-      ? (this.#level?.getPlayerMidpoint() ?? null)
-      : null;
-    const dist = config.public.cameraDynamicsEnabled
-      ? (this.#level?.getPlayerDistance() ?? null)
-      : null;
-    const zoomFactor =
-      dist !== null ? Math.max(-1, Math.min(1, (this.#spawnDist - dist) / this.#spawnDist)) : 0;
+    const midpoint = config.public.cameraDynamicsEnabled ? (this.#level?.getPlayerMidpoint() ?? null) : null;
+    const dist = config.public.cameraDynamicsEnabled ? (this.#level?.getPlayerDistance() ?? null) : null;
+    const zoomFactor = dist !== null ? Math.max(-1, Math.min(1, (this.#spawnDist - dist) / this.#spawnDist)) : 0;
     this.#camera.setFollowTarget(midpoint, zoomFactor);
 
     this.#level?.update();
