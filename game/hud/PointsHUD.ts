@@ -41,6 +41,7 @@ export class PointsHUD implements IHUDItem {
     shadowOffsetX: 0,
     shadowOffsetY: 0,
     rotation: 0,
+    forceCombo: false,
   };
 
   constructor() {
@@ -216,6 +217,9 @@ export class PointsHUD implements IHUDItem {
     folder.add(this.#params, 'shadowBlur', 0, 40, 1).name('Shadow Blur').onChange(rebuild);
     folder.add(this.#params, 'shadowOffsetX', -20, 20, 1).name('Shadow X').onChange(rebuild);
     folder.add(this.#params, 'shadowOffsetY', -20, 20, 1).name('Shadow Y').onChange(rebuild);
+    folder.add(this.#params, 'forceCombo').name('Force x3 Combo').onChange((v: boolean) => {
+      this.#updateComboBadge(v ? 3 : this.#comboManager.getMultiplier());
+    });
     folder.close();
   }
 
