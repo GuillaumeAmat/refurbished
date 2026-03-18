@@ -53,7 +53,6 @@ export class OnboardingManager {
   }
 
   start(): void {
-    console.log('[Onboarding] start — crates:', this.#resourceCrates.length);
     setTimeout(() => requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES)), 2000);
   }
 
@@ -159,12 +158,6 @@ export class OnboardingManager {
     this.#step = step;
 
     const positions = this.#getPositionsForStep(step);
-    console.log(
-      '[Onboarding] step',
-      Step[step],
-      '— positions:',
-      positions.map((p) => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`),
-    );
     for (const pos of positions) {
       this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
     }
