@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       keyboardFallbackEnabled: true,
-      onboardingEnabled: false,
+      onboardingEnabled: true,
       cameraDynamicsEnabled: false,
       leaderboardAutoRefreshEnabled: false,
     },
@@ -24,7 +24,7 @@ export default defineNuxtConfig({
     plugins: [glslPlugin()],
     server: {
       fs: {
-        strict: false,  // Allow devtools extension files
+        strict: false, // Allow devtools extension files
       },
       watch: {
         atomic: true,
