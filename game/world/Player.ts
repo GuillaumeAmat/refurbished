@@ -12,10 +12,11 @@ import { Crate } from './object/Crate';
 import { RepairAnimation } from './RepairAnimation';
 import { SmokeParticleSystem } from './SmokeParticleSystem';
 
-const PLAYER_COLORS = new Map<PlayerId, number>([
-  [1, 0xffb6c1],
-  [2, 0x00ff00],
-]);
+
+const PLAYER_COLORS: Record<PlayerId, string> = {
+  1: '#e1a3ac',
+  2: '#004200',
+};
 
 type GripKey = `${ResourceType}_${ResourceState}`;
 
@@ -114,6 +115,7 @@ export class Player {
   #smokeSystem: SmokeParticleSystem | null = null;
   #hasDashBurst = false;
 
+  #baseMaterialColors: { material: MeshStandardMaterial; base: Color }[] = [];
   #screwdriverMesh: Object3D | null = null;
   #repairAnimation = new RepairAnimation();
   #repairZonePos = new Vector3();
@@ -248,6 +250,15 @@ export class Player {
       buildGripSliders(v);
     });
     buildGripSliders(gripState.resource);
+
+    const tintState = { color: PLAYER_COLORS[this.#playerId] };
+    folder.addColor(tintState, 'color').name('Tint').onChange((v: string) => {
+      const tint = new Color(v);
+      for (const { material, base } of this.#baseMaterialColors) {
+        material.color.copy(base).add(tint);
+      }
+    });
+
     folder.close();
   }
 
@@ -283,7 +294,8 @@ export class Player {
     this.#mesh.position.copy(this.#spawnPosition);
     this.#mesh.rotation.y = Math.PI / 2;
 
-    const playerColor = new Color(PLAYER_COLORS.get(this.#playerId)!);
+    const playerColor = new Color(PLAYER_COLORS[this.#playerId]);
+    this.#baseMaterialColors = [];
 
     this.#mesh.traverse((child) => {
       if (child instanceof Mesh) {
@@ -292,6 +304,7 @@ export class Player {
 
         if (child.material instanceof MeshStandardMaterial) {
           child.material = child.material.clone();
+          this.#baseMaterialColors.push({ material: child.material, base: child.material.color.clone() });
           child.material.color.add(playerColor);
         }
       }
