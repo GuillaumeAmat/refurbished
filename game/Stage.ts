@@ -304,6 +304,11 @@ export class Stage {
         path: '/game/texture/package_open_icon.png',
         priority: 'low',
       },
+      packageClosedIcon: {
+        type: 'texture',
+        path: '/game/texture/package_closed_icon.png',
+        priority: 'low',
+      },
       plusIcon: {
         type: 'texture',
         path: '/game/texture/plus_icon.png',

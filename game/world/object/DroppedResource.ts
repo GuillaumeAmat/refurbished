@@ -30,6 +30,7 @@ function iconNameForResource(resourceType: ResourceType, state: ResourceState): 
   if (resourceType === 'battery') return 'batteryFilledIcon';
   if (resourceType === 'screen') return 'screenRepairedIcon';
   if (resourceType === 'phone') return 'phoneIcon';
+  if (resourceType === 'package') return 'packageClosedIcon';
   return null;
 }
 
