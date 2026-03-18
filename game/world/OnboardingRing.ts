@@ -20,19 +20,30 @@ export class OnboardingRing {
     });
     this.#mesh = new Mesh(this.#geometry, this.#material);
     this.#mesh.renderOrder = 999;
-    this.#mesh.rotation.x = -Math.PI / 2;
     this.#mesh.position.set(x, y, z);
+    this.#mesh.onBeforeRender = (_r, _s, cam) => {
+      this.#mesh.quaternion.copy(cam.quaternion);
+    };
     parent.add(this.#mesh);
   }
 
   /** Returns true when animation is done. */
   update(deltaMs: number): boolean {
     this.#elapsed += deltaMs;
-    const progress = Math.min(this.#elapsed / DURATION, 1);
-    const scale = 1 - progress * progress; // ease-in shrink
+    const p = Math.min(this.#elapsed / DURATION, 1);
+    let scale: number;
+    let opacity: number;
+    if (p < 0.5) {
+      scale = 2 - p * 2;
+      opacity = 1;
+    } else {
+      const q = (p - 0.5) * 2;
+      scale = 1 - q;
+      opacity = 1 - q;
+    }
     this.#mesh.scale.setScalar(scale);
-    this.#material.opacity = scale;
-    return progress >= 1;
+    this.#material.opacity = opacity;
+    return p >= 1;
   }
 
   dispose(): void {
