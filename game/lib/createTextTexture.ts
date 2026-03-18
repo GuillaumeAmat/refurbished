@@ -14,6 +14,10 @@ export interface TextTextureOptions {
   backgroundPaddingY?: number;
   backgroundPaddingTop?: number;
   referenceText?: string;
+  dropShadowColor?: string;
+  dropShadowBlur?: number;
+  dropShadowOffsetX?: number;
+  dropShadowOffsetY?: number;
 }
 
 export interface TextTextureResult {
@@ -38,6 +42,10 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
     backgroundPaddingY = 0,
     backgroundPaddingTop,
     referenceText,
+    dropShadowColor = '',
+    dropShadowBlur = 0,
+    dropShadowOffsetX = 0,
+    dropShadowOffsetY = 0,
   } = options;
 
   const dpr = Math.min(window.devicePixelRatio, 2);
@@ -47,6 +55,11 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
   const scaledBgPaddingBottom = backgroundPaddingY * dpr;
   const scaledBgPaddingTop = (backgroundPaddingTop ?? backgroundPaddingY) * dpr;
   const scaledBorderRadius = borderRadius * dpr;
+  const scaledShadowBlur = dropShadowBlur * dpr;
+  const scaledShadowOffsetX = dropShadowOffsetX * dpr;
+  const scaledShadowOffsetY = dropShadowOffsetY * dpr;
+  // Extra canvas margin for shadow overflow
+  const shadowMargin = dropShadowColor ? Math.ceil(scaledShadowBlur * 2 + Math.max(Math.abs(scaledShadowOffsetX), Math.abs(scaledShadowOffsetY))) : 0;
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { alpha: true });
@@ -60,27 +73,50 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
   const textWidth = Math.max(refMetrics.width, 1);
   const textHeight = scaledFontSize;
 
-  canvas.width = Math.ceil(textWidth + scaledPadding * 2 + scaledBgPaddingX * 2);
-  canvas.height = Math.ceil(textHeight + scaledPadding * 2 + scaledBgPaddingTop + scaledBgPaddingBottom);
+  const contentWidth = Math.ceil(textWidth + scaledPadding * 2 + scaledBgPaddingX * 2);
+  const contentHeight = Math.ceil(textHeight + scaledPadding * 2 + scaledBgPaddingTop + scaledBgPaddingBottom);
+  canvas.width = contentWidth + shadowMargin * 2;
+  canvas.height = contentHeight + shadowMargin * 2;
 
   // Clear to transparent
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw background container
+  // Offset drawing by shadow margin
+  ctx.translate(shadowMargin, shadowMargin);
+
+  // Draw background container with optional drop shadow
   if (backgroundColor) {
+    if (dropShadowColor) {
+      ctx.shadowColor = dropShadowColor;
+      ctx.shadowBlur = scaledShadowBlur;
+      ctx.shadowOffsetX = scaledShadowOffsetX;
+      ctx.shadowOffsetY = scaledShadowOffsetY;
+    }
     ctx.fillStyle = backgroundColor;
     ctx.beginPath();
-    ctx.roundRect(0, 0, canvas.width, canvas.height, scaledBorderRadius);
+    ctx.roundRect(0, 0, contentWidth, contentHeight, scaledBorderRadius);
     ctx.fill();
+    // Reset shadow for text
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
   }
 
   // Re-apply font after resize
   ctx.font = fontString;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = referenceText ? 'center' : 'left';
   ctx.fillStyle = color;
-  const textX = referenceText ? canvas.width / 2 : scaledPadding + scaledBgPaddingX;
-  const textY = scaledPadding + scaledBgPaddingTop + textHeight / 2;
+
+  // Use actual glyph metrics for true vertical centering
+  const metrics = ctx.measureText(text || referenceText || 'M');
+  const glyphTop = metrics.actualBoundingBoxAscent;
+  const glyphBottom = metrics.actualBoundingBoxDescent;
+  const glyphHeight = glyphTop + glyphBottom;
+
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = referenceText ? 'center' : 'left';
+  const textX = referenceText ? contentWidth / 2 : scaledPadding + scaledBgPaddingX;
+  const textY = (contentHeight - glyphHeight) / 2 + glyphTop;
   ctx.fillText(text, textX, textY);
 
   const texture = new CanvasTexture(canvas);
