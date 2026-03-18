@@ -10,12 +10,14 @@ import { OnboardingHighlight } from './OnboardingHighlight';
 
 enum Step {
   IDLE,
-  HIGHLIGHT_CRATES,
-  HIGHLIGHT_REPAIR_ZONES,
-  HIGHLIGHT_BLUE_WORK_ZONE,
-  HIGHLIGHT_PACKAGE_CRATE,
-  HIGHLIGHT_PHONE,
-  HIGHLIGHT_DELIVERY_ZONE,
+  HIGHLIGHT_CRATES, // 1: start
+  HIGHLIGHT_REPAIR_ZONES, // 2: first resource grabbed
+  HIGHLIGHT_BLUE_WORK_ZONE, // 3: first resource repaired
+  HIGHLIGHT_PACKAGE_CRATE, // 4: BWZ fully filled (assembling starts)
+  HIGHLIGHT_BWZ_POST_ASSEMBLY, // 5: first phone assembled
+  HIGHLIGHT_BWZ_OR_PHONE, // 6: first package grabbed
+  HIGHLIGHT_PKG_OR_OPEN_PKG, // 7: first phone grabbed
+  HIGHLIGHT_DELIVERY_ZONE, // 8: first closed package made
   DONE,
 }
 
@@ -51,13 +53,19 @@ export class OnboardingManager {
   }
 
   start(): void {
-    console.log('[Onboarding] start — crates:', this.#resourceCrates.length);
-    this.#setStep(Step.HIGHLIGHT_CRATES);
+    setTimeout(() => requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES)), 2000);
   }
 
   onResourceGrabbed(): void {
     if (this.#step === Step.HIGHLIGHT_CRATES) {
       this.#setStep(Step.HIGHLIGHT_REPAIR_ZONES);
+    }
+  }
+
+  onResourceDroppedOnRepairZone(pos: Vector3): void {
+    if (this.#step === Step.HIGHLIGHT_REPAIR_ZONES) {
+      this.#disposeHighlights();
+      this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
     }
   }
 
@@ -67,24 +75,61 @@ export class OnboardingManager {
     }
   }
 
-  onPhoneAssembled(): void {
+  onBlueWorkZoneFilled(): void {
     if (this.#step === Step.HIGHLIGHT_BLUE_WORK_ZONE) {
       this.#setStep(Step.HIGHLIGHT_PACKAGE_CRATE);
     }
   }
 
-  onPackageGrabbed(phonePosition: Vector3): void {
+  onPhoneAssembled(): void {
     if (this.#step === Step.HIGHLIGHT_PACKAGE_CRATE) {
+      this.#setStep(Step.HIGHLIGHT_BWZ_POST_ASSEMBLY);
+    }
+  }
+
+  onPackageGrabbed(droppedPhonePositions: Vector3[]): void {
+    if (
+      this.#step === Step.HIGHLIGHT_PACKAGE_CRATE ||
+      this.#step === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY ||
+      this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE ||
+      this.#step === Step.HIGHLIGHT_PKG_OR_OPEN_PKG
+    ) {
       this.#disposeHighlights();
-      this.#step = Step.HIGHLIGHT_PHONE;
-      this.#highlights.push(
-        new OnboardingHighlight(this.#parent, phonePosition.x, phonePosition.y * 2, phonePosition.z),
-      );
+      this.#step = Step.HIGHLIGHT_BWZ_OR_PHONE;
+      if (droppedPhonePositions.length > 0) {
+        for (const pos of droppedPhonePositions) {
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
+        }
+      } else {
+        for (const pos of this.#collectPositions(this.#blueWorkZones, 1)) {
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
+        }
+      }
+    }
+  }
+
+  onPhoneGrabbed(openPkgPositions: Vector3[]): void {
+    if (this.#step === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY || this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE) {
+      this.#disposeHighlights();
+      this.#step = Step.HIGHLIGHT_PKG_OR_OPEN_PKG;
+      if (openPkgPositions.length > 0) {
+        for (const pos of openPkgPositions) {
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
+        }
+      } else {
+        for (const pos of this.#collectPositions(this.#packageCrates)) {
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
+        }
+      }
     }
   }
 
   onPackageFilled(): void {
-    if (this.#step === Step.HIGHLIGHT_PHONE) {
+    if (
+      this.#step === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY ||
+      this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE ||
+      this.#step === Step.HIGHLIGHT_PKG_OR_OPEN_PKG
+    ) {
       this.#setStep(Step.HIGHLIGHT_DELIVERY_ZONE);
     }
   }
@@ -113,7 +158,6 @@ export class OnboardingManager {
     this.#step = step;
 
     const positions = this.#getPositionsForStep(step);
-    console.log('[Onboarding] step', Step[step], '— positions:', positions.map(p => `(${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`));
     for (const pos of positions) {
       this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
     }
@@ -126,23 +170,27 @@ export class OnboardingManager {
       case Step.HIGHLIGHT_REPAIR_ZONES:
         return this.#collectPositions(this.#repairZones);
       case Step.HIGHLIGHT_BLUE_WORK_ZONE:
-        return this.#collectPositions(this.#blueWorkZones);
+        return this.#collectPositions(this.#blueWorkZones, 1);
       case Step.HIGHLIGHT_PACKAGE_CRATE:
         return this.#collectPositions(this.#packageCrates);
+      case Step.HIGHLIGHT_BWZ_POST_ASSEMBLY:
+        return this.#collectPositions(this.#blueWorkZones, 1);
+      case Step.HIGHLIGHT_PKG_OR_OPEN_PKG:
+        return this.#collectPositions(this.#packageCrates);
       case Step.HIGHLIGHT_DELIVERY_ZONE:
-        return this.#collectPositions(this.#deliveryZones);
+        return this.#collectPositions(this.#deliveryZones, 1);
       default:
         return [];
     }
   }
 
-  #collectPositions(objects: LevelObject[]): Vector3[] {
+  #collectPositions(objects: LevelObject[], fixedY?: number): Vector3[] {
     const result: Vector3[] = [];
     for (const obj of objects) {
       const pos = obj.getPosition();
       if (pos) {
         // getPosition() returns bounding box center; double Y to estimate top
-        result.push(new Vector3(pos.x, pos.y * 2, pos.z));
+        result.push(new Vector3(pos.x, fixedY ?? pos.y * 2, pos.z));
       }
     }
     return result;

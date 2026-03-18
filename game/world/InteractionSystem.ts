@@ -13,6 +13,7 @@ import { DroppedResource } from './object/DroppedResource';
 import type { LevelObject } from './object/LevelObject';
 import { RepairZone } from './object/RepairZone';
 import type { OnboardingManager } from './OnboardingManager';
+import type { ResourceState, ResourceType } from '../types';
 import type { Player } from './Player';
 import { REPAIR_HIT_COUNT } from './RepairAnimation';
 import { PointsPopAnimation } from './PointsPopAnimation';
@@ -100,6 +101,19 @@ export class InteractionSystem {
     }
 
     resource.dispose();
+  }
+
+  #findFloorDroppedResource(type: ResourceType, state: ResourceState): Vector3 | null {
+    for (const resource of this.#droppedResources) {
+      if (
+        resource.getResourceType() === type &&
+        resource.getState() === state &&
+        !this.#resourceParents.has(resource)
+      ) {
+        return resource.getPosition();
+      }
+    }
+    return null;
   }
 
   #isBenchCenter(x: number, z: number): boolean {
@@ -214,6 +228,7 @@ export class InteractionSystem {
           });
           closedPkg.create(this.#levelGroup);
           this.addDroppedResource(closedPkg, parent);
+          this.#onboardingManager?.onPackageFilled();
           return;
         }
       }
@@ -273,6 +288,9 @@ export class InteractionSystem {
           resource.create(this.#levelGroup);
           this.addDroppedResource(resource, target);
           target.setResource(resource);
+          if (target.isReadyToAssemble()) {
+            this.#onboardingManager?.onBlueWorkZoneFilled();
+          }
           return;
         }
         // Prevent dropping packages on BlueWorkZone when not awaiting
@@ -307,6 +325,10 @@ export class InteractionSystem {
         this.addDroppedResource(dropped, target);
         if (target instanceof RepairZone) {
           target.hideScrewdriver();
+          const repairZonePos = target.getPosition();
+          if (repairZonePos) {
+            this.#onboardingManager?.onResourceDroppedOnRepairZone(repairZonePos);
+          }
         }
       } else {
         const facing = player.getFacingDirection();
@@ -337,22 +359,30 @@ export class InteractionSystem {
 
         this.removeDroppedResource(target);
         this.#currentTargets.set(playerId, null);
+        if (target.getResourceType() === 'phone' && target.getState() === 'repaired') {
+          const openPkgPositions: Vector3[] = [];
+          for (const resource of this.#droppedResources) {
+            if (resource.getResourceType() === 'package' && resource.getState() === 'broken') {
+              const pos = resource.getPosition();
+              if (pos) openPkgPositions.push(pos);
+            }
+          }
+          this.#onboardingManager?.onPhoneGrabbed(openPkgPositions);
+        }
       } else if (target instanceof Crate) {
         const resourceType = target.getResourceType();
         player.grabResource(resourceType, 'broken');
         target.openLid();
 
         if (resourceType === 'package') {
-          let phonePos: Vector3 | null = null;
-          for (const obj of this.#interactables) {
-            if (obj instanceof BlueWorkZone && obj.isAwaitingPackaging()) {
-              phonePos = obj.getPosition();
-              break;
+          const droppedPhonePositions: Vector3[] = [];
+          for (const resource of this.#droppedResources) {
+            if (resource.getResourceType() === 'phone' && resource.getState() === 'repaired') {
+              const pos = resource.getPosition();
+              if (pos) droppedPhonePositions.push(pos);
             }
           }
-          if (phonePos) {
-            this.#onboardingManager?.onPackageGrabbed(phonePos);
-          }
+          this.#onboardingManager?.onPackageGrabbed(droppedPhonePositions);
         } else {
           this.#onboardingManager?.onResourceGrabbed();
         }
@@ -410,13 +440,13 @@ export class InteractionSystem {
                     target.resetRepairProgress();
                     player.stopRepairing();
                     this.#repairingPlayers.delete(playerId);
+                    this.#onboardingManager?.onResourceRepaired();
                   }
                 },
                 screwdriver,
                 repairZonePos,
               );
             }
-            this.#onboardingManager?.onResourceRepaired();
           }
         }
       }
