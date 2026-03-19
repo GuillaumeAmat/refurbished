@@ -1,9 +1,11 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
-import type { Color, Group, Object3D } from 'three';
-import { Box3, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import type { Group, Object3D } from 'three';
+import { Box3, Color, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 
-import { BLOOM_LAYER, HIGHLIGHT_EMISSIVE } from '../../constants';
+import { BLOOM_LAYER } from '../../constants';
 import { Physics } from '../../util/Physics';
+
+const HIGHLIGHT_EMISSIVE = new Color('#F5C621').multiplyScalar(0.4);
 
 export abstract class LevelObject {
   protected mesh: Object3D | null = null;
@@ -69,7 +71,7 @@ export abstract class LevelObject {
         if (!this.#originalEmissive.has(child)) {
           this.#originalEmissive.set(child, child.material.emissive.clone());
         }
-        child.material.emissive.setHex(HIGHLIGHT_EMISSIVE);
+        child.material.emissive.copy(this.#originalEmissive.get(child)!).add(HIGHLIGHT_EMISSIVE);
       } else {
         const original = this.#originalEmissive.get(child);
         if (original) {

@@ -22,7 +22,6 @@ export const DASH_COOLDOWN = 0.5;
 
 export const INTERACTION_DISTANCE = 1.4;
 export const INTERACTION_FACING_THRESHOLD = 0; // dot-product threshold; object interactable when dot ≥ this (0 = full front 180° arc; negative = player showing back)
-export const HIGHLIGHT_EMISSIVE = 0x444444;
 
 export const SMOKE_POOL_SIZE = 80;
 export const SMOKE_PARTICLE_LIFETIME = 0.4;

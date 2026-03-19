@@ -182,6 +182,19 @@ export class InteractionSystem {
     return this.#resourceParents.get(resource) ?? null;
   }
 
+  #setTargetHighlight(target: LevelObject | null, enabled: boolean): void {
+    if (!target) return;
+    if (target instanceof DroppedResource) {
+      const parent = this.#getParentObject(target);
+      if (parent) {
+        parent.setHighlight(enabled);
+        target.setHighlight(enabled);
+        return;
+      }
+    }
+    target.setHighlight(enabled);
+  }
+
   handleInteraction(playerId: PlayerId): void {
     const player = this.#players.find((p) => p.getPlayerId() === playerId);
     if (!player) return;
@@ -515,8 +528,8 @@ export class InteractionSystem {
       const currentTarget = this.#currentTargets.get(playerId) ?? null;
 
       if (bestTarget !== currentTarget) {
-        currentTarget?.setHighlight(false);
-        bestTarget?.setHighlight(true);
+        this.#setTargetHighlight(currentTarget, false);
+        this.#setTargetHighlight(bestTarget, true);
         this.#currentTargets.set(playerId, bestTarget);
       }
     }
