@@ -35,6 +35,15 @@ export abstract class LevelObject {
     this.#boxCached = false;
   }
 
+  /** Clear cached highlight state after a mesh swap and re-apply if active. */
+  protected invalidateHighlight(): void {
+    this.#originalEmissive.clear();
+    if (this.#isHighlighted) {
+      this.#isHighlighted = false;
+      this.setHighlight(true);
+    }
+  }
+
   public getPosition(): Vector3 | null {
     if (!this.mesh) return null;
     this.#ensureBox();
