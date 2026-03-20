@@ -3,9 +3,8 @@ import { useRedis } from './redis';
 const SESSION_TTL_S = 900; // 15 min
 const sessionKey = (token: string) => `game_session:${token}`;
 
-const ORDER_FIRST_DELAY_MS = 3_000;
-const ORDER_SPAWN_MIN_MS = 15_000;
-const ORDER_MAX_ACTIVE = 4;
+const ORDER_SPAWN_INTERVAL_MS = 10_000;
+const ORDER_INITIAL_BURST = 2;
 
 interface GameSession {
   score: number;
@@ -27,8 +26,9 @@ export async function recordGameEvent(token: string, delta: number): Promise<boo
   if (!session) return false;
 
   const elapsed = Date.now() - session.createdAt;
+  // 1 (first order) + burst + regular spawns + buffer for MIN_ACTIVE respawns
   const maxEvents =
-    Math.floor((elapsed - ORDER_FIRST_DELAY_MS) / ORDER_SPAWN_MIN_MS) + ORDER_MAX_ACTIVE;
+    1 + ORDER_INITIAL_BURST + Math.floor(elapsed / ORDER_SPAWN_INTERVAL_MS) + 1;
 
   if (session.eventCount + 1 > maxEvents) return false;
 

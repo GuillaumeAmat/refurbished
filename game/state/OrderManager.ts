@@ -2,20 +2,16 @@ import {
   ORDER_BASE_POINTS,
   ORDER_DURATION_MS,
   ORDER_EXPIRE_PENALTY,
-  ORDER_FIRST_DELAY_MS,
   ORDER_GREEN_THRESHOLD,
-  ORDER_GREEN_TIP,
-  ORDER_MAX_ACTIVE,
+  ORDER_INITIAL_BURST,
   ORDER_MIN_ACTIVE,
-  ORDER_RED_TIP,
-  ORDER_SPAWN_MAX_MS,
-  ORDER_SPAWN_MIN_MS,
+  ORDER_SPAWN_INTERVAL_MS,
   ORDER_YELLOW_THRESHOLD,
-  ORDER_YELLOW_TIP,
 } from '../constants';
 import { Time } from '../util/Time';
 import { ComboManager } from './ComboManager';
 import { ScoreManager } from './ScoreManager';
+import { SessionManager } from './SessionManager';
 
 export type OrderZone = 'green' | 'yellow' | 'red';
 
@@ -40,16 +36,6 @@ function computeZone(elapsed: number, duration: number): OrderZone {
   return 'red';
 }
 
-function tipForZone(zone: OrderZone): number {
-  if (zone === 'green') return ORDER_GREEN_TIP;
-  if (zone === 'yellow') return ORDER_YELLOW_TIP;
-  return ORDER_RED_TIP;
-}
-
-function randomSpawnInterval(): number {
-  return ORDER_SPAWN_MIN_MS + Math.random() * (ORDER_SPAWN_MAX_MS - ORDER_SPAWN_MIN_MS);
-}
-
 export class OrderManager extends EventTarget {
   static #instance: OrderManager | null = null;
 
@@ -58,16 +44,17 @@ export class OrderManager extends EventTarget {
   #running = false;
   #onTick: (() => void) | null = null;
   #spawnTimer = 0;
-  #nextSpawnInterval = 0;
-  #firstSpawnDone = false;
+  #firstOrderDelivered = false;
 
   #comboManager: ComboManager;
   #scoreManager: ScoreManager;
+  #sessionManager: SessionManager;
 
   private constructor() {
     super();
     this.#comboManager = ComboManager.getInstance();
     this.#scoreManager = ScoreManager.getInstance();
+    this.#sessionManager = SessionManager.getInstance();
   }
 
   public static getInstance(): OrderManager {
@@ -81,8 +68,11 @@ export class OrderManager extends EventTarget {
     if (this.#running) return;
     this.#running = true;
     this.#spawnTimer = 0;
-    this.#nextSpawnInterval = ORDER_FIRST_DELAY_MS;
-    this.#firstSpawnDone = false;
+
+    // Spawn first order immediately (frozen until delivered)
+    if (!this.#firstOrderDelivered && this.#orders.length === 0) {
+      this.#spawnOrder();
+    }
 
     const time = Time.getInstance();
     this.#onTick = () => {
@@ -107,7 +97,11 @@ export class OrderManager extends EventTarget {
     this.#orders = [];
     this.#nextId = 0;
     this.#spawnTimer = 0;
-    this.#firstSpawnDone = false;
+    this.#firstOrderDelivered = false;
+  }
+
+  public isFirstOrderDelivered(): boolean {
+    return this.#firstOrderDelivered;
   }
 
   public getOrders(): readonly Order[] {
@@ -118,28 +112,51 @@ export class OrderManager extends EventTarget {
     if (this.#orders.length === 0) return null;
 
     const order = this.#orders.shift()!;
-    const tip = tipForZone(order.zone);
+    const isFirstDelivery = !this.#firstOrderDelivered;
+
+    // Linear scoring: 20 + floor(remainingSeconds / 2)
+    const remainingMs = isFirstDelivery
+      ? order.duration // First order always gives max points
+      : Math.max(0, order.duration - order.elapsed);
+    const timeBonus = Math.floor(remainingMs / 1000 / 2);
+
     this.#comboManager.increment();
     const multiplier = this.#comboManager.getMultiplier();
-    const totalPoints = (ORDER_BASE_POINTS + tip) * multiplier;
+    const totalPoints = (ORDER_BASE_POINTS + timeBonus) * multiplier;
 
     this.#scoreManager.addPoints(totalPoints);
 
     const result: OrderResult = {
       basePoints: ORDER_BASE_POINTS,
-      tip,
+      tip: timeBonus,
       comboMultiplier: multiplier,
       totalPoints,
     };
 
     this.dispatchEvent(new CustomEvent('orderCompleted', { detail: result }));
+
+    // Phase transition: first delivery starts session timer + burst spawn
+    if (isFirstDelivery) {
+      this.#firstOrderDelivered = true;
+      this.#sessionManager.start();
+      this.#spawnTimer = 0;
+      for (let i = 0; i < ORDER_INITIAL_BURST; i++) {
+        this.#spawnOrder();
+      }
+    }
+
     return result;
   }
 
   #tick(delta: number): void {
-    // Update existing orders
+    // Phase 1: first order is frozen, no spawning, no expiry
+    if (!this.#firstOrderDelivered) {
+      return;
+    }
+
+    // Phase 2: normal ticking
     for (let i = this.#orders.length - 1; i >= 0; i--) {
-      const order = this.#orders[i];
+      const order = this.#orders[i]!;
       order.elapsed += delta;
       order.zone = computeZone(order.elapsed, order.duration);
 
@@ -153,22 +170,17 @@ export class OrderManager extends EventTarget {
       }
     }
 
-    // Spawn logic
-    this.#spawnTimer += delta;
-
     // Ensure minimum active orders
-    if (this.#orders.length < ORDER_MIN_ACTIVE && this.#firstSpawnDone) {
+    if (this.#orders.length < ORDER_MIN_ACTIVE) {
       this.#spawnOrder();
       this.#spawnTimer = 0;
-      this.#nextSpawnInterval = randomSpawnInterval();
     }
 
-    // Regular spawn interval
-    if (this.#spawnTimer >= this.#nextSpawnInterval && this.#orders.length < ORDER_MAX_ACTIVE) {
+    // Fixed-interval spawning
+    this.#spawnTimer += delta;
+    if (this.#spawnTimer >= ORDER_SPAWN_INTERVAL_MS) {
       this.#spawnOrder();
-      this.#firstSpawnDone = true;
-      this.#spawnTimer = 0;
-      this.#nextSpawnInterval = randomSpawnInterval();
+      this.#spawnTimer -= ORDER_SPAWN_INTERVAL_MS;
     }
   }
 

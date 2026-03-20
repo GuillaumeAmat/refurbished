@@ -45,17 +45,15 @@ export const PROGRESS_BAR_FILL_COLOR = 0x00ff00;
 
 // Order system
 export const ORDER_BASE_POINTS = 20;
-export const ORDER_DURATION_MS = 60_000;
-export const ORDER_GREEN_THRESHOLD = 0.4;
-export const ORDER_YELLOW_THRESHOLD = 0.7;
-export const ORDER_GREEN_TIP = 8;
-export const ORDER_YELLOW_TIP = 4;
-export const ORDER_RED_TIP = 0;
-export const ORDER_EXPIRE_PENALTY = -10;
-export const ORDER_MAX_ACTIVE = 4;
-export const ORDER_SPAWN_MIN_MS = 15_000;
-export const ORDER_SPAWN_MAX_MS = 20_000;
-export const ORDER_FIRST_DELAY_MS = 3_000;
+export const ORDER_DURATION_MS = 95_000;
+export const ORDER_GREEN_THRESHOLD = 0.4; // HUD visual only
+export const ORDER_YELLOW_THRESHOLD = 0.7; // HUD visual only
+export const ORDER_GREEN_TIP = 8; // HUD visual only
+export const ORDER_YELLOW_TIP = 4; // HUD visual only
+export const ORDER_RED_TIP = 0; // HUD visual only
+export const ORDER_EXPIRE_PENALTY = -20;
+export const ORDER_SPAWN_INTERVAL_MS = 10_000;
+export const ORDER_INITIAL_BURST = 2;
 export const ORDER_MIN_ACTIVE = 1;
 
 // Combo

@@ -1,13 +1,11 @@
 import { DoubleSide, Group, Mesh, MeshBasicMaterial, PlaneGeometry } from 'three';
 
-import { ORDER_MAX_ACTIVE } from '../constants';
-import { type Order,OrderManager } from '../state/OrderManager';
+import { type Order, OrderManager } from '../state/OrderManager';
 import type { IHUDItem } from './IHUDItem';
 
 const SLOT_WIDTH = 0.25;
 const SLOT_HEIGHT = 0.06;
 const SLOT_GAP = 0.03;
-const TOTAL_WIDTH = ORDER_MAX_ACTIVE * SLOT_WIDTH + (ORDER_MAX_ACTIVE - 1) * SLOT_GAP;
 
 const ZONE_COLORS = {
   green: 0x4caf50,
@@ -37,18 +35,18 @@ export class OrderQueueHUD implements IHUDItem {
   constructor() {
     this.#group = new Group();
     this.#orderManager = OrderManager.getInstance();
+  }
 
-    for (let i = 0; i < ORDER_MAX_ACTIVE; i++) {
-      const slot = this.#createSlot(i);
+  #ensureSlotCount(count: number): void {
+    while (this.#slots.length < count) {
+      const slot = this.#createSlot();
       this.#slots.push(slot);
       this.#group.add(slot.group);
     }
   }
 
-  #createSlot(index: number): OrderSlot {
+  #createSlot(): OrderSlot {
     const group = new Group();
-    const x = -TOTAL_WIDTH / 2 + index * (SLOT_WIDTH + SLOT_GAP) + SLOT_WIDTH / 2;
-    group.position.x = x;
 
     const bgGeometry = new PlaneGeometry(SLOT_WIDTH, SLOT_HEIGHT);
     const bgMaterial = new MeshBasicMaterial({
@@ -99,15 +97,24 @@ export class OrderQueueHUD implements IHUDItem {
 
   update(): void {
     const orders: readonly Order[] = this.#orderManager.getOrders();
+    const count = orders.length;
 
-    for (let i = 0; i < ORDER_MAX_ACTIVE; i++) {
-      const slot = this.#slots[i];
+    this.#ensureSlotCount(count);
 
-      if (i < orders.length) {
-        const order = orders[i];
+    const totalWidth = count > 0
+      ? count * SLOT_WIDTH + (count - 1) * SLOT_GAP
+      : 0;
+
+    for (let i = 0; i < this.#slots.length; i++) {
+      const slot = this.#slots[i]!;
+
+      if (i < count) {
+        const order = orders[i]!;
         const remaining = 1 - order.elapsed / order.duration;
         const clamped = Math.max(0, Math.min(1, remaining));
+        const x = -totalWidth / 2 + i * (SLOT_WIDTH + SLOT_GAP) + SLOT_WIDTH / 2;
 
+        slot.group.position.x = x;
         slot.group.visible = true;
         slot.fillMaterial.color.setHex(ZONE_COLORS[order.zone]);
         slot.fillMesh.scale.x = clamped || 0.001;

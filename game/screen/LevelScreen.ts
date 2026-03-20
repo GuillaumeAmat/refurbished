@@ -152,13 +152,15 @@ export class LevelScreen {
       this.#orderManager.reset();
       this.#comboManager.reset();
       if (!Debug.getInstance().active) {
-        this.#sessionManager.start();
+        // Session timer is NOT started here — OrderManager starts it on first delivery
         this.#orderManager.start();
       }
       this.initLevel();
     } else if (!Debug.getInstance().active) {
       if (interactive) {
-        this.#sessionManager.start();
+        if (this.#orderManager.isFirstOrderDelivered()) {
+          this.#sessionManager.start();
+        }
         this.#orderManager.start();
       } else {
         this.#sessionManager.stop();

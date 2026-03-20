@@ -24,6 +24,7 @@ export class ScoreManager extends EventTarget {
 
   public addPoints(points: number): void {
     this.#score += points;
+    if (this.#score < 0) this.#score = 0;
     this.dispatchEvent(new CustomEvent('scoreChanged', { detail: { score: this.#score } }));
     void this.#reportEvent(points);
   }
