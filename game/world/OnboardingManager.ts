@@ -70,7 +70,7 @@ export class OnboardingManager {
   }
 
   onRepairStarted(): void {
-    this.#disposeHighlights();
+    for (const h of this.#highlights) h.hideMarker();
   }
 
   onResourceDroppedOnRepairZone(pos: Vector3): void {
@@ -151,8 +151,12 @@ export class OnboardingManager {
   update(): void {
     if (this.#step === Step.IDLE || this.#step === Step.DONE) return;
     const deltaMs = Time.getInstance().delta;
-    for (const h of this.#highlights) {
-      h.update(deltaMs);
+    for (let i = this.#highlights.length - 1; i >= 0; i--) {
+      this.#highlights[i]!.update(deltaMs);
+      if (this.#highlights[i]!.isDone()) {
+        this.#highlights[i]!.dispose();
+        this.#highlights.splice(i, 1);
+      }
     }
   }
 
