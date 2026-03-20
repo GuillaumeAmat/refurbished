@@ -302,9 +302,9 @@ export class OrderQueueHUD implements IHUDItem {
         const clamped = Math.max(0, Math.min(1, remaining));
         const targetX = i * (p.cardWidth + p.cardGap) + p.cardWidth / 2;
 
-        // Slide-in animation from left
+        // Slide-in animation from right edge of screen
         if (!card.group.visible) {
-          card.group.position.x = targetX - 0.6;
+          card.group.position.x = 6;
           card.group.visible = true;
         }
         card.targetX = targetX;

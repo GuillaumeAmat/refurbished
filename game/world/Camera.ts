@@ -7,7 +7,6 @@ import type { LevelInfo } from '../levels';
 import { Debug } from '../util/Debug';
 import { Sizes } from '../util/Sizes';
 
-
 export class Camera {
   #canvas: HTMLCanvasElement;
   #camera: PerspectiveCamera;
@@ -44,12 +43,14 @@ export class Camera {
     const { center } = this.#levelInfo;
 
     this.#camera = new PerspectiveCamera(CAMERA_DEFAULT_FOV, aspect, 0.1, 100);
-    this.#camera.position.set(center.x, center.y + 33.5, center.z + 25.35);
-    this.#camera.lookAt(center);
+    this.#camera.position.set(center.x, 32.9093, 32.8076);
+    const lookAtTarget = center.clone();
+    lookAtTarget.z = 5.775;
+    this.#camera.lookAt(lookAtTarget);
     this.#scene.add(this.#camera);
 
     this.#defaultCameraPos = this.#camera.position.clone();
-    this.#defaultLookAt = center.clone();
+    this.#defaultLookAt = lookAtTarget.clone();
 
     this.#camera.updateMatrixWorld();
     this.#computePanBounds();
@@ -105,11 +106,9 @@ export class Camera {
     if (this.#debug.active) {
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
 
-      const { center } = this.#levelInfo;
-
       this.#controls = new OrbitControls(this.#camera, this.#canvas);
       this.#controls.enableDamping = true;
-      this.#controls.target.set(center.x, center.y, center.z);
+      this.#controls.target.copy(this.#defaultLookAt);
       this.#controls.enablePan = false;
       // Left-click: vertical rotation only (azimuth locked)
       this.#controls.mouseButtons = {
@@ -154,9 +153,19 @@ export class Camera {
       folder.add(this.#camera.position, 'x', -50, 50, 0.1).name('pos x').listen();
       folder.add(this.#camera.position, 'y', 0, 100, 0.1).name('pos y').listen();
       folder.add(this.#camera.position, 'z', -50, 100, 0.1).name('pos z').listen();
+      folder.add(this.#controls.target, 'x', -50, 50, 0.1).name('target x').listen();
+      folder.add(this.#controls.target, 'y', -50, 50, 0.1).name('target y').listen();
+      folder.add(this.#controls.target, 'z', -50, 50, 0.1).name('target z').listen();
       folder.add(this.#camera.rotation, 'x', -Math.PI, Math.PI, 0.01).name('rot x').listen();
       folder.add(this.#camera.rotation, 'y', -Math.PI, Math.PI, 0.01).name('rot y').listen();
       folder.add(this.#camera.rotation, 'z', -Math.PI, Math.PI, 0.01).name('rot z').listen();
+      folder
+        .add(this.#camera, 'fov', 1, 120, 0.1)
+        .name('fov')
+        .listen()
+        .onChange(() => {
+          this.#camera.updateProjectionMatrix();
+        });
     }
   }
 
