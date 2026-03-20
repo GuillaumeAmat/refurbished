@@ -144,7 +144,7 @@ export class Crate extends LevelObject {
       if (texture) {
         texture.colorSpace = SRGBColorSpace;
         const lidWidth = lidLocalBox.max.x - lidLocalBox.min.x;
-        const iconSize = lidWidth * 0.7;
+        const iconSize = lidWidth * 0.62;
         const geometry = new PlaneGeometry(iconSize, iconSize);
         const material = new MeshLambertMaterial({
           map: texture,
@@ -155,7 +155,11 @@ export class Crate extends LevelObject {
           polygonOffsetUnits: -1,
         });
         const iconMesh = new Mesh(geometry, material);
-        iconMesh.position.set(0, lidLocalBox.max.y - lidLocalBox.min.y, (lidLocalBox.max.z - lidLocalBox.min.z) / 2);
+        iconMesh.position.set(
+          0,
+          lidLocalBox.max.y - lidLocalBox.min.y - 0.07,
+          (lidLocalBox.max.z - lidLocalBox.min.z) / 2,
+        );
         iconMesh.rotation.x = -Math.PI / 2;
         pivot.add(iconMesh);
         this.#iconMesh = iconMesh;
@@ -231,18 +235,8 @@ export class Crate extends LevelObject {
     }
   }
 
-  static getCrateModelName(type: CrateType): string {
-    switch (type) {
-      case Cell.CRATE_BATTERY:
-        return 'crateBatteryModel';
-      case Cell.CRATE_FRAME:
-        return 'crateFrameModel';
-      case Cell.CRATE_SCREEN:
-        return 'crateScreenModel';
-      case Cell.CRATE_PACKAGE:
-      default:
-        return 'crateModel';
-    }
+  static getCrateModelName(_type: CrateType): string {
+    return 'crateModel';
   }
 
   create(group: Group): void {

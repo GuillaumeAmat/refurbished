@@ -196,21 +196,6 @@ export class Stage {
         path: '/game/model/environment/crate.glb',
         priority: 'low',
       },
-      crateBatteryModel: {
-        type: 'gltf',
-        path: '/game/model/environment/battery_empty_crate.glb',
-        priority: 'low',
-      },
-      crateFrameModel: {
-        type: 'gltf',
-        path: '/game/model/environment/frame_broken_crate.glb',
-        priority: 'low',
-      },
-      crateScreenModel: {
-        type: 'gltf',
-        path: '/game/model/environment/screen_broken_crate.glb',
-        priority: 'low',
-      },
       batteryEmptyModel: {
         type: 'gltf',
         path: '/game/model/resource/battery_empty.glb',
