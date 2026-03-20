@@ -39,6 +39,8 @@ export class Stage {
   // Bound listener references for cleanup
   #onResize: () => void;
   #onMuteKey: (e: KeyboardEvent) => void;
+  #onKonamiKey: (e: KeyboardEvent) => void;
+  #konamiIndex: number = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     if (!window) {
@@ -387,6 +389,20 @@ export class Stage {
     };
     window.addEventListener('keydown', this.#onMuteKey);
 
+    const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    this.#onKonamiKey = (e: KeyboardEvent) => {
+      if (e.key === KONAMI[this.#konamiIndex]) {
+        this.#konamiIndex++;
+        if (this.#konamiIndex === KONAMI.length) {
+          this.#konamiIndex = 0;
+          Environment.getInstance()?.toggleNight();
+        }
+      } else {
+        this.#konamiIndex = e.key === KONAMI[0] ? 1 : 0;
+      }
+    };
+    window.addEventListener('keydown', this.#onKonamiKey);
+
     // Initialize keyboard fallback based on runtime config
     const config = useRuntimeConfig();
     const gamepadManager = GamepadManager.getInstance();
@@ -546,6 +562,7 @@ export class Stage {
     this.#time.dispose();
     this.#sizes.removeEventListener('resize', this.#onResize);
     window.removeEventListener('keydown', this.#onMuteKey);
+    window.removeEventListener('keydown', this.#onKonamiKey);
     this.#actor.stop();
   }
 }
