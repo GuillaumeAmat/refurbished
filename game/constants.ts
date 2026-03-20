@@ -76,6 +76,9 @@ export const LEADERBOARD_LIMIT = 15;
 
 // Camera
 export const CAMERA_DEFAULT_FOV = 35;
+export const CAMERA_DEFAULT_Y = 32.9093;
+export const CAMERA_DEFAULT_Z = 32.8076;
+export const CAMERA_LOOKAT_Z = 5.775;
 export const CAMERA_SMOOTH_TIME = 0.6; // s, exponential smoothing time constant
 export const CAMERA_PAN_MARGIN = 0.02; // fraction of viewport per side
 export const CAMERA_ZOOM_STRENGTH = 0.02; // max FOV change fraction
