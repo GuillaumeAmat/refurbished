@@ -105,6 +105,7 @@ export class Level {
     this.#floor.dispose();
     this.#levelBuilder.dispose();
     this.#group.removeFromParent();
+    Physics.getInstance().dispose();
   }
 
   public update() {

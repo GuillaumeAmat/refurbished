@@ -183,6 +183,9 @@ export class LevelScreen {
     this.#hudManager.hide();
     this.#sessionManager.stop();
     this.#orderManager.stop();
+    this.#level?.dispose();
+    this.#level = null;
+    this.#levelInitialized = false;
   }
 
   #checkPauseInput() {
