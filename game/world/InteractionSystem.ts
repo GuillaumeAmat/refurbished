@@ -384,7 +384,7 @@ export class InteractionSystem {
           }
           this.#onboardingManager?.onPackageGrabbed(droppedPhonePositions);
         } else {
-          this.#onboardingManager?.onResourceGrabbed();
+          this.#onboardingManager?.onResourceGrabbed(resourceType);
         }
       }
     }
@@ -427,6 +427,7 @@ export class InteractionSystem {
             const repairZonePos = target.getPosition();
             if (screwdriverModel && repairZonePos) {
               const screwdriver = screwdriverModel.scene.clone();
+              this.#onboardingManager?.onRepairStarted();
               this.#repairingPlayers.add(playerId);
               const progressPerHit = REPAIR_HOLD_DURATION / REPAIR_HIT_COUNT;
               player.startRepairing(
@@ -440,7 +441,7 @@ export class InteractionSystem {
                     target.resetRepairProgress();
                     player.stopRepairing();
                     this.#repairingPlayers.delete(playerId);
-                    this.#onboardingManager?.onResourceRepaired();
+                    this.#onboardingManager?.onResourceRepaired(target.getResourceType());
                   }
                 },
                 screwdriver,

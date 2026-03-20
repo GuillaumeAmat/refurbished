@@ -68,6 +68,10 @@ export const STAR_THRESHOLDS = [80, 200, 400];
 export const LIGHT_COLOR = '#ffffff';
 
 export const BLOOM_LAYER = 1;
+// Meshes on this layer act as opaque occluders during the bloom pass so neon
+// glow cannot composite over them, while still rendering normally (depthTest:false,
+// renderOrder:999) in the final pass.
+export const OVERLAY_LAYER = 2;
 
 export const LEADERBOARD_REFRESH_MS = 60_000;
 export const LEADERBOARD_LIMIT = 15;

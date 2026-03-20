@@ -16,7 +16,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
-import { BLOOM_LAYER } from '../constants';
+import { BLOOM_LAYER, OVERLAY_LAYER } from '../constants';
 import type { Camera } from '../world/Camera';
 import { Debug } from './Debug';
 import { Sizes } from './Sizes';
@@ -146,7 +146,8 @@ export class Renderer {
       if (obj instanceof Mesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
         this.#materialCache.set(obj.uuid, obj.material);
         const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
-        obj.material = mat?.transparent ? this.#darkTransparentMaterial : this.#darkMaterial;
+        const isOverlay = obj.layers.mask & (1 << OVERLAY_LAYER);
+        obj.material = mat?.transparent && !isOverlay ? this.#darkTransparentMaterial : this.#darkMaterial;
         darkened.push(obj);
       }
     });
