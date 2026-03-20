@@ -24,6 +24,7 @@ export class OnboardingRing {
     this.#mesh.onBeforeRender = (_r, _s, cam) => {
       this.#mesh.quaternion.copy(cam.quaternion);
     };
+    this.#mesh.scale.setScalar(2);
     parent.add(this.#mesh);
   }
 
