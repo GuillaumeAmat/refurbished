@@ -20,6 +20,7 @@ export class Environment {
   #levelInfo: LevelInfo;
   #ambientLight: AmbientLight | null = null;
   #quadLights: SpotLight[] = [];
+  #isNight = false;
   #shadowHelpers: CameraHelper[] = [];
   #environmentMap: EnvironmentMap = {
     intensity: 0.4,
@@ -208,6 +209,17 @@ export class Environment {
         for (const helper of NeonWall.helpers) helper.visible = v;
         debug.save();
       });
+
+    const nightActions = { toggleNight: () => this.toggleNight() };
+    lightsFolder.add(nightActions, 'toggleNight').name('Toggle Night');
+  }
+
+  public toggleNight() {
+    this.#isNight = !this.#isNight;
+    const intensity = this.#isNight ? 0 : 1.1;
+    this.#ambientLight!.intensity = intensity;
+    for (const l of this.#quadLights) l.visible = !this.#isNight;
+    this.#scene.background = new Color(this.#isNight ? '#0a0a1a' : BACKGROUND_COLOR);
   }
 
   public updateMeshesMaterial() {
