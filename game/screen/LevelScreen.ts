@@ -95,7 +95,7 @@ export class LevelScreen {
     this.#scene.add(this.#group);
 
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
-    this.#hudManager.add('topCenter', new OrderQueueHUD());
+    this.#hudManager.add('topLeft', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
     this.#hudManager.add('bottomRight', new TimeHUD());
     this.#hudManager.hide();

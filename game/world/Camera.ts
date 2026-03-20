@@ -44,7 +44,7 @@ export class Camera {
     const { center } = this.#levelInfo;
 
     this.#camera = new PerspectiveCamera(CAMERA_DEFAULT_FOV, aspect, 0.1, 100);
-    this.#camera.position.set(center.x, center.y + 28, center.z + 23);
+    this.#camera.position.set(center.x, center.y + 33.5, center.z + 25.35);
     this.#camera.lookAt(center);
     this.#scene.add(this.#camera);
 
@@ -110,12 +110,53 @@ export class Camera {
       this.#controls = new OrbitControls(this.#camera, this.#canvas);
       this.#controls.enableDamping = true;
       this.#controls.target.set(center.x, center.y, center.z);
+      this.#controls.enablePan = false;
+      // Left-click: vertical rotation only (azimuth locked)
+      this.#controls.mouseButtons = {
+        LEFT: 0 as never, // ROTATE
+        MIDDLE: 1 as never, // DOLLY
+        RIGHT: undefined as never, // disabled — handled manually below
+      };
       this.#controls.update();
+      const azimuth = this.#controls.getAzimuthalAngle();
+      this.#controls.minAzimuthAngle = azimuth;
+      this.#controls.maxAzimuthAngle = azimuth;
+
+      // Right-click drag: move camera + target along world Z axis
+      let rightDragging = false;
+      let lastClientY = 0;
+      const onPointerDown = (e: PointerEvent) => {
+        if (e.button === 2) {
+          rightDragging = true;
+          lastClientY = e.clientY;
+          this.#canvas.setPointerCapture(e.pointerId);
+        }
+      };
+      const onPointerMove = (e: PointerEvent) => {
+        if (!rightDragging) return;
+        const deltaY = e.clientY - lastClientY;
+        lastClientY = e.clientY;
+        const speed = 0.05;
+        this.#camera.position.z += deltaY * speed;
+        this.#controls!.target.z += deltaY * speed;
+      };
+      const onPointerUp = (e: PointerEvent) => {
+        if (e.button === 2) {
+          rightDragging = false;
+        }
+      };
+      this.#canvas.addEventListener('pointerdown', onPointerDown);
+      this.#canvas.addEventListener('pointermove', onPointerMove);
+      this.#canvas.addEventListener('pointerup', onPointerUp);
+      this.#canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
       const folder = this.#debug.gui.addFolder('Camera');
-      folder.add(this.#camera.position, 'x', -50, 50, 0.1).listen();
-      folder.add(this.#camera.position, 'y', 0, 100, 0.1).listen();
-      folder.add(this.#camera.position, 'z', -50, 100, 0.1).listen();
+      folder.add(this.#camera.position, 'x', -50, 50, 0.1).name('pos x').listen();
+      folder.add(this.#camera.position, 'y', 0, 100, 0.1).name('pos y').listen();
+      folder.add(this.#camera.position, 'z', -50, 100, 0.1).name('pos z').listen();
+      folder.add(this.#camera.rotation, 'x', -Math.PI, Math.PI, 0.01).name('rot x').listen();
+      folder.add(this.#camera.rotation, 'y', -Math.PI, Math.PI, 0.01).name('rot y').listen();
+      folder.add(this.#camera.rotation, 'z', -Math.PI, Math.PI, 0.01).name('rot z').listen();
     }
   }
 
