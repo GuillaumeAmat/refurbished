@@ -85,7 +85,8 @@ export class OnboardingManager {
 
   onBlueWorkZoneFilled(): void {
     if (this.#step === Step.HIGHLIGHT_BLUE_WORK_ZONE) {
-      this.#setStep(Step.HIGHLIGHT_PACKAGE_CRATE);
+      this.#disposeHighlights();
+      this.#step = Step.HIGHLIGHT_PACKAGE_CRATE;
     }
   }
 
