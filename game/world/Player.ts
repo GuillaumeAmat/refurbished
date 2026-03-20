@@ -185,6 +185,7 @@ export class Player {
     this.#repairAnimation.stop();
     this.#screwdriverMesh?.removeFromParent();
     this.#screwdriverMesh = null;
+    this.#smokeSystem.dispose();
     if (this.#playerSpotlight) {
       this.#scene.remove(this.#playerSpotlight);
       this.#scene.remove(this.#playerSpotlight.target);
