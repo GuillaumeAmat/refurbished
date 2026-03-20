@@ -11,6 +11,9 @@ type TimeEvents = {
 export class Time extends EventDispatcher<TimeEvents> {
   static #instance: Time;
 
+  static readonly #TARGET_FPS = 60;
+  static readonly #MIN_FRAME_TIME = 1000 / Time.#TARGET_FPS;
+
   #start!: number;
   #current!: number;
   #elapsed!: number;
@@ -63,12 +66,14 @@ export class Time extends EventDispatcher<TimeEvents> {
 
   private tick() {
     const currentTime = Date.now();
+    const delta = currentTime - this.#current;
 
-    this.#delta = currentTime - this.#current;
-    this.#current = currentTime;
-    this.#elapsed = this.#current - this.start;
-
-    this.dispatchEvent({ type: 'tick' });
+    if (delta >= Time.#MIN_FRAME_TIME) {
+      this.#delta = delta;
+      this.#current = currentTime;
+      this.#elapsed = this.#current - this.start;
+      this.dispatchEvent({ type: 'tick' });
+    }
 
     this.#animationFrameId = window.requestAnimationFrame(() => {
       this.tick();
