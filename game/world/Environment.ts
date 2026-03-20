@@ -9,6 +9,7 @@ import { DeliveryZone } from './object/DeliveryZone';
 import { NeonWall } from './object/NeonWall';
 import { RepairZone } from './object/RepairZone';
 import { WallLight } from './object/WallLight';
+import type { Player } from './Player';
 
 type EnvironmentMap = {
   intensity: number;
@@ -16,6 +17,9 @@ type EnvironmentMap = {
 };
 
 export class Environment {
+  static #instance: Environment | null = null;
+  static getInstance(): Environment | null { return Environment.#instance; }
+
   #scene: Scene;
   #levelInfo: LevelInfo;
   #ambientLight: AmbientLight | null = null;
@@ -26,15 +30,21 @@ export class Environment {
     intensity: 0.4,
     texture: null,
   };
+  #players: Player[] = [];
 
   constructor(scene: Scene, levelInfo: LevelInfo) {
     this.#scene = scene;
     this.#levelInfo = levelInfo;
+    Environment.#instance = this;
 
     RectAreaLightUniformsLib.init();
     this.setupLights();
     this.setupEnvironment();
     this.setupDebug();
+  }
+
+  public registerPlayer(player: Player): void {
+    this.#players.push(player);
   }
 
   private setupLights() {
@@ -220,6 +230,7 @@ export class Environment {
     this.#ambientLight!.intensity = intensity;
     for (const l of this.#quadLights) l.visible = !this.#isNight;
     this.#scene.background = new Color(this.#isNight ? '#0a0a1a' : BACKGROUND_COLOR);
+    for (const p of this.#players) p.setNightMode(this.#isNight);
   }
 
   public updateMeshesMaterial() {

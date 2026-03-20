@@ -3,6 +3,7 @@ import { Group, type Scene, Vector3 } from 'three';
 import type { LevelInfo } from '../levels';
 import { Physics } from '../util/Physics';
 import { Time } from '../util/Time';
+import { Environment } from './Environment';
 import { InteractionSystem } from './InteractionSystem';
 import { LevelBuilder } from './LevelBuilder';
 import { Floor } from './object/Floor';
@@ -48,6 +49,8 @@ export class Level {
 
     this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
     this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
+    Environment.getInstance()?.registerPlayer(this.#player1);
+    Environment.getInstance()?.registerPlayer(this.#player2);
 
     this.#interactionSystem = new InteractionSystem(this.#group, this.#levelInfo.data);
     this.#interactionSystem.registerPlayer(this.#player1);

@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
-import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, Vector3 } from 'three';
+import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, SpotLight, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, SMOKE_DASH_ARC_ANGLE, SMOKE_DASH_ARC_COUNT } from '../constants';
 import type { GripConfig, ResourceState, ResourceType } from '../types';
@@ -114,6 +114,7 @@ export class Player {
 
   #smokeSystem: SmokeParticleSystem | null = null;
   #hasDashBurst = false;
+  #playerSpotlight: SpotLight | null = null;
 
   #baseMaterialColors: { material: MeshStandardMaterial; base: Color }[] = [];
   #screwdriverMesh: Object3D | null = null;
@@ -184,6 +185,27 @@ export class Player {
     this.#repairAnimation.stop();
     this.#screwdriverMesh?.removeFromParent();
     this.#screwdriverMesh = null;
+    if (this.#playerSpotlight) {
+      this.#scene.remove(this.#playerSpotlight);
+      this.#scene.remove(this.#playerSpotlight.target);
+      this.#playerSpotlight.dispose();
+      this.#playerSpotlight = null;
+    }
+  }
+
+  public setNightMode(isNight: boolean): void {
+    if (isNight) {
+      const light = new SpotLight('#fff8e5', 10, 7, 0.4, 0.4, 2);
+      light.castShadow = false;
+      this.#scene.add(light);
+      this.#scene.add(light.target);
+      this.#playerSpotlight = light;
+    } else if (this.#playerSpotlight) {
+      this.#scene.remove(this.#playerSpotlight);
+      this.#scene.remove(this.#playerSpotlight.target);
+      this.#playerSpotlight.dispose();
+      this.#playerSpotlight = null;
+    }
   }
 
   #updateInteract(): void {
@@ -456,6 +478,12 @@ export class Player {
 
     const position = this.#rigidBody.translation();
     this.#mesh.position.set(position.x, position.y - 0.5, position.z);
+
+    if (this.#playerSpotlight) {
+      this.#playerSpotlight.position.set(position.x, position.y + 4, position.z);
+      this.#playerSpotlight.target.position.set(position.x, 0, position.z);
+      this.#playerSpotlight.target.updateMatrixWorld();
+    }
   }
 
   public isCarrying(): boolean {
