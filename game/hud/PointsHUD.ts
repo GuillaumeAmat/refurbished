@@ -148,7 +148,7 @@ export class PointsHUD implements IHUDItem {
     });
 
     this.#comboBadgeMesh = new Mesh(this.#comboBadgeGeometry, this.#comboBadgeMaterial);
-    this.#comboBadgeMesh.renderOrder = 999;
+    this.#comboBadgeMesh.renderOrder = 1000;
     this.#comboBadgeMesh.visible = multiplier > 1;
     this.#group.add(this.#comboBadgeMesh);
 
