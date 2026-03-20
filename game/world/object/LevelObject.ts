@@ -1,6 +1,6 @@
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { Group, Object3D } from 'three';
-import { Box3, Color, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { Box3, Color, Mesh, MeshLambertMaterial, MeshStandardMaterial, Vector3 } from 'three';
 
 import { BLOOM_LAYER } from '../../constants';
 import { Physics } from '../../util/Physics';
@@ -74,7 +74,7 @@ export abstract class LevelObject {
 
     this.mesh.traverse((child) => {
       if (!(child instanceof Mesh)) return;
-      if (!(child.material instanceof MeshStandardMaterial)) return;
+      if (!(child.material instanceof MeshStandardMaterial) && !(child.material instanceof MeshLambertMaterial)) return;
 
       if (enabled) {
         if (!this.#originalEmissive.has(child)) {

@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, MeshBasicMaterial, type Object3D, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
+import { Box3, Group, Mesh, MeshLambertMaterial, type Object3D, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 
 import { TILE_SIZE } from '../../constants';
 import { Cell } from '../../levels';
@@ -146,7 +146,7 @@ export class Crate extends LevelObject {
         const lidWidth = lidLocalBox.max.x - lidLocalBox.min.x;
         const iconSize = lidWidth * 0.7;
         const geometry = new PlaneGeometry(iconSize, iconSize);
-        const material = new MeshBasicMaterial({
+        const material = new MeshLambertMaterial({
           map: texture,
           alphaTest: 0.5,
           alphaMap: alphaTexture ?? undefined,
