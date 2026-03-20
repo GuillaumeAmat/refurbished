@@ -35,8 +35,9 @@ export class GamepadController implements InputSource {
     const gamepad = navigator.getGamepads()[this.#gamepadIndex];
     if (!gamepad) return { x: 0, z: 0 };
 
+    const isMac = navigator.platform.startsWith('Mac');
     let x = gamepad.axes[this.#profile.leftStickX] ?? 0;
-    let z = gamepad.axes[this.#profile.leftStickY] ?? 0;
+    let z = (gamepad.axes[this.#profile.leftStickY] ?? 0) * (isMac ? -1 : 1);
 
     if (Math.abs(x) < this.#profile.deadzone) x = 0;
     if (Math.abs(z) < this.#profile.deadzone) z = 0;
