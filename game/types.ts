@@ -1,6 +1,19 @@
 export type ResourceType = 'battery' | 'frame' | 'screen' | 'phone' | 'package';
 export type ResourceState = 'broken' | 'repaired';
 
+export type OnboardingIconType =
+  | 'button-a'
+  | 'button-x'
+  | 'batteryBroken'
+  | 'frameBroken'
+  | 'screenBroken'
+  | 'batteryRepaired'
+  | 'frameRepaired'
+  | 'screenRepaired'
+  | 'phone'
+  | 'packageOpen'
+  | 'packageClosed';
+
 export interface GripConfig {
   // Object position relative to body
   objectOffsetX: number;

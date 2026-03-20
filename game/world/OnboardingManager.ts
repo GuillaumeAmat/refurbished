@@ -1,6 +1,7 @@
 import { type Group, Vector3 } from 'three';
 
 import { Time } from '../util/Time';
+import type { OnboardingIconType, ResourceType } from '../types';
 import { BlueWorkZone } from './object/BlueWorkZone';
 import { Crate } from './object/Crate';
 import { DeliveryZone } from './object/DeliveryZone';
@@ -25,6 +26,7 @@ export class OnboardingManager {
   #parent: Group;
   #highlights: OnboardingHighlight[] = [];
   #step = Step.IDLE;
+  #lastGrabbedResourceType: ResourceType | null = null;
 
   #resourceCrates: Crate[] = [];
   #packageCrates: Crate[] = [];
@@ -56,28 +58,35 @@ export class OnboardingManager {
     setTimeout(() => requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES)), 2000);
   }
 
-  onResourceGrabbed(): void {
+  onResourceGrabbed(resourceType: ResourceType): void {
     if (this.#step === Step.HIGHLIGHT_CRATES) {
+      this.#lastGrabbedResourceType = resourceType;
       this.#setStep(Step.HIGHLIGHT_REPAIR_ZONES);
     }
+  }
+
+  onRepairStarted(): void {
+    this.#disposeHighlights();
   }
 
   onResourceDroppedOnRepairZone(pos: Vector3): void {
     if (this.#step === Step.HIGHLIGHT_REPAIR_ZONES) {
       this.#disposeHighlights();
-      this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
+      this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'button-x'));
     }
   }
 
-  onResourceRepaired(): void {
+  onResourceRepaired(resourceType: ResourceType): void {
     if (this.#step === Step.HIGHLIGHT_REPAIR_ZONES) {
+      this.#lastGrabbedResourceType = resourceType;
       this.#setStep(Step.HIGHLIGHT_BLUE_WORK_ZONE);
     }
   }
 
   onBlueWorkZoneFilled(): void {
     if (this.#step === Step.HIGHLIGHT_BLUE_WORK_ZONE) {
-      this.#setStep(Step.HIGHLIGHT_PACKAGE_CRATE);
+      this.#disposeHighlights();
+      this.#step = Step.HIGHLIGHT_PACKAGE_CRATE;
     }
   }
 
@@ -98,11 +107,11 @@ export class OnboardingManager {
       this.#step = Step.HIGHLIGHT_BWZ_OR_PHONE;
       if (droppedPhonePositions.length > 0) {
         for (const pos of droppedPhonePositions) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'phone'));
         }
       } else {
         for (const pos of this.#collectPositions(this.#blueWorkZones, 1)) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z, 'phone'));
         }
       }
     }
@@ -114,11 +123,11 @@ export class OnboardingManager {
       this.#step = Step.HIGHLIGHT_PKG_OR_OPEN_PKG;
       if (openPkgPositions.length > 0) {
         for (const pos of openPkgPositions) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z));
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'packageOpen'));
         }
       } else {
         for (const pos of this.#collectPositions(this.#packageCrates)) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
+          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z, 'packageOpen'));
         }
       }
     }
@@ -153,13 +162,44 @@ export class OnboardingManager {
     this.#step = Step.DONE;
   }
 
+  #getIconForStep(step: Step): OnboardingIconType {
+    const rt = this.#lastGrabbedResourceType;
+    switch (step) {
+      case Step.HIGHLIGHT_CRATES:
+        return 'button-a';
+      case Step.HIGHLIGHT_REPAIR_ZONES:
+        if (rt === 'battery') return 'batteryBroken';
+        if (rt === 'frame') return 'frameBroken';
+        if (rt === 'screen') return 'screenBroken';
+        return 'batteryBroken';
+      case Step.HIGHLIGHT_BLUE_WORK_ZONE:
+        if (rt === 'battery') return 'batteryRepaired';
+        if (rt === 'frame') return 'frameRepaired';
+        if (rt === 'screen') return 'screenRepaired';
+        return 'batteryRepaired';
+      case Step.HIGHLIGHT_PACKAGE_CRATE:
+        return 'packageOpen';
+      case Step.HIGHLIGHT_BWZ_POST_ASSEMBLY:
+        return 'phone';
+      case Step.HIGHLIGHT_BWZ_OR_PHONE:
+        return 'phone';
+      case Step.HIGHLIGHT_PKG_OR_OPEN_PKG:
+        return 'packageOpen';
+      case Step.HIGHLIGHT_DELIVERY_ZONE:
+        return 'packageClosed';
+      default:
+        return 'button-a';
+    }
+  }
+
   #setStep(step: Step): void {
     this.#disposeHighlights();
     this.#step = step;
 
+    const icon = this.#getIconForStep(step);
     const positions = this.#getPositionsForStep(step);
     for (const pos of positions) {
-      this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z));
+      this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z, icon));
     }
   }
 
