@@ -92,7 +92,8 @@ export class OnboardingManager {
 
   onPhoneAssembled(): void {
     if (this.#step === Step.HIGHLIGHT_PACKAGE_CRATE) {
-      this.#setStep(Step.HIGHLIGHT_BWZ_POST_ASSEMBLY);
+      this.#disposeHighlights();
+      this.#step = Step.HIGHLIGHT_BWZ_POST_ASSEMBLY;
     }
   }
 
@@ -105,14 +106,8 @@ export class OnboardingManager {
     ) {
       this.#disposeHighlights();
       this.#step = Step.HIGHLIGHT_BWZ_OR_PHONE;
-      if (droppedPhonePositions.length > 0) {
-        for (const pos of droppedPhonePositions) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'phone'));
-        }
-      } else {
-        for (const pos of this.#collectPositions(this.#blueWorkZones, 1)) {
-          this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y, pos.z, 'phone'));
-        }
+      for (const pos of droppedPhonePositions) {
+        this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'phone'));
       }
     }
   }
