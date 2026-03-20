@@ -4,6 +4,7 @@ import {
   ORDER_EXPIRE_PENALTY,
   ORDER_GREEN_THRESHOLD,
   ORDER_INITIAL_BURST,
+  ORDER_MAX_ACTIVE,
   ORDER_MIN_ACTIVE,
   ORDER_SPAWN_INTERVAL_MS,
   ORDER_YELLOW_THRESHOLD,
@@ -176,10 +177,12 @@ export class OrderManager extends EventTarget {
       this.#spawnTimer = 0;
     }
 
-    // Fixed-interval spawning
+    // Fixed-interval spawning (capped at max active)
     this.#spawnTimer += delta;
     if (this.#spawnTimer >= ORDER_SPAWN_INTERVAL_MS) {
-      this.#spawnOrder();
+      if (this.#orders.length < ORDER_MAX_ACTIVE) {
+        this.#spawnOrder();
+      }
       this.#spawnTimer -= ORDER_SPAWN_INTERVAL_MS;
     }
   }

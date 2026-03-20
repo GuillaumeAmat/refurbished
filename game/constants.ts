@@ -54,6 +54,7 @@ export const ORDER_RED_TIP = 0; // HUD visual only
 export const ORDER_EXPIRE_PENALTY = -20;
 export const ORDER_SPAWN_INTERVAL_MS = 10_000;
 export const ORDER_INITIAL_BURST = 2;
+export const ORDER_MAX_ACTIVE = 7;
 export const ORDER_MIN_ACTIVE = 1;
 
 // Combo
