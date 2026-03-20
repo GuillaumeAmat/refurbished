@@ -11,8 +11,11 @@ type TimeEvents = {
 export class Time extends EventDispatcher<TimeEvents> {
   static #instance: Time;
 
-  static readonly #TARGET_FPS = 60;
-  static readonly #MIN_FRAME_TIME = 1000 / Time.#TARGET_FPS;
+  static readonly #CALIBRATION_FRAMES = 10;
+  static readonly #STANDARD_HZ = [30, 60, 75, 90, 120, 144, 165, 240];
+
+  #minFrameTime: number = 1000 / 60;
+  #calibrationTimestamps: DOMHighResTimeStamp[] = [];
 
   #start!: number;
   #current!: number;
@@ -36,6 +39,10 @@ export class Time extends EventDispatcher<TimeEvents> {
     return this.#delta;
   }
 
+  public get detectedHz(): number {
+    return Math.round(1000 / this.#minFrameTime);
+  }
+
   constructor() {
     super();
 
@@ -50,13 +57,13 @@ export class Time extends EventDispatcher<TimeEvents> {
       throw new Error('"Time" can only be instanciated in a browser environment.');
     }
 
-    this.#start = Date.now();
-    this.#current = this.start;
+    this.#start = performance.now();
+    this.#current = this.#start;
     this.#elapsed = 0;
-    this.#delta = 16;
+    this.#delta = 1000 / 60;
 
-    this.#animationFrameId = window.requestAnimationFrame(() => {
-      this.tick();
+    this.#animationFrameId = window.requestAnimationFrame((ts) => {
+      this.#tick(ts);
     });
   }
 
@@ -64,19 +71,37 @@ export class Time extends EventDispatcher<TimeEvents> {
     return Time.#instance;
   }
 
-  private tick() {
-    const currentTime = Date.now();
-    const delta = currentTime - this.#current;
+  #tick(timestamp: DOMHighResTimeStamp) {
+    // Collect CALIBRATION_FRAMES + 1 timestamps (first serves as reference, not a sample)
+    if (this.#calibrationTimestamps.length <= Time.#CALIBRATION_FRAMES) {
+      this.#calibrationTimestamps.push(timestamp);
 
-    if (delta >= Time.#MIN_FRAME_TIME) {
+      if (this.#calibrationTimestamps.length === Time.#CALIBRATION_FRAMES + 1) {
+        const intervals = this.#calibrationTimestamps
+          .slice(1)
+          .map((t, i) => t - this.#calibrationTimestamps[i]);
+        const sorted = [...intervals].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        const measuredHz = 1000 / median;
+        const snapped = Time.#STANDARD_HZ.reduce((best, hz) =>
+          Math.abs(hz - measuredHz) < Math.abs(best - measuredHz) ? hz : best
+        );
+        this.#minFrameTime = 1000 / snapped;
+        console.log('[Time] Detected refresh rate:', this.detectedHz, 'Hz');
+      }
+    }
+
+    const delta = timestamp - this.#current;
+
+    if (delta >= this.#minFrameTime) {
       this.#delta = delta;
-      this.#current = currentTime;
-      this.#elapsed = this.#current - this.start;
+      this.#current = timestamp;
+      this.#elapsed = this.#current - this.#start;
       this.dispatchEvent({ type: 'tick' });
     }
 
-    this.#animationFrameId = window.requestAnimationFrame(() => {
-      this.tick();
+    this.#animationFrameId = window.requestAnimationFrame((ts) => {
+      this.#tick(ts);
     });
   }
 
