@@ -92,6 +92,13 @@ export abstract class LevelObject {
 
   public dispose(): void {
     if (this.mesh) {
+      this.mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry?.dispose();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          for (const mat of mats) mat?.dispose();
+        }
+      });
       this.mesh.removeFromParent();
       this.mesh = null;
     }
