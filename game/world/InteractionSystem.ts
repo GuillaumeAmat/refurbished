@@ -1,4 +1,4 @@
-import { type Group, type Object3D, Vector3 } from 'three';
+import { Mesh, type Group, type Object3D, Vector3 } from 'three';
 
 import { ASSEMBLE_HOLD_DURATION, DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
 import { isWorkbench, type LevelData } from '../levels';
@@ -610,5 +610,39 @@ export class InteractionSystem {
     }
 
     return bestTarget;
+  }
+
+  dispose(): void {
+    for (const resource of this.#droppedResources) {
+      resource.dispose();
+    }
+    this.#droppedResources.length = 0;
+
+    this.#smokeSystem.dispose();
+
+    for (const anim of this.#deliveryAnims) {
+      anim.mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry?.dispose();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          for (const mat of mats) mat?.dispose();
+        }
+      });
+      anim.mesh.removeFromParent();
+    }
+    this.#deliveryAnims.length = 0;
+
+    for (const pop of this.#pointsPopAnims) {
+      pop.dispose();
+    }
+    this.#pointsPopAnims.length = 0;
+
+    this.#currentTargets.clear();
+    this.#resourceParents.clear();
+    this.#interactables.length = 0;
+    this.#players.length = 0;
+    this.#activeRepairTargets.clear();
+    this.#objectsWithResources.clear();
+    this.#repairingPlayers.clear();
   }
 }

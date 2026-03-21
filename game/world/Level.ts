@@ -99,6 +99,7 @@ export class Level {
   }
 
   public dispose(): void {
+    this.#interactionSystem.dispose();
     this.#player1?.cleanup();
     this.#player2?.cleanup();
     this.#onboardingManager.dispose();

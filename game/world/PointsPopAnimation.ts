@@ -77,6 +77,10 @@ export class PointsPopAnimation {
     return false;
   }
 
+  public dispose(): void {
+    this.#dispose();
+  }
+
   #dispose(): void {
     this.#textResult.mesh.removeFromParent();
     this.#textResult.dispose();
