@@ -27,6 +27,7 @@ const BAR_BG_HEX = 0xdddddd;
 
 interface OrderCard {
   group: Group;
+  cardCanvas: HTMLCanvasElement;
   cardGeometry: PlaneGeometry;
   cardMaterial: MeshBasicMaterial;
   cardTexture: CanvasTexture;
@@ -38,6 +39,7 @@ interface OrderCard {
   phoneGeometry: PlaneGeometry;
   phoneMaterial: MeshBasicMaterial;
   targetX: number;
+  currentOrderId: number;
 }
 
 export class OrderQueueHUD implements IHUDItem {
@@ -63,6 +65,9 @@ export class OrderQueueHUD implements IHUDItem {
     phoneYPct: -0.13,
     resYPct: 0.42,
     pkgYPct: 0.72,
+    pkgXPct: -0.5,
+    labelYPct: 0.77,
+    labelFontSize: 71,
     debugOrderCount: 7,
   };
 
@@ -119,7 +124,7 @@ export class OrderQueueHUD implements IHUDItem {
     ctx.stroke();
 
     // --- Icon layout (phone icon is a separate mesh, drawn above the bar) ---
-    const barArea = Math.round(p.barHeight / p.cardHeight * canvasH);
+    const barArea = Math.round((p.barHeight / p.cardHeight) * canvasH);
     const contentTop = barArea;
     const contentH = canvasH - contentTop;
 
@@ -136,10 +141,10 @@ export class OrderQueueHUD implements IHUDItem {
       }
     }
 
-    // Package icon (centered)
+    // Package icon (same Y as phone, to its left)
     const pkgSize = Math.round(contentH * p.pkgSizePct);
-    const pkgY = contentTop + Math.round(contentH * p.pkgYPct);
-    const pkgX = (canvasW - pkgSize) / 2;
+    const pkgY = 220;
+    const pkgX = 700;
     if (packageImg) {
       ctx.drawImage(packageImg, pkgX, pkgY, pkgSize, pkgSize);
     }
@@ -221,7 +226,7 @@ export class OrderQueueHUD implements IHUDItem {
     barFillMesh.position.z = 0.002;
     group.add(barFillMesh);
 
-    // Phone icon mesh (rendered above the progress bar)
+    // Phone icon mesh
     const phoneWorldSize = (p.cardHeight - p.barHeight) * p.phoneSizePct;
     const phoneTexture = Resources.getInstance().getTextureAsset('phoneIcon');
     const phoneGeometry = new PlaneGeometry(phoneWorldSize, phoneWorldSize);
@@ -257,6 +262,8 @@ export class OrderQueueHUD implements IHUDItem {
       phoneGeometry,
       phoneMaterial,
       targetX: 0,
+      cardCanvas,
+      currentOrderId: -1,
     };
   }
 
@@ -278,9 +285,8 @@ export class OrderQueueHUD implements IHUDItem {
 
   update(): void {
     const p = this.#params;
-    const orders: readonly Order[] = this.#debugFakeOrders.length > 0
-      ? this.#debugFakeOrders
-      : this.#orderManager.getOrders();
+    const orders: readonly Order[] =
+      this.#debugFakeOrders.length > 0 ? this.#debugFakeOrders : this.#orderManager.getOrders();
     const count = orders.length;
 
     this.#ensureCardCount(count);
@@ -302,6 +308,12 @@ export class OrderQueueHUD implements IHUDItem {
         card.targetX = targetX;
         card.group.position.x += (card.targetX - card.group.position.x) * p.slideSpeed;
 
+        // Update order label when order changes
+        if (card.currentOrderId !== order.id) {
+          card.currentOrderId = order.id;
+          this.#drawOrderLabel(card, order.id);
+        }
+
         // Update progress bar
         card.barFillMaterial.color.setHex(ZONE_HEX[order.zone]);
         card.barFillMesh.scale.x = clamped || 0.001;
@@ -310,6 +322,33 @@ export class OrderQueueHUD implements IHUDItem {
         card.group.visible = false;
       }
     }
+  }
+
+  #drawOrderLabel(card: OrderCard, orderId: number): void {
+    const p = this.#params;
+    const canvasW = Math.round(p.cardWidth * 1000 * DPR);
+    const canvasH = Math.round(p.cardHeight * 1000 * DPR);
+    const ctx = card.cardCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Redraw body first (clears previous text)
+    ctx.clearRect(0, 0, canvasW, canvasH);
+    if (this.#bodyCanvas) {
+      ctx.drawImage(this.#bodyCanvas, 0, 0);
+    }
+
+    // Draw "Order #X" at the bottom of the card
+    const fontSize = Math.round(p.labelFontSize * DPR);
+    ctx.font = `600 ${fontSize}px BMDupletDSP, system-ui, sans-serif`;
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const barArea = Math.round((p.barHeight / p.cardHeight) * canvasH);
+    const contentH = canvasH - barArea;
+    const textY = barArea + Math.round(contentH * p.labelYPct) + fontSize / 2;
+    ctx.fillText(`Order #${orderId + 1}`, canvasW / 2, textY);
+
+    card.cardTexture.needsUpdate = true;
   }
 
   /** Destroy all cards and rebuild from scratch (called when debug params change). */
@@ -350,7 +389,13 @@ export class OrderQueueHUD implements IHUDItem {
     folder.add(this.#params, 'resYPct', 0.2, 0.8, 0.01).name('Resources Y pos').onChange(rebuild);
     folder.add(this.#params, 'pkgSizePct', 0.05, 0.5, 0.01).name('Package Icon %').onChange(rebuild);
     folder.add(this.#params, 'pkgYPct', 0.4, 0.9, 0.01).name('Package Y pos').onChange(rebuild);
-    folder.add(this.#params, 'debugOrderCount', 1, 7, 1).name('Test Orders').onChange(() => this.#updateFakeOrders());
+    folder.add(this.#params, 'pkgXPct', -1, 1, 0.01).name('Package X pos').onChange(rebuild);
+    folder.add(this.#params, 'labelYPct', 0, 1, 0.01).name('Label Y pos').onChange(rebuild);
+    folder.add(this.#params, 'labelFontSize', 16, 120, 1).name('Label Font Size').onChange(rebuild);
+    folder
+      .add(this.#params, 'debugOrderCount', 1, 7, 1)
+      .name('Test Orders')
+      .onChange(() => this.#updateFakeOrders());
 
     this.#updateFakeOrders();
 

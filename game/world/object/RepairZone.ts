@@ -49,18 +49,18 @@ export class RepairZone extends LevelObject {
     const workbenchCenter = new Vector3();
     workbenchBox.getCenter(workbenchCenter);
 
-    // Add repair zone centered on top of workbench
+    // Add repair zone centered on top of workbench, nudged toward back
     const repairZone = repairZoneModel.scene.clone();
     repairZone.position.x = workbenchCenter.x;
     repairZone.position.y = workbenchBox.max.y;
-    repairZone.position.z = workbenchCenter.z;
+    repairZone.position.z = workbenchCenter.z - TILE_SIZE * 0.05;
     container.add(repairZone);
 
-    // Place screwdriver on the mat
+    // Place screwdriver on the mat, nudged toward back
     const screwdriverModel = Resources.getInstance().getGLTFAsset('screwdriverModel');
     if (screwdriverModel) {
       this.#screwdriver = screwdriverModel.scene.clone();
-      this.#screwdriver.position.set(1.55, 1.25, 1.20);
+      this.#screwdriver.position.set(1.55, 1.25, 1.2 + TILE_SIZE * 0.02);
       this.#screwdriver.scale.setScalar(1.2);
       this.cloneMaterials(this.#screwdriver);
       this.setupShadows(this.#screwdriver);
