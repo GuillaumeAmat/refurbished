@@ -237,10 +237,10 @@ export class BlueWorkZone extends LevelObject {
   }
 
   #getSlotAnchor(index: number): Vector3 {
-    const spacing = 1.2;
+    const spacing = 1.4;
     const totalWidth = spacing * (ASSEMBLY_RESOURCES.length - 1);
     const startX = TILE_SIZE * 0.5 - totalWidth / 2;
-    return new Vector3(this.mesh!.position.x + startX + index * spacing, 2.8, this.mesh!.position.z + TILE_SIZE * 0.5);
+    return new Vector3(this.mesh!.position.x + startX + index * spacing, 3.0, this.mesh!.position.z + TILE_SIZE * 0.5);
   }
 
   #setSlotIcon(type: AssemblyResourceType, textureName: string): void {

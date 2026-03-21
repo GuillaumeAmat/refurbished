@@ -170,7 +170,7 @@ export class DroppedResource extends LevelObject {
     const mesh = model.scene.clone();
     mesh.scale.setScalar(RESOURCE_SCALE[resourceType]);
 
-    const dropSurface = onTopOf?.getDropSurface();
+    const dropSurface = onTopOf?.getDropSurface(resourceType);
     if (dropSurface) {
       mesh.position.copy(dropSurface);
     } else if (onTopOf?.getMesh()) {

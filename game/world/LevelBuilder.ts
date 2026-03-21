@@ -266,9 +266,9 @@ export class LevelBuilder {
     }[] = [
       { textureKey: 'poster1', wallIndex: 4, side: 'left', depth: 1, offsetX: -0.2, rotationY: -27 },
       { textureKey: 'poster2', wallIndex: 1, side: 'top', depth: 1.8, offsetX: -1, rotationY: 33 },
-      { textureKey: 'poster3', wallIndex: 3, side: 'top', depth: 0.6, offsetX: -0.6, rotationY: 15 },
-      { textureKey: 'poster4', wallIndex: 5, side: 'top', depth: 1.8, offsetX: -0.8, rotationY: -9 },
-      { textureKey: 'poster5', wallIndex: 7, side: 'top', depth: 1.2, offsetX: 0.6, rotationY: 9 },
+      { textureKey: 'poster3', wallIndex: 3, side: 'top', depth: 0.6, offsetX: -1.2, rotationY: 15 },
+      { textureKey: 'poster4', wallIndex: 5, side: 'top', depth: 1.2, offsetX: -0.8, rotationY: -9 },
+      { textureKey: 'poster5', wallIndex: 7, side: 'top', depth: 1.2, offsetX: -0.9, rotationY: 9 },
       { textureKey: 'poster6', wallIndex: 9, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
       { textureKey: 'poster7', wallIndex: 11, side: 'top', depth: 1, offsetX: 0.8, rotationY: -27 },
       { textureKey: 'poster8', wallIndex: 4, side: 'right', depth: 0.8, offsetX: 0.2, rotationY: 30 },
@@ -349,7 +349,10 @@ export class LevelBuilder {
       debug.save();
     };
 
-    folder.add(state, 'intensity', 0, 20, 0.1).name('Intensity').onChange((v: number) => apply('intensity', v));
+    folder
+      .add(state, 'intensity', 0, 20, 0.1)
+      .name('Intensity')
+      .onChange((v: number) => apply('intensity', v));
     const intActions = {
       inc: () => apply('intensity', Math.round((state.intensity + 1) * 10) / 10),
       dec: () => apply('intensity', Math.round((state.intensity - 1) * 10) / 10),
@@ -357,7 +360,10 @@ export class LevelBuilder {
     folder.add(intActions, 'inc').name('Intensity +1');
     folder.add(intActions, 'dec').name('Intensity -1');
 
-    folder.add(state, 'distance', 0, 20, 0.1).name('Distance').onChange((v: number) => apply('distance', v));
+    folder
+      .add(state, 'distance', 0, 20, 0.1)
+      .name('Distance')
+      .onChange((v: number) => apply('distance', v));
     const distActions = {
       inc: () => apply('distance', Math.round((state.distance + 0.5) * 10) / 10),
       dec: () => apply('distance', Math.round((state.distance - 0.5) * 10) / 10),
@@ -365,7 +371,10 @@ export class LevelBuilder {
     folder.add(distActions, 'inc').name('Distance +0.5');
     folder.add(distActions, 'dec').name('Distance -0.5');
 
-    folder.add(state, 'decay', 0, 5, 0.1).name('Decay').onChange((v: number) => apply('decay', v));
+    folder
+      .add(state, 'decay', 0, 5, 0.1)
+      .name('Decay')
+      .onChange((v: number) => apply('decay', v));
     const decayActions = {
       inc: () => apply('decay', Math.round((state.decay + 0.1) * 10) / 10),
       dec: () => apply('decay', Math.round((state.decay - 0.1) * 10) / 10),
@@ -373,7 +382,10 @@ export class LevelBuilder {
     folder.add(decayActions, 'inc').name('Decay +0.1');
     folder.add(decayActions, 'dec').name('Decay -0.1');
 
-    folder.add(state, 'height', 0, 8, 0.1).name('Height').onChange((v: number) => apply('height', v));
+    folder
+      .add(state, 'height', 0, 8, 0.1)
+      .name('Height')
+      .onChange((v: number) => apply('height', v));
     const heightActions = {
       inc: () => apply('height', Math.round((state.height + 0.2) * 10) / 10),
       dec: () => apply('height', Math.round((state.height - 0.2) * 10) / 10),

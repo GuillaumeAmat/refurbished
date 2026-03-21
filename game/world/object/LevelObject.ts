@@ -109,7 +109,7 @@ export abstract class LevelObject {
   }
 
   /** World position where a dropped resource should be placed on this object. */
-  public getDropSurface(): Vector3 | null {
+  public getDropSurface(_resourceType?: string): Vector3 | null {
     return null;
   }
 

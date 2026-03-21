@@ -117,8 +117,9 @@ export class RepairZone extends LevelObject {
     if (this.#screwdriver) this.#screwdriver.visible = true;
   }
 
-  override getDropSurface(): Vector3 | null {
+  override getDropSurface(resourceType?: string): Vector3 | null {
     const { xIndex, zIndex } = this.#params;
-    return new Vector3(xIndex * TILE_SIZE + 1, 1.01, zIndex * TILE_SIZE + 1);
+    const z = resourceType === 'battery' ? 0.75 : 1;
+    return new Vector3(xIndex * TILE_SIZE + 1, 1.01, zIndex * TILE_SIZE + z);
   }
 }
