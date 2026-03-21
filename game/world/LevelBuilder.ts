@@ -235,6 +235,7 @@ export class LevelBuilder {
     if (bakedGeometries.length === 0 || !sharedMaterial) return;
 
     const merged = mergeGeometries(bakedGeometries);
+    for (const geo of bakedGeometries) geo.dispose();
     if (!merged) return;
 
     const mergedMesh = new Mesh(merged, sharedMaterial);
