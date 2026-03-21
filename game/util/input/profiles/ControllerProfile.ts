@@ -12,6 +12,10 @@ export interface ControllerProfile {
     back: number;
     leftBumper: number;
     rightBumper: number;
+    dpadUp?: number;
+    dpadDown?: number;
+    dpadLeft?: number;
+    dpadRight?: number;
   };
   deadzone: number;
 }

@@ -224,6 +224,12 @@ export class Player {
     if (isNight) {
       const light = new SpotLight('#fff8e5', 10, 7, 0.4, 0.4, 2);
       light.castShadow = false;
+      light.position.set(
+        this.#mesh?.position.x ?? 0,
+        (this.#mesh?.position.y ?? 0) + 3,
+        this.#mesh?.position.z ?? 0,
+      );
+      light.target.position.copy(this.#mesh?.position ?? new Vector3());
       this.#scene.add(light);
       this.#scene.add(light.target);
       this.#playerSpotlight = light;
@@ -806,5 +812,15 @@ export class Player {
     this.#updateAnimation();
     this.#updateSmoke();
     this.#updateInteract();
+
+    if (this.#playerSpotlight && this.#mesh) {
+      this.#playerSpotlight.position.set(
+        this.#mesh.position.x,
+        this.#mesh.position.y + 3,
+        this.#mesh.position.z,
+      );
+      this.#playerSpotlight.target.position.copy(this.#mesh.position);
+      this.#playerSpotlight.target.updateMatrixWorld();
+    }
   }
 }

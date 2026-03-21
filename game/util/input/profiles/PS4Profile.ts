@@ -14,6 +14,10 @@ export const PS4Profile: ControllerProfile = {
     back: 8, // Share
     leftBumper: 4, // L1
     rightBumper: 5, // R1
+    dpadUp: 12,
+    dpadDown: 13,
+    dpadLeft: 14,
+    dpadRight: 15,
   },
   deadzone: 0.15,
 };

@@ -41,6 +41,8 @@ export class Stage {
   #onMuteKey: (e: KeyboardEvent) => void;
   #onKonamiKey: (e: KeyboardEvent) => void;
   #konamiIndex: number = 0;
+  #konamiGamepadIndex: number = 0;
+  #konamiPrevMovement: Array<{ x: number; z: number }> = [{ x: 0, z: 0 }, { x: 0, z: 0 }];
 
   constructor(canvas: HTMLCanvasElement) {
     if (!window) {
@@ -374,16 +376,29 @@ export class Stage {
     };
     window.addEventListener('keydown', this.#onMuteKey);
 
-    const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    // Maps any keyboard key to a Konami abstract step (arrow keys + WASD/ZQSD fallback)
+    const konamiKeyToStep = (key: string): string | null => {
+      if (key === 'ArrowUp' || key === 'w' || key === 'z') return 'up';
+      if (key === 'ArrowDown' || key === 's') return 'down';
+      if (key === 'ArrowLeft' || key === 'a' || key === 'q') return 'left';
+      if (key === 'ArrowRight' || key === 'd') return 'right';
+      if (key === 'b' || key === 'Alt' || key === 'AltGraph') return 'b';
+      if (key === 'a' || key === ' ' || key === 'Enter') return 'a';
+      return null;
+    };
+    const KONAMI = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
     this.#onKonamiKey = (e: KeyboardEvent) => {
-      if (e.key === KONAMI[this.#konamiIndex]) {
+      const step = konamiKeyToStep(e.key);
+      if (!step) return;
+      const expected = KONAMI[this.#konamiIndex]!;
+      if (step === expected) {
         this.#konamiIndex++;
         if (this.#konamiIndex === KONAMI.length) {
           this.#konamiIndex = 0;
           Environment.getInstance()?.toggleNight();
         }
       } else {
-        this.#konamiIndex = e.key === KONAMI[0] ? 1 : 0;
+        this.#konamiIndex = (step === KONAMI[0]) ? 1 : 0;
       }
     };
     window.addEventListener('keydown', this.#onKonamiKey);
@@ -529,8 +544,52 @@ export class Stage {
 
     const gamepadManager = GamepadManager.getInstance();
 
+    const KONAMI_GP = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
+
+    // Returns the abstract Konami step for an input source this frame, checking
+    // both d-pad buttons and left-stick edges (for controllers that use axes for d-pad).
+    const getGpStep = (source: ReturnType<typeof gamepadManager.getInputSource>, prevMov: { x: number; z: number }): string | null => {
+      if (!source) return null;
+      if (source.isButtonJustPressed('dpadUp')) return 'up';
+      if (source.isButtonJustPressed('dpadDown')) return 'down';
+      if (source.isButtonJustPressed('dpadLeft')) return 'left';
+      if (source.isButtonJustPressed('dpadRight')) return 'right';
+      if (source.isButtonJustPressed('b')) return 'b';
+      if (source.isButtonJustPressed('a')) return 'a';
+      // Left-stick edge: only fire on the frame the stick crosses the threshold
+      const wasNeutral = Math.abs(prevMov.x) < 0.5 && Math.abs(prevMov.z) < 0.5;
+      if (wasNeutral) {
+        const mov = source.getMovement();
+        if (mov.z < -0.5) return 'up';
+        if (mov.z > 0.5) return 'down';
+        if (mov.x < -0.5) return 'left';
+        if (mov.x > 0.5) return 'right';
+      }
+      return null;
+    };
+
     this.#time.addEventListener('tick', () => {
       gamepadManager.update();
+
+      const sources = [gamepadManager.getInputSource(1), gamepadManager.getInputSource(2)];
+      for (let i = 0; i < sources.length; i++) {
+        const step = getGpStep(sources[i]!, this.#konamiPrevMovement[i]!);
+        const mov = sources[i]?.getMovement() ?? { x: 0, z: 0 };
+        this.#konamiPrevMovement[i] = mov;
+        if (!step) continue;
+        const expected = KONAMI_GP[this.#konamiGamepadIndex]!;
+        if (step === expected) {
+          this.#konamiGamepadIndex++;
+          if (this.#konamiGamepadIndex === KONAMI_GP.length) {
+            this.#konamiGamepadIndex = 0;
+            Environment.getInstance()?.toggleNight();
+          }
+        } else {
+          this.#konamiGamepadIndex = (step === KONAMI_GP[0]) ? 1 : 0;
+        }
+        break; // one input per frame is enough
+      }
+
       startScreen.update();
       levelScreen.update();
       menuScreen.update();

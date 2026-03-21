@@ -14,6 +14,10 @@ export const LogitechProfile: ControllerProfile = {
     back: 8,
     leftBumper: 4,
     rightBumper: 5,
+    dpadUp: 12,
+    dpadDown: 13,
+    dpadLeft: 14,
+    dpadRight: 15,
   },
   deadzone: 0.15,
 };
