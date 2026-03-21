@@ -10,6 +10,7 @@ import { LevelObject } from './LevelObject';
 
 export class Floor extends LevelObject {
   #levelInfo: LevelInfo;
+  #exteriorPlane: Mesh | null = null;
 
   constructor(levelInfo: LevelInfo) {
     super();
@@ -66,6 +67,7 @@ export class Floor extends LevelObject {
     plane.position.set((levelWidth * TILE_SIZE) / 2, -0.05, (levelDepth * TILE_SIZE) / 2);
     plane.receiveShadow = true;
 
+    this.#exteriorPlane = plane;
     group.add(plane);
 
     const debug = Debug.getInstance();
@@ -125,5 +127,15 @@ export class Floor extends LevelObject {
 
     const halfExtents = new Vector3(width / 2, 0.1, depth / 2);
     physics.createBoxCollider(this.rigidBody, halfExtents, 0.5);
+  }
+
+  public override dispose(): void {
+    if (this.#exteriorPlane) {
+      this.#exteriorPlane.geometry.dispose();
+      (this.#exteriorPlane.material as MeshStandardMaterial).dispose();
+      this.#exteriorPlane.removeFromParent();
+      this.#exteriorPlane = null;
+    }
+    super.dispose();
   }
 }
