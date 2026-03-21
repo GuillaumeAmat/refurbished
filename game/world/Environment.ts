@@ -47,6 +47,10 @@ export class Environment {
     this.#players.push(player);
   }
 
+  public clearPlayers(): void {
+    this.#players.length = 0;
+  }
+
   private setupLights() {
     this.#ambientLight = new AmbientLight(LIGHT_COLOR, 1.1);
     this.#scene.add(this.#ambientLight);

@@ -102,6 +102,7 @@ export class Level {
     this.#interactionSystem.dispose();
     this.#player1?.cleanup();
     this.#player2?.cleanup();
+    Environment.getInstance()?.clearPlayers();
     this.#onboardingManager.dispose();
     this.#floor.dispose();
     this.#levelBuilder.dispose();
