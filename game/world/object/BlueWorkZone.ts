@@ -386,5 +386,6 @@ export class BlueWorkZone extends LevelObject {
     this.#ledMaterial = null;
     this.#ledLight?.removeFromParent();
     this.#ledLight = null;
+    super.dispose();
   }
 }
