@@ -8,6 +8,7 @@ export class SessionManager extends EventTarget {
   #accumulator = 0;
   #running = false;
   #onTick: (() => void) | null = null;
+  #sandbox = false;
 
   private constructor() {
     super();
@@ -20,8 +21,12 @@ export class SessionManager extends EventTarget {
     return SessionManager.#instance;
   }
 
+  public setSandbox(enabled: boolean): void {
+    this.#sandbox = enabled;
+  }
+
   public start(): void {
-    if (this.#running) return;
+    if (this.#running || this.#sandbox) return;
     this.#running = true;
     this.#accumulator = 0;
 
