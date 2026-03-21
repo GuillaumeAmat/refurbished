@@ -26,6 +26,8 @@ export class OnboardingManager {
   #parent: Group;
   #highlights: OnboardingHighlight[] = [];
   #step = Step.IDLE;
+  #startTimer: ReturnType<typeof setTimeout> | null = null;
+  #startRaf: number | null = null;
   #lastGrabbedResourceType: ResourceType | null = null;
 
   #resourceCrates: Crate[] = [];
@@ -55,7 +57,9 @@ export class OnboardingManager {
   }
 
   start(): void {
-    setTimeout(() => requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES)), 2000);
+    this.#startTimer = setTimeout(() => {
+      this.#startRaf = requestAnimationFrame(() => this.#setStep(Step.HIGHLIGHT_CRATES));
+    }, 2000);
   }
 
   onResourceGrabbed(resourceType: ResourceType): void {
@@ -153,6 +157,14 @@ export class OnboardingManager {
   }
 
   dispose(): void {
+    if (this.#startTimer !== null) {
+      clearTimeout(this.#startTimer);
+      this.#startTimer = null;
+    }
+    if (this.#startRaf !== null) {
+      cancelAnimationFrame(this.#startRaf);
+      this.#startRaf = null;
+    }
     this.#disposeHighlights();
     this.#step = Step.DONE;
   }
