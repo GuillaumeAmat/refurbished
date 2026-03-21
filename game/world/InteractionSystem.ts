@@ -322,8 +322,6 @@ export class InteractionSystem {
         target &&
         !(target instanceof Crate) &&
         !(target instanceof DroppedResource) &&
-        !(target instanceof DeliveryZone) &&
-        !(target instanceof BlueWorkZone) &&
         !this.#hasResourceOnTop(target);
 
       if (canDropOnTarget) {
