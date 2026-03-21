@@ -185,13 +185,39 @@ export class Player {
     this.#repairAnimation.stop();
     this.#screwdriverMesh?.removeFromParent();
     this.#screwdriverMesh = null;
-    this.#smokeSystem.dispose();
+    this.#smokeSystem?.dispose();
     if (this.#playerSpotlight) {
       this.#scene.remove(this.#playerSpotlight);
       this.#scene.remove(this.#playerSpotlight.target);
       this.#playerSpotlight.dispose();
       this.#playerSpotlight = null;
     }
+
+    if (this.#carriedResource) {
+      this.#carriedResource.mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry?.dispose();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          for (const mat of mats) mat?.dispose();
+        }
+      });
+      this.#carriedResource.mesh.removeFromParent();
+      this.#carriedResource = null;
+    }
+
+    if (this.#mesh) {
+      this.#mesh.traverse((child) => {
+        if (child instanceof Mesh) {
+          child.geometry?.dispose();
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          for (const mat of mats) mat?.dispose();
+        }
+      });
+      this.#mesh.removeFromParent();
+      this.#mesh = null;
+    }
+
+    this.#baseMaterialColors.length = 0;
   }
 
   public setNightMode(isNight: boolean): void {
