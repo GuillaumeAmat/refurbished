@@ -512,6 +512,13 @@ export class InteractionSystem {
         this.#smokeSystem.spawnImpact(anim.mesh.position, DELIVERY_SMOKE_COUNT);
         this.#pointsPopAnims.push(new PointsPopAnimation(this.#levelGroup, anim.mesh.position, anim.points));
         anim.mesh.removeFromParent();
+        anim.mesh.traverse((child) => {
+          if (child instanceof Mesh) {
+            child.geometry?.dispose();
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            for (const mat of mats) mat?.dispose();
+          }
+        });
         this.#deliveryAnims.splice(i, 1);
       }
     }
