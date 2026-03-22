@@ -213,6 +213,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
     // Dispose old table
     if (this.#tableMesh) {
       this.#group.remove(this.#tableMesh);
+      this.#tableMaterial?.map?.dispose();
       this.#tableGeometry?.dispose();
       this.#tableMaterial?.dispose();
     }
@@ -306,6 +307,10 @@ export class LeaderboardOverlayHUD implements IHUDItem {
   show() {
     this.#group.visible = true;
     this.#fetchScores();
+    if (this.#refreshInterval !== null) {
+      clearInterval(this.#refreshInterval);
+      this.#refreshInterval = null;
+    }
     if (this.#autoRefresh) {
       this.#refreshInterval = setInterval(() => this.#fetchScores(), LEADERBOARD_REFRESH_MS);
     }
@@ -344,6 +349,7 @@ export class LeaderboardOverlayHUD implements IHUDItem {
     this.#titleLeaderboard?.dispose();
     this.#qrCode?.dispose();
     this.#backButton?.dispose();
+    this.#tableMaterial?.map?.dispose();
     this.#tableGeometry?.dispose();
     this.#tableMaterial?.dispose();
   }

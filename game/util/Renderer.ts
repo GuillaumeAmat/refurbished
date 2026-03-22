@@ -56,7 +56,7 @@ export class Renderer {
     this.#canvas = canvas;
     this.#camera = camera;
     this.#scene = scene;
-    this.#sizes = new Sizes();
+    this.#sizes = Sizes.getInstance();
 
     this.#renderer = new WebGLRenderer({
       canvas: this.#canvas,
@@ -167,5 +167,23 @@ export class Renderer {
 
     // Final pass: normal materials, mixes in bloom texture
     this.#finalComposer.render();
+  }
+
+  public dispose() {
+    // Dispose render targets owned by each composer
+    this.#bloomComposer.renderTarget1.dispose();
+    this.#bloomComposer.renderTarget2.dispose();
+    this.#finalComposer.renderTarget1.dispose();
+    this.#finalComposer.renderTarget2.dispose();
+
+    // Dispose passes (frees internal shaders / render targets)
+    for (const pass of this.#bloomComposer.passes) pass.dispose();
+    for (const pass of this.#finalComposer.passes) pass.dispose();
+
+    this.#darkMaterial.dispose();
+    this.#darkTransparentMaterial.dispose();
+    this.#materialCache.clear();
+
+    this.#renderer.dispose();
   }
 }

@@ -14,6 +14,7 @@ export class Sizes extends EventDispatcher<SizesEvents> {
   #width = 800;
   #height = 600;
   #pixelRatio = 1;
+  #onResize: () => void;
 
   public get width() {
     return this.#width;
@@ -38,14 +39,19 @@ export class Sizes extends EventDispatcher<SizesEvents> {
 
     this.updateSizesFromWindow();
 
-    window.addEventListener('resize', () => {
+    this.#onResize = () => {
       this.updateSizesFromWindow();
       this.dispatchEvent({ type: 'resize' });
-    });
+    };
+    window.addEventListener('resize', this.#onResize);
   }
 
   static getInstance() {
     return Sizes.#instance;
+  }
+
+  public dispose() {
+    window.removeEventListener('resize', this.#onResize);
   }
 
   private updateSizesFromWindow() {

@@ -110,5 +110,10 @@ export class Time extends EventDispatcher<TimeEvents> {
       window.cancelAnimationFrame(this.#animationFrameId);
       this.#animationFrameId = null;
     }
+
+    // Purge all tick listeners to release closures (renderer, screens, etc.)
+    // Three.js EventDispatcher stores listeners in _listeners
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (this as any)._listeners = {};
   }
 }

@@ -229,6 +229,6 @@ export class DroppedResource extends LevelObject {
 
   public override getPosition(): Vector3 | null {
     if (!this.mesh) return null;
-    return this.mesh.position.clone();
+    return this.mesh.position;
   }
 }

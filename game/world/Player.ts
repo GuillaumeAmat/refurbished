@@ -2,6 +2,7 @@ import type RAPIER from '@dimforge/rapier3d-compat';
 import { Color, type Group, Mesh, MeshStandardMaterial, type Object3D, type Scene, SpotLight, Vector3 } from 'three';
 
 import { DASH_COOLDOWN, DASH_DURATION, DASH_SPEED, MOVEMENT_SPEED, SMOKE_DASH_ARC_ANGLE, SMOKE_DASH_ARC_COUNT } from '../constants';
+import { disposeObject3D } from '../lib/disposeObject3D';
 import type { GripConfig, ResourceState, ResourceType } from '../types';
 import { Debug } from '../util/Debug';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -194,26 +195,12 @@ export class Player {
     }
 
     if (this.#carriedResource) {
-      this.#carriedResource.mesh.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.geometry?.dispose();
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          for (const mat of mats) mat?.dispose();
-        }
-      });
-      this.#carriedResource.mesh.removeFromParent();
+      disposeObject3D(this.#carriedResource.mesh);
       this.#carriedResource = null;
     }
 
     if (this.#mesh) {
-      this.#mesh.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.geometry?.dispose();
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          for (const mat of mats) mat?.dispose();
-        }
-      });
-      this.#mesh.removeFromParent();
+      disposeObject3D(this.#mesh);
       this.#mesh = null;
     }
 
@@ -593,15 +580,7 @@ export class Player {
 
     // Detach and dispose cloned screwdriver to free GPU memory
     if (this.#screwdriverMesh) {
-      this.#screwdriverMesh.removeFromParent();
-      this.#screwdriverMesh.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.geometry.dispose();
-          if (child.material instanceof MeshStandardMaterial) {
-            child.material.dispose();
-          }
-        }
-      });
+      disposeObject3D(this.#screwdriverMesh);
       this.#screwdriverMesh = null;
     }
 

@@ -1,5 +1,5 @@
 import { Scene } from 'three';
-import { type Actor, type AnyActorLogic, createActor, fromPromise } from 'xstate';
+import { type Actor, type AnyActorLogic, type Subscription, createActor, fromPromise } from 'xstate';
 
 import { navigateTo, useRuntimeConfig } from '#app';
 
@@ -26,6 +26,10 @@ import { Time } from './util/Time';
 import { Camera } from './world/Camera';
 import { Environment } from './world/Environment';
 
+interface Disposable {
+  dispose(): void;
+}
+
 export class Stage {
   #actor: Actor<AnyActorLogic>;
   #scene: Scene;
@@ -33,8 +37,14 @@ export class Stage {
   #resources: Resources;
   #time: Time;
   #sizes: Sizes;
+  #renderer: Renderer;
+  #loadingOverlay: LoadingOverlay;
   #environment: Environment | null = null;
   #levelInfo = levelsInfo[0]!;
+
+  // Screens (created lazily via setupScreens, disposed in dispose)
+  #screens: Disposable[] = [];
+  #audioSubscription: Subscription | null = null;
 
   // Bound listener references for cleanup
   #onResize: () => void;
@@ -53,8 +63,8 @@ export class Stage {
 
     this.#scene = new Scene();
     this.#camera = new Camera(this.#scene, canvas, this.#levelInfo);
-    const renderer = new Renderer(this.#scene, canvas, this.#camera);
-    const loadingOverlay = new LoadingOverlay(this.#scene);
+    this.#renderer = new Renderer(this.#scene, canvas, this.#camera);
+    this.#loadingOverlay = new LoadingOverlay(this.#scene);
 
     this.#sizes = new Sizes();
     this.#onResize = () => {
@@ -66,7 +76,7 @@ export class Stage {
          * as it updates the renderer's size and pixel ratio.
          * Also, it would take into account a re-positionning of the camera.
          */
-        renderer.setSizesAndRatio();
+        this.#renderer.setSizesAndRatio();
       });
     };
     this.#sizes.addEventListener('resize', this.#onResize);
@@ -416,7 +426,7 @@ export class Stage {
       stageMachine.provide({
         actions: {
           hideLoadingOverlay: () => {
-            loadingOverlay.hide();
+            this.#loadingOverlay.hide();
           },
           navigateToLoadingErrorPage: () => {
             navigateTo('/loading-error');
@@ -439,8 +449,8 @@ export class Stage {
     this.#time = new Time();
     this.#time.addEventListener('tick', () => {
       this.#camera.update();
-      loadingOverlay.update();
-      renderer.update();
+      this.#loadingOverlay.update();
+      this.#renderer.update();
     });
   }
 
@@ -495,6 +505,8 @@ export class Stage {
     const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
     const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#camera.camera);
 
+    this.#screens = [startScreen, levelScreen, menuScreen, tutorialScreen, leaderboardScreen, pauseScreen, scoreScreen, savingScoreScreen];
+
     /**
      * Must be called after the meshes have been created,
      * as it traverses the scene to update the materials.
@@ -512,7 +524,7 @@ export class Stage {
 
     let previousState = this.#actor.getSnapshot();
 
-    this.#actor.subscribe((state) => {
+    this.#audioSubscription = this.#actor.subscribe((state) => {
       const sm = SoundManager.getInstance();
 
       if (MENU_TRACK_STATES.some((s) => state.matches(s))) {
@@ -605,8 +617,19 @@ export class Stage {
   public dispose() {
     this.#time.dispose();
     this.#sizes.removeEventListener('resize', this.#onResize);
+    this.#sizes.dispose();
     window.removeEventListener('keydown', this.#onMuteKey);
     window.removeEventListener('keydown', this.#onKonamiKey);
+
+    this.#audioSubscription?.unsubscribe();
     this.#actor.stop();
+
+    for (const screen of this.#screens) screen.dispose();
+    this.#screens.length = 0;
+
+    this.#loadingOverlay.dispose();
+    this.#renderer.dispose();
+    GamepadManager.getInstance().cleanup();
+    SoundManager.getInstance().dispose();
   }
 }

@@ -1,6 +1,7 @@
-import { Mesh, type Group, type Object3D, Vector3 } from 'three';
+import { type Group, type Object3D, Vector3 } from 'three';
 
 import { ASSEMBLE_HOLD_DURATION, DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
+import { disposeObject3D } from '../lib/disposeObject3D';
 import { isWorkbench, type LevelData } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
@@ -509,14 +510,7 @@ export class InteractionSystem {
       if (anim.timer >= DELIVERY_ANIM_DURATION) {
         this.#smokeSystem.spawnImpact(anim.mesh.position, DELIVERY_SMOKE_COUNT);
         this.#pointsPopAnims.push(new PointsPopAnimation(this.#levelGroup, anim.mesh.position, anim.points));
-        anim.mesh.removeFromParent();
-        anim.mesh.traverse((child) => {
-          if (child instanceof Mesh) {
-            child.geometry?.dispose();
-            const mats = Array.isArray(child.material) ? child.material : [child.material];
-            for (const mat of mats) mat?.dispose();
-          }
-        });
+        disposeObject3D(anim.mesh);
         this.#deliveryAnims.splice(i, 1);
       }
     }
@@ -626,14 +620,7 @@ export class InteractionSystem {
     this.#smokeSystem.dispose();
 
     for (const anim of this.#deliveryAnims) {
-      anim.mesh.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.geometry?.dispose();
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          for (const mat of mats) mat?.dispose();
-        }
-      });
-      anim.mesh.removeFromParent();
+      disposeObject3D(anim.mesh);
     }
     this.#deliveryAnims.length = 0;
 

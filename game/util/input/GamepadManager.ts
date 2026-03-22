@@ -17,9 +17,13 @@ export class GamepadManager extends EventTarget {
   #assignments = new Map<PlayerId, PlayerAssignment>();
   #keyboardPlayer1: KeyboardController | null = null;
   #keyboardPlayer2: KeyboardController | null = null;
+  #onConnected: (e: GamepadEvent) => void;
+  #onDisconnected: (e: GamepadEvent) => void;
 
   private constructor() {
     super();
+    this.#onConnected = (e: GamepadEvent) => this.#onGamepadConnected(e);
+    this.#onDisconnected = (e: GamepadEvent) => this.#onGamepadDisconnected(e);
     this.#setupEventListeners();
     this.#scanConnectedGamepads();
 
@@ -38,8 +42,8 @@ export class GamepadManager extends EventTarget {
   }
 
   #setupEventListeners(): void {
-    window.addEventListener('gamepadconnected', (e) => this.#onGamepadConnected(e));
-    window.addEventListener('gamepaddisconnected', (e) => this.#onGamepadDisconnected(e));
+    window.addEventListener('gamepadconnected', this.#onConnected);
+    window.addEventListener('gamepaddisconnected', this.#onDisconnected);
   }
 
   #startPolling(): void {
@@ -234,6 +238,8 @@ export class GamepadManager extends EventTarget {
 
   cleanup(): void {
     this.#stopPolling();
+    window.removeEventListener('gamepadconnected', this.#onConnected);
+    window.removeEventListener('gamepaddisconnected', this.#onDisconnected);
     this.#assignments.forEach((a) => a.controller.cleanup());
     this.#keyboardPlayer1?.cleanup();
     this.#keyboardPlayer2?.cleanup();

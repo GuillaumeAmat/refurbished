@@ -3,6 +3,7 @@ import type { Group, Object3D } from 'three';
 import { Box3, Color, Mesh, MeshLambertMaterial, MeshStandardMaterial, Vector3 } from 'three';
 
 import { BLOOM_LAYER } from '../../constants';
+import { disposeObject3D } from '../../lib/disposeObject3D';
 import { Physics } from '../../util/Physics';
 
 const HIGHLIGHT_EMISSIVE = new Color('#F5C621').multiplyScalar(0.4);
@@ -92,14 +93,7 @@ export abstract class LevelObject {
 
   public dispose(): void {
     if (this.mesh) {
-      this.mesh.traverse((child) => {
-        if (child instanceof Mesh) {
-          child.geometry?.dispose();
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          for (const mat of mats) mat?.dispose();
-        }
-      });
-      this.mesh.removeFromParent();
+      disposeObject3D(this.mesh);
       this.mesh = null;
     }
   }

@@ -88,4 +88,14 @@ export class SoundManager {
     if (howl.state() === 'loaded') return Promise.resolve(howl.duration());
     return new Promise((resolve) => howl.once('load', () => resolve(howl.duration())));
   }
+
+  dispose(): void {
+    if (this.#menuLoopTimer !== null) {
+      clearTimeout(this.#menuLoopTimer);
+      this.#menuLoopTimer = null;
+    }
+    for (const howl of Object.values(this.#sounds)) {
+      howl.unload();
+    }
+  }
 }

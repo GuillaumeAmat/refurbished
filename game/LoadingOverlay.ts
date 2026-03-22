@@ -58,9 +58,19 @@ export class LoadingOverlay {
         value: 0,
         duration: 1.8,
         ease: 'power2.out',
+        onComplete: () => {
+          this.#mesh.removeFromParent();
+        },
       });
     }
   }
 
   public update() {}
+
+  public dispose() {
+    gsap.killTweensOf(this.#material.uniforms.uAlpha);
+    this.#geometry.dispose();
+    this.#material.dispose();
+    this.#mesh.removeFromParent();
+  }
 }
