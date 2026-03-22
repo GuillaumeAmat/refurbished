@@ -17,7 +17,13 @@ export class Physics {
 
   public async init() {
     this.#accumulator = 0;
-    if (this.initialized) return;
+
+    if (this.initialized && this.world) {
+      // Reuse existing WASM world — remove all bodies instead of freeing
+      // to avoid WASM linear memory growth from repeated World allocations
+      this.world.bodies.forEach((body) => this.world!.removeRigidBody(body));
+      return;
+    }
 
     await RAPIER.init();
 
@@ -79,7 +85,21 @@ export class Physics {
     }
   }
 
+  /**
+   * Soft reset: removes all bodies but keeps the WASM world alive
+   * to avoid linear memory growth from repeated World allocations.
+   */
   public dispose(): void {
+    if (this.world) {
+      this.world.bodies.forEach((body) => this.world!.removeRigidBody(body));
+    }
+    this.#accumulator = 0;
+  }
+
+  /**
+   * Full teardown: frees the WASM world. Use only on Stage disposal.
+   */
+  public destroy(): void {
     if (this.world) {
       this.world.free();
       this.world = null;

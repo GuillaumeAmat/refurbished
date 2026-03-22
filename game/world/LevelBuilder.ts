@@ -207,6 +207,7 @@ export class LevelBuilder {
     }
 
     this.mergeWallTops(group);
+    this.mergeWallBodies(group);
   }
 
   private mergeWallTops(group: Group): void {
@@ -247,6 +248,66 @@ export class LevelBuilder {
     }
 
     group.add(mergedMesh);
+  }
+
+  /**
+   * Merge wall body meshes by material to reduce draw calls.
+   * Wall objects are GLTF clones with potentially multiple sub-meshes;
+   * we group by material reference, merge each group, and replace.
+   */
+  private mergeWallBodies(group: Group): void {
+    group.updateWorldMatrix(true, true);
+
+    // Collect all Wall container groups (direct children that are NOT wallTops and contain GLTF meshes)
+    const wallObjects = this.#objects.filter((obj) => obj instanceof Wall);
+    if (wallObjects.length === 0) return;
+
+    // Gather all mesh children from wall containers, grouped by material
+    const byMaterial = new Map<Material, { geometries: BufferGeometry[]; meshes: Mesh[] }>();
+
+    for (const wallObj of wallObjects) {
+      const container = wallObj.getMesh();
+      if (!container) continue;
+
+      container.traverse((child) => {
+        if (!(child instanceof Mesh) || child.name === 'wallTop') return;
+        // Skip merged wallTop meshes (they're direct children of group, not wall containers)
+        if (child.parent === group) return;
+
+        const mat = Array.isArray(child.material) ? child.material[0] : child.material;
+        if (!mat) return;
+
+        let bucket = byMaterial.get(mat);
+        if (!bucket) {
+          bucket = { geometries: [], meshes: [] };
+          byMaterial.set(mat, bucket);
+        }
+        const geo = child.geometry.clone();
+        geo.applyMatrix4(child.matrixWorld);
+        bucket.geometries.push(geo);
+        bucket.meshes.push(child);
+      });
+    }
+
+    if (byMaterial.size === 0) return;
+
+    // Remove original wall containers from group
+    for (const wallObj of wallObjects) {
+      const container = wallObj.getMesh();
+      if (container) container.removeFromParent();
+    }
+
+    // Merge each material group into a single mesh
+    for (const [material, { geometries }] of byMaterial) {
+      const merged = mergeGeometries(geometries);
+      for (const geo of geometries) geo.dispose();
+      if (!merged) continue;
+
+      const mesh = new Mesh(merged, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      group.add(mesh);
+    }
   }
 
   private buildPosters(group: Group): void {

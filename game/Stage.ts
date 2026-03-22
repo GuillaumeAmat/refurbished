@@ -18,6 +18,7 @@ import { stageMachine } from './Stage.machine';
 import { SessionManager } from './state/SessionManager';
 import { Debug } from './util/Debug';
 import { GamepadManager } from './util/input/GamepadManager';
+import { Physics } from './util/Physics';
 import { Renderer } from './util/Renderer';
 import { Resources } from './util/Resources';
 import { Sizes } from './util/Sizes';
@@ -50,6 +51,9 @@ export class Stage {
   #onResize: () => void;
   #onMuteKey: (e: KeyboardEvent) => void;
   #onKonamiKey: (e: KeyboardEvent) => void;
+  #onTickCore: () => void = () => {};
+  #onTickLoadingScreen: () => void = () => {};
+  #onTickScreens: () => void = () => {};
   #konamiIndex: number = 0;
   #konamiGamepadIndex: number = 0;
   #konamiPrevMovement: Array<{ x: number; z: number }> = [{ x: 0, z: 0 }, { x: 0, z: 0 }];
@@ -447,11 +451,12 @@ export class Stage {
     this.#actor.start();
 
     this.#time = new Time();
-    this.#time.addEventListener('tick', () => {
+    this.#onTickCore = () => {
       this.#camera.update();
       this.#loadingOverlay.update();
       this.#renderer.update();
-    });
+    };
+    this.#time.addEventListener('tick', this.#onTickCore);
   }
 
   /**
@@ -486,9 +491,10 @@ export class Stage {
 
     const loadingScreen = new LoadingScreen(this.#actor, this.#camera.camera);
 
-    this.#time.addEventListener('tick', () => {
+    this.#onTickLoadingScreen = () => {
       loadingScreen.update();
-    });
+    };
+    this.#time.addEventListener('tick', this.#onTickLoadingScreen);
   }
 
   private setupScreens() {
@@ -580,7 +586,7 @@ export class Stage {
       return null;
     };
 
-    this.#time.addEventListener('tick', () => {
+    this.#onTickScreens = () => {
       gamepadManager.update();
 
       const sources = [gamepadManager.getInputSource(1), gamepadManager.getInputSource(2)];
@@ -611,10 +617,14 @@ export class Stage {
       scoreScreen.update();
       savingScoreScreen.update();
       gamepadManager.updateKeyboards();
-    });
+    };
+    this.#time.addEventListener('tick', this.#onTickScreens);
   }
 
   public dispose() {
+    this.#time.removeEventListener('tick', this.#onTickCore);
+    this.#time.removeEventListener('tick', this.#onTickLoadingScreen);
+    this.#time.removeEventListener('tick', this.#onTickScreens);
     this.#time.dispose();
     this.#sizes.removeEventListener('resize', this.#onResize);
     this.#sizes.dispose();
@@ -631,5 +641,6 @@ export class Stage {
     this.#renderer.dispose();
     GamepadManager.getInstance().cleanup();
     SoundManager.getInstance().dispose();
+    Physics.getInstance()?.destroy();
   }
 }

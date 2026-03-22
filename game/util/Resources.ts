@@ -1,4 +1,4 @@
-import { type CubeTexture, type CubeTextureLoader, EventDispatcher, type Texture, type TextureLoader } from 'three';
+import { type CubeTexture, type CubeTextureLoader, EventDispatcher, Mesh, type Texture, type TextureLoader } from 'three';
 import type { Font, FontLoader } from 'three/addons/loaders/FontLoader.js';
 import type { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { SVGLoader, SVGResult } from 'three/examples/jsm/loaders/SVGLoader.js';
@@ -237,5 +237,25 @@ export class Resources extends EventDispatcher<ResourcesEvents> {
   public getWebFontAsset(name: string) {
     if (!Object.hasOwn(this.#assets, name)) return null;
     return this.#assets[name] as FontFace;
+  }
+
+  public dispose() {
+    for (const asset of Object.values(this.#assets)) {
+      if (asset && 'dispose' in asset && typeof asset.dispose === 'function') {
+        // Textures & CubeTextures
+        asset.dispose();
+      } else if (asset && 'scene' in asset) {
+        // GLTF — dispose all geometries and materials in the scene
+        const gltf = asset as GLTF;
+        gltf.scene.traverse((child) => {
+          if (child instanceof Mesh) {
+            child.geometry?.dispose();
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            for (const mat of mats) mat?.dispose();
+          }
+        });
+      }
+    }
+    this.#assets = {};
   }
 }

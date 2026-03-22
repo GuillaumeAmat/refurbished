@@ -68,11 +68,11 @@ export class Environment {
 
     for (let i = 0; i < quadrants.length; i++) {
       const q = quadrants[i];
-      const castShadow = i === 1 || i === 2; // diagonal: back-right + front-left
+      const castShadow = i === 1; // single diagonal shadow — saves one full scene render per frame
       const light = new SpotLight(castShadow ? '#fbf8e5' : LIGHT_COLOR, 77, 35, 1.07, 0.05, 1.6);
       light.castShadow = castShadow;
       if (castShadow) {
-        light.shadow.mapSize.set(1024, 1024);
+        light.shadow.mapSize.set(512, 512);
         light.shadow.normalBias = 0.05;
         light.shadow.camera.near = 1;
         light.shadow.camera.far = 40;

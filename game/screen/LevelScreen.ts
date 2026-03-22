@@ -227,5 +227,11 @@ export class LevelScreen {
     this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
     this.#sizes.removeEventListener('resize', this.#onResize);
     this.#sessionManager.removeEventListener('sessionEnded', this.#onSessionEnded);
+
+    // Clean up level if still active (e.g. Stage disposed while in-game)
+    this.#level?.dispose();
+    this.#level = null;
+
+    this.#hudManager.dispose();
   }
 }
