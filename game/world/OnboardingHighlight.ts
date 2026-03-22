@@ -6,11 +6,13 @@ import { OnboardingRing } from './OnboardingRing';
 
 export class OnboardingHighlight {
   #rings: OnboardingRing[] = [];
-  #marker: OnboardingMarker | null;
+  #marker: OnboardingMarker | null = null;
 
-  constructor(parent: Group, x: number, y: number, z: number, iconType: OnboardingIconType) {
+  constructor(parent: Group, x: number, y: number, z: number, iconType: OnboardingIconType, ringOnly = false) {
     this.#rings.push(new OnboardingRing(parent, x, y, z));
-    this.#marker = new OnboardingMarker(parent, x, y, z, iconType);
+    if (!ringOnly) {
+      this.#marker = new OnboardingMarker(parent, x, y, z, iconType);
+    }
   }
 
   hideMarker(): void {

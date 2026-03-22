@@ -108,10 +108,12 @@ export class OnboardingManager {
       this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE ||
       this.#step === Step.HIGHLIGHT_PKG_OR_OPEN_PKG
     ) {
+      const prevStep = this.#step;
       this.#disposeHighlights();
       this.#step = Step.HIGHLIGHT_BWZ_OR_PHONE;
+      const ringOnly = prevStep === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY;
       for (const pos of droppedPhonePositions) {
-        this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'phone'));
+        this.#highlights.push(new OnboardingHighlight(this.#parent, pos.x, pos.y * 2, pos.z, 'phone', ringOnly));
       }
     }
   }
