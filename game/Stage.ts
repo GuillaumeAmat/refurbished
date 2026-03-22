@@ -520,32 +520,28 @@ export class Stage {
      */
     this.#environment.updateMeshesMaterial();
 
-    // Sync level duration with track length
-    SoundManager.getInstance().getTrackDuration('levelTrack').then((duration) => {
-      if (duration > 0) SessionManager.getInstance().setDuration(Math.round(duration));
-    });
-
     // Centralized audio lifecycle
-    const MENU_TRACK_STATES = ['Menu', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
+    const MENU_PHASE_STATES = ['Menu', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
 
     let previousState = this.#actor.getSnapshot();
 
     this.#audioSubscription = this.#actor.subscribe((state) => {
       const sm = SoundManager.getInstance();
 
-      if (MENU_TRACK_STATES.some((s) => state.matches(s))) {
-        sm.stopTrack('levelTrack');
-        sm.resumeTrack('menuTrack', true, true);
+      if (MENU_PHASE_STATES.some((s) => state.matches(s))) {
+        sm.setPhase('menu');
       } else if (state.matches('Level')) {
-        sm.stopTrack('menuTrack');
         if (!Debug.getInstance().active) {
-          sm.resumeTrack('levelTrack', false, !previousState.matches('Pause'));
+          if (previousState.matches('Pause')) {
+            sm.resumePlayback();
+          } else {
+            sm.setPhase('game');
+          }
         }
       } else if (state.matches('Pause')) {
-        sm.stopTrack('levelTrack');
+        sm.pausePlayback();
       } else {
-        sm.stopTrack('menuTrack');
-        sm.stopTrack('levelTrack');
+        sm.setPhase('silent');
       }
 
       previousState = state;
