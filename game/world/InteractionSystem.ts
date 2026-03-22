@@ -2,7 +2,7 @@ import { type Group, type Object3D, Vector3 } from 'three';
 
 import { ASSEMBLE_HOLD_DURATION, DELIVERY_ANIM_DURATION, DELIVERY_SMOKE_COUNT, INTERACTION_DISTANCE, INTERACTION_FACING_THRESHOLD } from '../constants';
 import { disposeObject3D } from '../lib/disposeObject3D';
-import { isWorkbench, type LevelData } from '../levels';
+import { isWalkable, type LevelData } from '../levels';
 import { OrderManager } from '../state/OrderManager';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Resources } from '../util/Resources';
@@ -117,55 +117,37 @@ export class InteractionSystem {
     return null;
   }
 
-  #isBenchCenter(x: number, z: number): boolean {
+  #isOccupiedTile(x: number, z: number): boolean {
     if (x % 2 === 0 || z % 2 === 0) return false;
     const tileX = (x - 1) / 2;
     const tileZ = (z - 1) / 2;
-    return isWorkbench(this.#levelData.matrix[tileZ]?.[tileX] ?? '');
+    return !isWalkable(this.#levelData.matrix[tileZ]?.[tileX] ?? '');
   }
 
   #snapDropPosition(rawPos: Vector3, playerPos: Vector3): Vector3 {
-    let rx = Math.round(rawPos.x);
-    let rz = Math.round(rawPos.z);
+    let rx = Math.round((rawPos.x - 1) / 2) * 2 + 1;
+    let rz = Math.round((rawPos.z - 1) / 2) * 2 + 1;
 
-    if ((rx + rz) % 2 !== 0) {
-      const candidates = [
-        [rx + 1, rz],
-        [rx - 1, rz],
-        [rx, rz + 1],
-        [rx, rz - 1],
-      ] as const;
-      let bestDist = Infinity;
-      for (const [cx, cz] of candidates) {
-        const dx = cx - rawPos.x;
-        const dz = cz - rawPos.z;
-        const d = dx * dx + dz * dz;
-        if (d < bestDist) {
-          bestDist = d;
-          rx = cx;
-          rz = cz;
-        }
-      }
-    }
-
-    if (this.#isBenchCenter(rx, rz)) {
-      const corners = [
-        [rx + 1, rz + 1],
-        [rx + 1, rz - 1],
-        [rx - 1, rz + 1],
-        [rx - 1, rz - 1],
+    if (this.#isOccupiedTile(rx, rz)) {
+      const offsets = [
+        [-2, 0], [2, 0], [0, -2], [0, 2],
+        [-2, -2], [-2, 2], [2, -2], [2, 2],
       ] as const;
       let bestDist = Infinity;
       let bestX = rx;
       let bestZ = rz;
-      for (const [cx, cz] of corners) {
-        const dx = cx - playerPos.x;
-        const dz = cz - playerPos.z;
-        const d = dx * dx + dz * dz;
-        if (d < bestDist) {
-          bestDist = d;
-          bestX = cx;
-          bestZ = cz;
+      for (const [ox, oz] of offsets) {
+        const cx = rx + ox;
+        const cz = rz + oz;
+        if (!this.#isOccupiedTile(cx, cz)) {
+          const dx = cx - playerPos.x;
+          const dz = cz - playerPos.z;
+          const d = dx * dx + dz * dz;
+          if (d < bestDist) {
+            bestDist = d;
+            bestX = cx;
+            bestZ = cz;
+          }
         }
       }
       rx = bestX;
@@ -302,9 +284,7 @@ export class InteractionSystem {
           resource.create(this.#levelGroup);
           this.addDroppedResource(resource, target);
           target.setResource(resource);
-          if (target.isReadyToAssemble()) {
-            this.#onboardingManager?.onBlueWorkZoneFilled();
-          }
+          this.#onboardingManager?.onBlueWorkZoneFilled();
           return;
         }
         // Prevent dropping packages on BlueWorkZone when not awaiting
@@ -323,6 +303,9 @@ export class InteractionSystem {
         target &&
         !(target instanceof Crate) &&
         !(target instanceof DroppedResource) &&
+        !(target instanceof DeliveryZone) &&
+        !(target instanceof BlueWorkZone) &&
+        !(target instanceof RepairZone && (resourceData.type === 'phone' || resourceData.type === 'package' || (resourceData.state !== 'broken' && resourceData.state !== 'empty'))) &&
         !this.#hasResourceOnTop(target);
 
       if (canDropOnTarget) {
@@ -369,6 +352,7 @@ export class InteractionSystem {
           parent.showScrewdriver();
         }
 
+        this.#setTargetHighlight(target, false);
         this.removeDroppedResource(target);
         this.#currentTargets.set(playerId, null);
         if (target.getResourceType() === 'phone' && target.getState() === 'repaired') {
@@ -380,6 +364,15 @@ export class InteractionSystem {
             }
           }
           this.#onboardingManager?.onPhoneGrabbed(openPkgPositions);
+        } else if (target.getResourceType() === 'package' && target.getState() === 'broken') {
+          const droppedPhonePositions: Vector3[] = [];
+          for (const resource of this.#droppedResources) {
+            if (resource.getResourceType() === 'phone' && resource.getState() === 'repaired') {
+              const pos = resource.getPosition();
+              if (pos) droppedPhonePositions.push(pos);
+            }
+          }
+          this.#onboardingManager?.onPackageGrabbed(droppedPhonePositions);
         }
       } else if (target instanceof Crate) {
         const resourceType = target.getResourceType();
@@ -550,8 +543,28 @@ export class InteractionSystem {
     const carriedState = player.getCarriedResourceState();
 
     for (const obj of this.#interactables) {
-      // Skip non-phone resources on BlueWorkZone - zone handles assembly
+      // Skip targets that can't accept the carried resource (or have no use when empty-handed)
+      if (obj instanceof DeliveryZone) {
+        if (!(carriedType === 'package' && carriedState === 'repaired')) continue;
+      }
+      if (carriedType && carriedState) {
+        if (obj instanceof Crate) continue;
+        if (obj instanceof DroppedResource) {
+          // Allow targeting open package when carrying phone, and vice versa
+          const isPhoneOnPkg = carriedType === 'phone' && carriedState === 'repaired' &&
+            obj.getResourceType() === 'package' && obj.getState() === 'broken';
+          const isPkgOnPhone = carriedType === 'package' && carriedState === 'broken' &&
+            obj.getResourceType() === 'phone' && obj.getState() === 'repaired';
+          if (!isPhoneOnPkg && !isPkgOnPhone) continue;
+        }
+        if (obj instanceof RepairZone && (carriedType === 'phone' || carriedType === 'package' || (carriedState !== 'broken' && carriedState !== 'empty'))) continue;
+        if (obj instanceof BlueWorkZone &&
+          !obj.canAcceptResource(carriedType, carriedState) &&
+          !obj.canAcceptPackage(carriedType, carriedState)) continue;
+      }
+
       if (obj instanceof DroppedResource) {
+        // Skip non-phone resources on BlueWorkZone - zone handles assembly
         const parent = this.#getParentObject(obj);
         if (parent instanceof BlueWorkZone) {
           const resourceType = obj.getResourceType();
@@ -597,11 +610,7 @@ export class InteractionSystem {
       // Skip facing check when standing on top of object
       if (distanceXZ > 0.1 && dot < INTERACTION_FACING_THRESHOLD) continue;
 
-      let priorityBonus = 0;
-      if (obj instanceof DroppedResource) priorityBonus = 10;
-      else if (obj instanceof Crate) priorityBonus = 5;
-
-      const score = -distanceXZ + priorityBonus;
+      const score = -distanceXZ;
       if (score > bestScore) {
         bestScore = score;
         bestTarget = obj;

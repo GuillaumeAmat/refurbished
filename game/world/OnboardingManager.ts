@@ -119,7 +119,7 @@ export class OnboardingManager {
   }
 
   onPhoneGrabbed(openPkgPositions: Vector3[]): void {
-    if (this.#step === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY || this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE) {
+    if (this.#step === Step.HIGHLIGHT_BWZ_POST_ASSEMBLY || this.#step === Step.HIGHLIGHT_BWZ_OR_PHONE || this.#step === Step.HIGHLIGHT_PKG_OR_OPEN_PKG) {
       this.#disposeHighlights();
       this.#step = Step.HIGHLIGHT_PKG_OR_OPEN_PKG;
       if (openPkgPositions.length > 0) {
