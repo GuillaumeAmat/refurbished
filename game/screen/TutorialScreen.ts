@@ -6,7 +6,6 @@ import { TutorialOverlayHUD } from '../hud/TutorialOverlayHUD';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
-import { SoundManager } from '../util/SoundManager';
 
 export class TutorialScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -94,9 +93,6 @@ export class TutorialScreen {
           return;
         }
         this.#starting = true;
-        const sm = SoundManager.getInstance();
-        sm.stopTrack('menuTrack');
-        sm.playSound('selectSound');
         this.#startDelay = setTimeout(() => {
           this.#stageActor.send({ type: 'play' });
         }, TutorialScreen.LEVEL_START_DELAY_MS);

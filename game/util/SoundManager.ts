@@ -1,75 +1,91 @@
 import { Howl, Howler } from 'howler';
 
-import { AUDIO_TRACK_FADE_MS, MENU_TRACK_LOOP_DELAY_MS } from '../constants';
+import {
+  AUDIO_FADE_MS,
+  AUDIO_FADE_OUT_MS,
+  PHASE_TRANSITION_MS,
+  TRACK_GAP_MS,
+  VOLUME_GAME,
+  VOLUME_MENU,
+} from '../constants';
+
+export type AudioPhase = 'menu' | 'game' | 'silent';
 
 export class SoundManager {
   static #instance: SoundManager;
 
   #muted = false;
-  #menuLoopTimer: ReturnType<typeof setTimeout> | null = null;
-
-  #sounds: Record<string, Howl> = {
-    menuTrack: new Howl({
-      src: ['/game/audio/track/menu.opus', '/game/audio/track/menu.mp3'],
-      loop: false,
-      preload: true,
-    }),
-    levelTrack: new Howl({
-      src: ['/game/audio/track/level.opus', '/game/audio/track/level.mp3'],
-      loop: false,
-      preload: true,
-    }),
-    selectSound: new Howl({
-      src: ['/game/audio/effect/select.opus', '/game/audio/effect/select.mp3'],
-      preload: true,
-    }),
-  };
+  #playlist: Howl[];
+  #currentIndex = 0;
+  #gapTimer: ReturnType<typeof setTimeout> | null = null;
+  #phaseTimer: ReturnType<typeof setTimeout> | null = null;
+  #phase: AudioPhase = 'silent';
+  #playing = false;
 
   constructor() {
     SoundManager.#instance = this;
-    Howler.volume(0.6);
+    Howler.volume(1);
+
+    this.#playlist = [
+      new Howl({ src: ['/game/audio/track/track_1.opus', '/game/audio/track/track_1.mp3'], preload: true }),
+      new Howl({ src: ['/game/audio/track/track_2.opus', '/game/audio/track/track_2.mp3'], preload: true }),
+      new Howl({ src: ['/game/audio/track/track_3.opus', '/game/audio/track/track_3.mp3'], preload: true }),
+    ];
   }
 
   static getInstance(): SoundManager {
     return SoundManager.#instance;
   }
 
-  playSound(name: string): void {
-    this.#sounds[name]?.play();
+  setPhase(phase: AudioPhase): void {
+    if (phase === this.#phase) return;
+
+    const previousPhase = this.#phase;
+    this.#phase = phase;
+
+    if (phase === 'silent') {
+      this.#stopPlayback(AUDIO_FADE_OUT_MS);
+      return;
+    }
+
+    if (previousPhase !== 'silent') {
+      // Switching between menu <-> game: 2s silence gap
+      this.#stopPlayback();
+      this.#phaseTimer = setTimeout(() => {
+        this.#phaseTimer = null;
+        this.#startPlayback();
+      }, PHASE_TRANSITION_MS);
+    } else {
+      this.#startPlayback();
+    }
   }
 
-  stopTrack(name: string): void {
-    const howl = this.#sounds[name];
-    if (name === 'menuTrack') {
-      if (this.#menuLoopTimer !== null) {
-        clearTimeout(this.#menuLoopTimer);
-        this.#menuLoopTimer = null;
-      }
-      howl?.off('end');
+  pausePlayback(): void {
+    this.#clearPhaseTimer();
+    this.#clearGapTimer();
+
+    const current = this.#playlist[this.#currentIndex];
+    if (current.playing()) {
+      current.fade(current.volume(), 0, AUDIO_FADE_MS);
+      setTimeout(() => current.pause(), AUDIO_FADE_MS);
     }
-    if (!howl || !howl.playing()) return;
-    howl.fade(howl.volume(), 0, AUDIO_TRACK_FADE_MS);
-    howl.once('fade', () => howl.pause());
+    this.#playing = false;
   }
 
-  resumeTrack(name: string, loop = true, resetOnResume = false): void {
-    const howl = this.#sounds[name];
-    if (!howl) return;
-    howl.loop(false);
-    if (howl.playing()) return;
-    if (resetOnResume) howl.seek(0);
-    howl.volume(0);
-    howl.play();
-    howl.fade(0, 1, AUDIO_TRACK_FADE_MS);
-    if (name === 'menuTrack' && loop) {
-      howl.once('end', () => {
-        this.#menuLoopTimer = setTimeout(() => this.resumeTrack(name, loop), MENU_TRACK_LOOP_DELAY_MS);
-      });
-    }
+  resumePlayback(): void {
+    if (this.#playing) return;
+    this.#playing = true;
+
+    const targetVol = this.#phase === 'menu' ? VOLUME_MENU : VOLUME_GAME;
+    const current = this.#playlist[this.#currentIndex];
+    current.volume(0);
+    current.play();
+    current.fade(0, targetVol, AUDIO_FADE_MS);
+    this.#attachEndHandler(current);
   }
 
   waitForLoad(): Promise<void> {
-    const promises = Object.values(this.#sounds).map((howl) =>
+    const promises = this.#playlist.map((howl) =>
       howl.state() === 'loaded'
         ? Promise.resolve()
         : new Promise<void>((resolve) => howl.once('load', () => resolve())),
@@ -82,20 +98,68 @@ export class SoundManager {
     Howler.mute(this.#muted);
   }
 
-  getTrackDuration(name: string): Promise<number> {
-    const howl = this.#sounds[name];
-    if (!howl) return Promise.resolve(0);
-    if (howl.state() === 'loaded') return Promise.resolve(howl.duration());
-    return new Promise((resolve) => howl.once('load', () => resolve(howl.duration())));
+  dispose(): void {
+    this.#clearGapTimer();
+    this.#clearPhaseTimer();
+    for (const howl of this.#playlist) {
+      howl.off('end');
+      howl.unload();
+    }
   }
 
-  dispose(): void {
-    if (this.#menuLoopTimer !== null) {
-      clearTimeout(this.#menuLoopTimer);
-      this.#menuLoopTimer = null;
+  #startPlayback(): void {
+    this.#currentIndex = 0;
+    this.#playing = true;
+    this.#playCurrentTrack();
+  }
+
+  #stopPlayback(fadeMs = AUDIO_FADE_MS): void {
+    this.#clearGapTimer();
+    this.#clearPhaseTimer();
+
+    for (const howl of this.#playlist) {
+      howl.off('end');
+      if (howl.playing()) {
+        howl.fade(howl.volume(), 0, fadeMs);
+        setTimeout(() => howl.stop(), fadeMs);
+      }
     }
-    for (const howl of Object.values(this.#sounds)) {
-      howl.unload();
+    this.#playing = false;
+  }
+
+  #playCurrentTrack(): void {
+    const howl = this.#playlist[this.#currentIndex];
+    const targetVol = this.#phase === 'menu' ? VOLUME_MENU : VOLUME_GAME;
+    howl.seek(0);
+    howl.volume(0);
+    howl.play();
+    howl.fade(0, targetVol, AUDIO_FADE_MS);
+    this.#attachEndHandler(howl);
+  }
+
+  #attachEndHandler(howl: Howl): void {
+    howl.off('end');
+    howl.once('end', () => {
+      if (!this.#playing) return;
+      this.#currentIndex = (this.#currentIndex + 1) % this.#playlist.length;
+      this.#gapTimer = setTimeout(() => {
+        this.#gapTimer = null;
+        if (this.#playing) this.#playCurrentTrack();
+      }, TRACK_GAP_MS);
+    });
+  }
+
+  #clearGapTimer(): void {
+    if (this.#gapTimer !== null) {
+      clearTimeout(this.#gapTimer);
+      this.#gapTimer = null;
+    }
+  }
+
+  #clearPhaseTimer(): void {
+    if (this.#phaseTimer !== null) {
+      clearTimeout(this.#phaseTimer);
+      this.#phaseTimer = null;
     }
   }
 }
