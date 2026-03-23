@@ -32,7 +32,7 @@ export class PauseOverlayHUD implements IHUDItem {
   #bgMesh: Mesh | null = null;
   #bgMaterial: MeshBasicMaterial | null = null;
   #imageMesh: Mesh | null = null;
-  #imageAspect = 1024 / 577;
+  #imageAspect = 3920 / 2208;
   #resumeButton: PillButtonPlaneResult | null = null;
   #quitButton: PillButtonPlaneResult | null = null;
 
