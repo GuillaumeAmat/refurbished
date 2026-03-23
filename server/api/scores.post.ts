@@ -38,8 +38,8 @@ export default defineEventHandler(async (event) => {
 
   await Promise.all([
     redis.hset(scoreKey(id), {
-      player1,
-      player2,
+      player1: JSON.stringify(player1),
+      player2: JSON.stringify(player2),
       score,
       stars,
       date: new Date().toISOString(),

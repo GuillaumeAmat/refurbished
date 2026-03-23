@@ -34,8 +34,8 @@ export default defineEventHandler(async (event) => {
     if (!record) return null;
     return {
       id: member,
-      player1: record.player1,
-      player2: record.player2,
+      player1: String(record.player1),
+      player2: String(record.player2),
       score,
       stars: Number(record.stars),
       date: record.date,
