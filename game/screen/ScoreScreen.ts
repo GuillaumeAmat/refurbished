@@ -87,10 +87,11 @@ export class ScoreScreen {
       const sideIndex = characters[playerId] === 'pig' ? 0 : 1;
       this.#playerStates[playerId] = {
         sideIndex: sideIndex as 0 | 1,
-        letters: [],
+        letters: ['A'],
         cursorPos: 0,
         ready: false,
       };
+      this.#updatePlayerVisuals(playerId);
     }
   }
 
@@ -110,6 +111,7 @@ export class ScoreScreen {
   #updatePlayerVisuals(playerId: PlayerId) {
     const state = this.#playerStates[playerId];
     this.#overlay.setPseudoDisplay(state.sideIndex, this.#formatDisplay(state.letters));
+    this.#overlay.setCursorPosition(state.sideIndex, state.cursorPos);
     const pseudoComplete = state.letters.length === PSEUDO_LENGTH;
     this.#overlay.setConfirmVisible(state.sideIndex, pseudoComplete);
     this.#overlay.setSideReady(state.sideIndex, state.ready);
@@ -134,10 +136,10 @@ export class ScoreScreen {
         continue;
       }
 
-      // Left/right to cycle letter at current cursor position
+      // Up/down to cycle letter at current cursor position
       if (canMove) {
         const movement = input.getMovement();
-        if (Math.abs(movement.x) > 0.5) {
+        if (Math.abs(movement.z) > 0.5) {
           this.#movementDebounceTime = now;
 
           // If no letter at cursor yet, start with 'A'
@@ -148,9 +150,11 @@ export class ScoreScreen {
           const currentChar = ps.letters[ps.cursorPos]!;
           const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
           let newIdx: number;
-          if (movement.x > 0.5) {
+          if (movement.z < -0.5) {
+            // Up = next letter
             newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
           } else {
+            // Down = prev letter
             newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
           }
           ps.letters[ps.cursorPos] = ALLOWED_CHARS[newIdx]!;

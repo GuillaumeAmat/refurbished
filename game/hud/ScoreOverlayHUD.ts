@@ -19,6 +19,8 @@ import type { IHUDItem } from './IHUDItem';
 const PADDING = HUDRegionManager.HUD_PADDING;
 const SQUARE_SIZE = 1.26 * 1.1;
 const SQUARE_BORDER_RADIUS = 20;
+const ARROW_SIZE = 0.18 * 0.7;
+const ARROW_MARGIN = 0.06;
 
 export class ScoreOverlayHUD implements IHUDItem {
   #group: Group;
@@ -48,6 +50,12 @@ export class ScoreOverlayHUD implements IHUDItem {
   // Pseudo inputs (0=left, 1=right)
   #pseudoTexts: [TextPlaneResult | null, TextPlaneResult | null] = [null, null];
 
+  // Arrow chevrons (0=left side, 1=right side), each pair is [up, down]
+  #arrowMeshes: [[Mesh | null, Mesh | null], [Mesh | null, Mesh | null]] = [
+    [null, null],
+    [null, null],
+  ];
+
   // Buttons (indexed per side: 0=left, 1=right)
   #confirmButtons: [PillButtonPlaneResult | null, PillButtonPlaneResult | null] = [null, null];
   #readyTexts: [TextPlaneResult | null, TextPlaneResult | null] = [null, null];
@@ -74,6 +82,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#createSquares();
     this.#createCenterContent();
     this.#createPseudoInputs();
+    this.#createArrows();
     this.#createButtons();
     this.#positionElements();
   }
@@ -324,13 +333,73 @@ export class ScoreOverlayHUD implements IHUDItem {
       const txt = createTextPlane('___', {
         height: 0.18,
         fontSize: 96,
-        fontFamily: 'BMDupletDSP, system-ui, sans-serif',
+        fontFamily: 'RobotoMono, monospace',
         fontWeight: '600',
         color: '#000000',
+        referenceText: 'AAA',
       });
       txt.mesh.renderOrder = 999;
       this.#pseudoTexts[i] = txt;
       this.#group.add(txt.mesh);
+    }
+  }
+
+  #createArrowTexture(direction: 'up' | 'down') {
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const size = Math.ceil(128 * dpr);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.strokeStyle = '#999999';
+    ctx.lineWidth = 12 * dpr;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const cx = size / 2;
+    const cy = size / 2;
+    const hs = size * 0.22;
+    if (direction === 'up') {
+      ctx.moveTo(cx - hs, cy + hs);
+      ctx.lineTo(cx, cy - hs);
+      ctx.lineTo(cx + hs, cy + hs);
+    } else {
+      ctx.moveTo(cx - hs, cy - hs);
+      ctx.lineTo(cx, cy + hs);
+      ctx.lineTo(cx + hs, cy - hs);
+    }
+    ctx.stroke();
+
+    const texture = new CanvasTexture(canvas);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.generateMipmaps = false;
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  #createArrows() {
+    for (let i = 0; i < 2; i++) {
+      for (const [ai, dir] of ([[0, 'up'], [1, 'down']] as const)) {
+        const tex = this.#createArrowTexture(dir);
+        if (!tex) continue;
+        const geo = new PlaneGeometry(ARROW_SIZE, ARROW_SIZE);
+        const mat = new MeshBasicMaterial({
+          map: tex,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: DoubleSide,
+        });
+        const mesh = new Mesh(geo, mat);
+        mesh.renderOrder = 999;
+        this.#arrowMeshes[i][ai] = mesh;
+        this.#group.add(mesh);
+      }
     }
   }
 
@@ -406,7 +475,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       const startX = -totalWidth / 2;
       const titleY = top - 0.22;
       this.#titleSaveYour.mesh.position.set(startX + this.#titleSaveYour.width / 2, titleY, 0);
-      this.#titleScore.mesh.position.set(startX + this.#titleSaveYour.width + this.#titleScore.width / 2, titleY, 0);
+      this.#titleScore.mesh.position.set(startX + this.#titleSaveYour.width + this.#titleScore.width / 2, titleY + 0.015, 0);
     }
 
     // Grey squares
@@ -440,6 +509,15 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#pseudoTexts[1].mesh.position.set(this.#rightSquareX, pseudoY, 0);
     }
 
+    // Arrow chevrons above/below pseudo inputs
+    const arrowOffsetY = 0.18 / 2 + ARROW_SIZE / 2 + ARROW_MARGIN;
+    for (let i = 0; i < 2; i++) {
+      const squareX = i === 0 ? this.#leftSquareX : this.#rightSquareX;
+      const [upArrow, downArrow] = this.#arrowMeshes[i];
+      if (upArrow) upArrow.position.set(squareX, pseudoY + arrowOffsetY, 0);
+      if (downArrow) downArrow.position.set(squareX, pseudoY - arrowOffsetY, 0);
+    }
+
     // Buttons at bottom
     if (this.#confirmButtons[0]) {
       this.#confirmButtons[0].mesh.position.set(this.#leftSquareX, buttonY, 0);
@@ -464,6 +542,17 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#pseudoTexts[sideIndex]?.updateText(display);
   }
 
+  setCursorPosition(sideIndex: 0 | 1, cursorPos: number) {
+    const pseudo = this.#pseudoTexts[sideIndex];
+    if (!pseudo) return;
+    const squareX = sideIndex === 0 ? this.#leftSquareX : this.#rightSquareX;
+    const charWidth = pseudo.width / 3;
+    const charX = squareX - pseudo.width / 2 + (cursorPos + 0.5) * charWidth;
+    const [upArrow, downArrow] = this.#arrowMeshes[sideIndex];
+    if (upArrow) upArrow.position.x = charX;
+    if (downArrow) downArrow.position.x = charX;
+  }
+
   setConfirmVisible(sideIndex: 0 | 1, visible: boolean) {
     const btn = this.#confirmButtons[sideIndex];
     if (btn) btn.mesh.visible = visible && !this.#sideReady[sideIndex];
@@ -475,6 +564,9 @@ export class ScoreOverlayHUD implements IHUDItem {
     const txt = this.#readyTexts[sideIndex];
     if (btn) btn.mesh.visible = !ready && btn.mesh.visible;
     if (txt) txt.mesh.visible = ready;
+    const [upArrow, downArrow] = this.#arrowMeshes[sideIndex];
+    if (upArrow) upArrow.visible = !ready;
+    if (downArrow) downArrow.visible = !ready;
     if (!ready && btn) {
       // When unreadying, re-show confirm if pseudo is complete (caller manages this)
     }
@@ -508,7 +600,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#group.visible = true;
     this.#sideReady = [false, false];
     for (let i = 0; i < 2; i++) {
-      this.#pseudoTexts[i]?.updateText('___');
+      this.#pseudoTexts[i]?.updateText('A__');
       if (this.#confirmButtons[i]) this.#confirmButtons[i]!.mesh.visible = false;
       if (this.#readyTexts[i]) this.#readyTexts[i]!.mesh.visible = false;
     }
@@ -549,6 +641,14 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#starsText?.dispose();
 
     for (const txt of this.#pseudoTexts) txt?.dispose();
+    for (const pair of this.#arrowMeshes) {
+      for (const mesh of pair) {
+        if (!mesh) continue;
+        (mesh.material as MeshBasicMaterial).map?.dispose();
+        (mesh.material as MeshBasicMaterial).dispose();
+        mesh.geometry.dispose();
+      }
+    }
     for (const btn of this.#confirmButtons) btn?.dispose();
     for (const txt of this.#readyTexts) txt?.dispose();
     this.#skipButton?.dispose();
