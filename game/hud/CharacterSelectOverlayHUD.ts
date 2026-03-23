@@ -19,9 +19,13 @@ import type { PlayerId } from '../util/input/GamepadManager';
 
 const PADDING = HUDRegionManager.HUD_PADDING;
 const LERP_FACTOR = 0.15;
-const SQUARE_SIZE = 1.26;
-const GAMEPAD_SIZE = 0.25;
+const SQUARE_SIZE = 1.26 * 1.1;
+const SQUARE_BORDER_RADIUS = 20;
+const GAMEPAD_SIZE = 0.25 * 1.2;
+const GAMEPAD_GAP = 0.30;
 const GAMEPAD_MARGIN = 0.06;
+const ARROW_SIZE = 0.18 * 0.7;
+const ARROW_MARGIN = 0.08;
 
 interface PlayerState {
   choice: 'left' | 'right' | null;
@@ -54,6 +58,12 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
   #gamepadMeshes: [Mesh | null, Mesh | null] = [null, null];
   #gamepadTargetX: [number, number] = [0, 0];
   #gamepadLoaded = false;
+
+  // Arrow indicators (per gamepad: left arrow, right arrow)
+  #arrowMeshes: [[Mesh | null, Mesh | null], [Mesh | null, Mesh | null]] = [
+    [null, null],
+    [null, null],
+  ];
 
   // Buttons (indexed per side: 0=left, 1=right)
   #confirmButtons: [PillButtonPlaneResult | null, PillButtonPlaneResult | null] = [null, null];
@@ -233,34 +243,108 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
   }
 
   #createSquares() {
-    const texture = this.#createRoundedRectTexture(512, 512, 40, '#808080');
-    if (!texture) return;
-
     const geometry = new PlaneGeometry(SQUARE_SIZE, SQUARE_SIZE);
 
-    const mat1 = new MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    this.#leftSquare = new Mesh(geometry.clone(), mat1);
-    this.#leftSquare.renderOrder = 999;
-    this.#group.add(this.#leftSquare);
+    const loadRounded = (src: string, onReady: (mesh: Mesh) => void) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        const size = Math.ceil(512 * dpr);
+        const r = SQUARE_BORDER_RADIUS * dpr;
 
-    const texture2 = this.#createRoundedRectTexture(512, 512, 40, '#808080');
-    if (!texture2) return;
-    const mat2 = new MeshBasicMaterial({
-      map: texture2,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide,
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, size, size);
+        // Rounded clip path
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(size - r, 0);
+        ctx.quadraticCurveTo(size, 0, size, r);
+        ctx.lineTo(size, size - r);
+        ctx.quadraticCurveTo(size, size, size - r, size);
+        ctx.lineTo(r, size);
+        ctx.quadraticCurveTo(0, size, 0, size - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.drawImage(img, 0, 0, size, size);
+
+        const texture = new CanvasTexture(canvas);
+        texture.minFilter = LinearFilter;
+        texture.magFilter = LinearFilter;
+        texture.generateMipmaps = false;
+        texture.colorSpace = SRGBColorSpace;
+        texture.needsUpdate = true;
+
+        const mat = new MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: DoubleSide,
+        });
+        const mesh = new Mesh(geometry.clone(), mat);
+        mesh.renderOrder = 999;
+        onReady(mesh);
+      };
+    };
+
+    loadRounded('/game/texture/characters/pig.webp', (mesh) => {
+      this.#leftSquare = mesh;
+      this.#group.add(mesh);
+      this.#positionElements();
     });
-    this.#rightSquare = new Mesh(geometry.clone(), mat2);
-    this.#rightSquare.renderOrder = 999;
-    this.#group.add(this.#rightSquare);
+
+    loadRounded('/game/texture/characters/croco.webp', (mesh) => {
+      this.#rightSquare = mesh;
+      this.#group.add(mesh);
+      this.#positionElements();
+    });
+  }
+
+  #createArrowTexture(direction: 'left' | 'right') {
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const size = Math.ceil(128 * dpr);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.strokeStyle = '#999999';
+    ctx.lineWidth = 12 * dpr;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const cx = size / 2;
+    const cy = size / 2;
+    const hs = size * 0.22;
+    if (direction === 'left') {
+      ctx.moveTo(cx + hs, cy - hs);
+      ctx.lineTo(cx - hs, cy);
+      ctx.lineTo(cx + hs, cy + hs);
+    } else {
+      ctx.moveTo(cx - hs, cy - hs);
+      ctx.lineTo(cx + hs, cy);
+      ctx.lineTo(cx - hs, cy + hs);
+    }
+    ctx.stroke();
+
+    const texture = new CanvasTexture(canvas);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.generateMipmaps = false;
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
   }
 
   #loadGamepadIcons() {
@@ -286,8 +370,7 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
         texture.colorSpace = SRGBColorSpace;
         texture.needsUpdate = true;
 
-        const worldSize = 0.25;
-        const geometry = new PlaneGeometry(worldSize, worldSize);
+        const geometry = new PlaneGeometry(GAMEPAD_SIZE, GAMEPAD_SIZE);
         const material = new MeshBasicMaterial({
           map: texture,
           transparent: true,
@@ -300,6 +383,24 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
         mesh.renderOrder = 999;
         this.#gamepadMeshes[i] = mesh;
         this.#group.add(mesh);
+
+        // Create left & right arrows for this gamepad
+        for (const [ai, dir] of ([[0, 'left'], [1, 'right']] as const)) {
+          const arrowTex = this.#createArrowTexture(dir);
+          if (!arrowTex) continue;
+          const arrowGeo = new PlaneGeometry(ARROW_SIZE, ARROW_SIZE);
+          const arrowMat = new MeshBasicMaterial({
+            map: arrowTex,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false,
+            side: DoubleSide,
+          });
+          const arrowMesh = new Mesh(arrowGeo, arrowMat);
+          arrowMesh.renderOrder = 999;
+          this.#arrowMeshes[i][ai] = arrowMesh;
+          this.#group.add(arrowMesh);
+        }
       }
       this.#gamepadLoaded = true;
       this.#positionElements();
@@ -396,14 +497,19 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
 
     // Gamepad icons — stacked vertically in center
     if (this.#gamepadLoaded) {
-      const gap = 0.15;
       for (let i = 0; i < 2; i++) {
         const mesh = this.#gamepadMeshes[i];
         if (!mesh) continue;
         const targetX = this.#getGamepadTargetX(i as 0 | 1);
         this.#gamepadTargetX[i] = targetX;
-        const y = squareY + (i === 0 ? gap : -gap);
+        const y = squareY + (i === 0 ? GAMEPAD_GAP : -GAMEPAD_GAP);
         mesh.position.set(targetX, y, 0);
+
+        // Position arrows beside this gamepad
+        const [leftArrow, rightArrow] = this.#arrowMeshes[i];
+        const arrowOffset = GAMEPAD_SIZE / 2 + ARROW_SIZE / 2 + ARROW_MARGIN;
+        if (leftArrow) leftArrow.position.set(targetX - arrowOffset, y, 0);
+        if (rightArrow) rightArrow.position.set(targetX + arrowOffset, y, 0);
       }
     }
 
@@ -519,6 +625,10 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
       // Snap gamepad to center
       const mesh = this.#gamepadMeshes[i];
       if (mesh) mesh.position.x = this.#centerX;
+      // Show arrows (player at center)
+      const [leftArrow, rightArrow] = this.#arrowMeshes[i];
+      if (leftArrow) leftArrow.visible = true;
+      if (rightArrow) rightArrow.visible = true;
     }
     // Reset side visuals (no player on either side)
     this.#updateSideVisuals('left');
@@ -536,6 +646,18 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
       if (!mesh) continue;
       const target = this.#gamepadTargetX[i];
       mesh.position.x += (target - mesh.position.x) * LERP_FACTOR;
+
+      // Move arrows with gamepad
+      const [leftArrow, rightArrow] = this.#arrowMeshes[i];
+      const arrowOffset = GAMEPAD_SIZE / 2 + ARROW_SIZE / 2 + ARROW_MARGIN;
+      if (leftArrow) leftArrow.position.x = mesh.position.x - arrowOffset;
+      if (rightArrow) rightArrow.position.x = mesh.position.x + arrowOffset;
+
+      // Show arrows only when gamepad is at center, and hide direction taken by the other player
+      const atCenter = this.#players[i].choice === null;
+      const otherChoice = this.#players[1 - i].choice;
+      if (leftArrow) leftArrow.visible = atCenter && otherChoice !== 'left';
+      if (rightArrow) rightArrow.visible = atCenter && otherChoice !== 'right';
     }
   }
 
@@ -568,6 +690,15 @@ export class CharacterSelectOverlayHUD implements IHUDItem {
       (mesh.material as MeshBasicMaterial).map?.dispose();
       (mesh.material as MeshBasicMaterial).dispose();
       mesh.geometry.dispose();
+    }
+
+    for (const pair of this.#arrowMeshes) {
+      for (const mesh of pair) {
+        if (!mesh) continue;
+        (mesh.material as MeshBasicMaterial).map?.dispose();
+        (mesh.material as MeshBasicMaterial).dispose();
+        mesh.geometry.dispose();
+      }
     }
 
     for (const btn of this.#confirmButtons) btn?.dispose();
