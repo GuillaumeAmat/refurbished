@@ -3,13 +3,54 @@ import { Group } from 'three';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { SessionManager } from '../state/SessionManager';
 import { Debug } from '../util/Debug';
+import { Time } from '../util/Time';
 import type { IHUDItem } from './IHUDItem';
+
+type Urgency = 'normal' | 'warning' | 'critical' | 'timesUp';
+
+const URGENCY_WARNING_THRESHOLD = 30;
+const URGENCY_CRITICAL_THRESHOLD = 15;
+
+const BG_COLORS: Record<Urgency, string> = {
+  normal: '#FFFFFF',
+  warning: '#FF9800',
+  critical: '#F44336',
+  timesUp: '#F44336',
+};
+
+const TEXT_COLORS: Record<Urgency, string> = {
+  normal: '#000000',
+  warning: '#000000',
+  critical: '#FFFFFF',
+  timesUp: '#FFFFFF',
+};
+
+// Shake parameters per urgency
+const SHAKE_AMPLITUDE: Record<Urgency, number> = {
+  normal: 0,
+  warning: 0.012,
+  critical: 0.02,
+  timesUp: 0.02,
+};
+
+const SHAKE_ROTATION: Record<Urgency, number> = {
+  normal: 0,
+  warning: 0.015,
+  critical: 0.03,
+  timesUp: 0.03,
+};
+
+const SHAKE_FREQ_X = 23;
+const SHAKE_FREQ_Y = 19;
+const SHAKE_FREQ_ROT = 17;
 
 export class TimeHUD implements IHUDItem {
   #group: Group;
   #text: TextPlaneResult | null = null;
   #sessionManager: SessionManager;
   #onTimeChanged: EventListener;
+  #urgency: Urgency = 'normal';
+  #shakeTime = 0;
 
   #params = {
     height: 0.44,
@@ -45,6 +86,20 @@ export class TimeHUD implements IHUDItem {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  #getUrgencyForTime(seconds: number): Urgency {
+    if (seconds <= 0) return 'timesUp';
+    if (seconds <= URGENCY_CRITICAL_THRESHOLD) return 'critical';
+    if (seconds <= URGENCY_WARNING_THRESHOLD) return 'warning';
+    return 'normal';
+  }
+
+  #applyUrgency(urgency: Urgency) {
+    if (urgency === this.#urgency) return;
+    this.#urgency = urgency;
+    this.#text?.updateBackgroundColor(BG_COLORS[urgency]);
+    this.#text?.updateColor(TEXT_COLORS[urgency]);
+  }
+
   #createText(seconds?: number) {
     const time = seconds ?? this.#sessionManager.getRemainingTime();
 
@@ -56,8 +111,8 @@ export class TimeHUD implements IHUDItem {
     this.#text = createTextPlane(this.#formatTime(time), {
       height: this.#params.height,
       fontSize: this.#params.fontSize,
-      color: '#000000',
-      backgroundColor: '#FFFFFF',
+      color: TEXT_COLORS[this.#urgency],
+      backgroundColor: BG_COLORS[this.#urgency],
       dropShadowColor: 'rgba(0,0,0,0.3)',
       dropShadowBlur: this.#params.shadowBlur,
       dropShadowOffsetX: this.#params.shadowOffsetX,
@@ -99,10 +154,24 @@ export class TimeHUD implements IHUDItem {
   }
 
   #updateText(seconds: number) {
+    if (!this.#text) return;
+    this.#applyUrgency(this.#getUrgencyForTime(seconds));
+    this.#text.updateText(this.#formatTime(seconds));
+    this.#text.mesh.position.x = -this.#text.width / 2 + this.#params.posX;
+  }
+
+  showTimesUp() {
+    this.#applyUrgency('timesUp');
+    this.#text?.updateText('Time!');
     if (this.#text) {
-      this.#text.updateText(this.#formatTime(seconds));
       this.#text.mesh.position.x = -this.#text.width / 2 + this.#params.posX;
     }
+  }
+
+  reset() {
+    this.#urgency = 'normal';
+    this.#shakeTime = 0;
+    this.#createText();
   }
 
   getGroup(): Group {
@@ -121,7 +190,21 @@ export class TimeHUD implements IHUDItem {
     this.#group.visible = false;
   }
 
-  update() {}
+  update() {
+    if (!this.#text || this.#urgency === 'normal') return;
+
+    const delta = Time.getInstance().delta / 1000;
+    this.#shakeTime += delta;
+
+    const amp = SHAKE_AMPLITUDE[this.#urgency];
+    const rotAmp = SHAKE_ROTATION[this.#urgency];
+    const baseX = -this.#text.width / 2 + this.#params.posX;
+    const baseY = this.#params.posY;
+
+    this.#text.mesh.position.x = baseX + Math.sin(this.#shakeTime * SHAKE_FREQ_X) * amp;
+    this.#text.mesh.position.y = baseY + Math.sin(this.#shakeTime * SHAKE_FREQ_Y) * amp;
+    this.#text.mesh.rotation.z = this.#params.rotation + Math.sin(this.#shakeTime * SHAKE_FREQ_ROT) * rotAmp;
+  }
 
   dispose() {
     this.#sessionManager.removeEventListener('timeChanged', this.#onTimeChanged);
