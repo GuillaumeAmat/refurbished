@@ -142,7 +142,7 @@ export class OrderManager extends EventTarget {
       this.#sessionManager.start();
       this.#spawnTimer = 0;
       for (let i = 0; i < ORDER_INITIAL_BURST; i++) {
-        this.#spawnOrder();
+        this.#spawnOrder(0, ORDER_DURATION_MS + (i * ORDER_DURATION_MS) / 3);
       }
     }
 
@@ -187,12 +187,12 @@ export class OrderManager extends EventTarget {
     }
   }
 
-  #spawnOrder(): void {
+  #spawnOrder(initialElapsed = 0, duration = ORDER_DURATION_MS): void {
     const order: Order = {
       id: this.#nextId++,
-      elapsed: 0,
-      duration: ORDER_DURATION_MS,
-      zone: 'green',
+      elapsed: initialElapsed,
+      duration,
+      zone: computeZone(initialElapsed, duration),
     };
     this.#orders.push(order);
     this.dispatchEvent(new CustomEvent('orderAdded', { detail: order }));
