@@ -45,7 +45,7 @@ export class ScoreOverlayHUD implements IHUDItem {
 
   // Center content
   #scoreText: TextPlaneResult | null = null;
-  #starsText: TextPlaneResult | null = null;
+  #starMeshes: TextPlaneResult[] = [];
 
   // Pseudo inputs (0=left, 1=right)
   #pseudoTexts: [TextPlaneResult | null, TextPlaneResult | null] = [null, null];
@@ -302,8 +302,8 @@ export class ScoreOverlayHUD implements IHUDItem {
     const score = this.#scoreManager.getScore();
 
     this.#scoreText = createTextPlane(`${score}`, {
-      height: 0.18,
-      fontSize: 96,
+      height: 0.36,
+      fontSize: 192,
       fontFamily: 'BMDupletDSP, system-ui, sans-serif',
       fontWeight: '600',
       color: '#000000',
@@ -311,21 +311,27 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#scoreText.mesh.renderOrder = 999;
     this.#group.add(this.#scoreText.mesh);
 
-    this.#starsText = createTextPlane(this.#computeStars(score), {
-      height: 0.14,
-      fontSize: 72,
-      color: '#FBD954',
+    const starChars = this.#computeStarChars(score);
+    this.#starMeshes = starChars.map((char) => {
+      const star = createTextPlane(char, {
+        height: 0.28,
+        fontSize: 144,
+        color: '#FBD954',
+      });
+      star.mesh.renderOrder = 999;
+      this.#group.add(star.mesh);
+      return star;
     });
-    this.#starsText.mesh.renderOrder = 999;
-    this.#group.add(this.#starsText.mesh);
   }
 
-  #computeStars(score: number): string {
+  #computeStarChars(score: number): string[] {
     let count = 0;
     for (const threshold of STAR_THRESHOLDS) {
       if (score >= threshold) count++;
     }
-    return '\u2605'.repeat(count) + '\u2606'.repeat(STAR_THRESHOLDS.length - count);
+    return Array.from(
+      '\u2605'.repeat(count) + '\u2606'.repeat(STAR_THRESHOLDS.length - count),
+    );
   }
 
   #createPseudoInputs() {
@@ -490,12 +496,18 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#rightSquare.position.set(this.#rightSquareX, squareY, 0);
     }
 
-    // Center content: score + stars
-    if (this.#scoreText) {
-      this.#scoreText.mesh.position.set(0, 0.1, 0);
+    // Center content: stars (top, arced) + score (bottom)
+    const starsY = 0.2;
+    const starSpacing = 0.28;
+    const arcDrop = 0.04;
+    const starOffsets = [-1, 0, 1];
+    for (let i = 0; i < this.#starMeshes.length; i++) {
+      const x = starOffsets[i] * starSpacing;
+      const y = starsY - Math.abs(starOffsets[i]) * arcDrop;
+      this.#starMeshes[i].mesh.position.set(x, y, 0);
     }
-    if (this.#starsText) {
-      this.#starsText.mesh.position.set(0, -0.1, 0);
+    if (this.#scoreText) {
+      this.#scoreText.mesh.position.set(0, -0.2, 0);
     }
 
     // Pseudo inputs: between square and confirm button
@@ -579,7 +591,10 @@ export class ScoreOverlayHUD implements IHUDItem {
   updateScore() {
     const score = this.#scoreManager.getScore();
     this.#scoreText?.updateText(`${score}`);
-    this.#starsText?.updateText(this.#computeStars(score));
+    const starChars = this.#computeStarChars(score);
+    for (let i = 0; i < this.#starMeshes.length; i++) {
+      this.#starMeshes[i].updateText(starChars[i]);
+    }
   }
 
   updateBounds(visibleWidth: number, visibleHeight: number) {
@@ -638,7 +653,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     }
 
     this.#scoreText?.dispose();
-    this.#starsText?.dispose();
+    for (const star of this.#starMeshes) star.dispose();
 
     for (const txt of this.#pseudoTexts) txt?.dispose();
     for (const pair of this.#arrowMeshes) {
