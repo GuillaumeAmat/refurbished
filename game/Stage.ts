@@ -5,6 +5,7 @@ import { navigateTo, useRuntimeConfig } from '#app';
 
 import { levelsInfo } from './levels';
 import { LoadingOverlay } from './LoadingOverlay';
+import { CharacterSelectScreen } from './screen/CharacterSelectScreen';
 import { LeaderboardScreen } from './screen/LeaderboardScreen';
 import { LevelScreen } from './screen/LevelScreen';
 import { LoadingScreen } from './screen/LoadingScreen';
@@ -505,13 +506,14 @@ export class Stage {
     const startScreen = new StartScreen(this.#actor, this.#camera.camera);
     const levelScreen = new LevelScreen(this.#actor, this.#scene, this.#camera, this.#levelInfo);
     const menuScreen = new MenuScreen(this.#actor, this.#camera.camera);
+    const characterSelectScreen = new CharacterSelectScreen(this.#actor, this.#camera.camera);
     const tutorialScreen = new TutorialScreen(this.#actor, this.#camera.camera);
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#camera.camera);
     const pauseScreen = new PauseScreen(this.#actor, this.#camera.camera);
     const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
     const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#camera.camera);
 
-    this.#screens = [startScreen, levelScreen, menuScreen, tutorialScreen, leaderboardScreen, pauseScreen, scoreScreen, savingScoreScreen];
+    this.#screens = [startScreen, levelScreen, menuScreen, characterSelectScreen, tutorialScreen, leaderboardScreen, pauseScreen, scoreScreen, savingScoreScreen];
 
     /**
      * Must be called after the meshes have been created,
@@ -521,7 +523,7 @@ export class Stage {
     this.#environment.updateMeshesMaterial();
 
     // Centralized audio lifecycle
-    const MENU_PHASE_STATES = ['Menu', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
+    const MENU_PHASE_STATES = ['Menu', 'Character Select', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
 
     let previousState = this.#actor.getSnapshot();
 
@@ -607,6 +609,7 @@ export class Stage {
       startScreen.update();
       levelScreen.update();
       menuScreen.update();
+      characterSelectScreen.update();
       tutorialScreen.update();
       leaderboardScreen.update();
       pauseScreen.update();

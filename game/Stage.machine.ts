@@ -76,12 +76,24 @@ export const stageMachine = setup({
     Menu: {
       on: {
         play: {
-          target: 'Tutorial',
+          target: 'Character Select',
         },
         leaderboard: {
           target: 'Leaderboard',
         },
       },
+    },
+
+    'Character Select': {
+      on: {
+        back: {
+          target: 'Menu',
+        },
+        play: {
+          target: 'Tutorial',
+        },
+      },
+      description: 'Each player picks a character',
     },
 
     Tutorial: {
