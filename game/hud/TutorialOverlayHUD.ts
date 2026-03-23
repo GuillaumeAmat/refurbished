@@ -34,6 +34,9 @@ export class TutorialOverlayHUD implements IHUDItem {
   #titleYour: TextPlaneResult | null = null;
   #titleMission: TextPlaneResult | null = null;
 
+  // Mission image
+  #missionMesh: Mesh | null = null;
+
   // Buttons
   #backButton: PillButtonPlaneResult | null = null;
   #startButton: PillButtonPlaneResult | null = null;
@@ -46,6 +49,7 @@ export class TutorialOverlayHUD implements IHUDItem {
     this.#createBackground();
     this.#createBadge();
     this.#createTitles();
+    this.#createMissionImage();
     this.#createButtons();
     this.#positionElements();
   }
@@ -153,6 +157,83 @@ export class TutorialOverlayHUD implements IHUDItem {
     this.#group.add(this.#titleMission.mesh);
   }
 
+  #createMissionImage() {
+    const img = new Image();
+    img.src = '/game/texture/characters/mission.webp';
+    img.onload = () => {
+      const dpr = Math.min(window.devicePixelRatio, 2);
+      const w = Math.ceil(img.naturalWidth * dpr);
+      const h = Math.ceil(img.naturalHeight * dpr);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d', { alpha: true });
+      if (!ctx) return;
+
+      const r = 20 * dpr;
+      ctx.clearRect(0, 0, w, h);
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(w - r, 0);
+      ctx.quadraticCurveTo(w, 0, w, r);
+      ctx.lineTo(w, h - r);
+      ctx.quadraticCurveTo(w, h, w - r, h);
+      ctx.lineTo(r, h);
+      ctx.quadraticCurveTo(0, h, 0, h - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const texture = new CanvasTexture(canvas);
+      texture.minFilter = LinearFilter;
+      texture.magFilter = LinearFilter;
+      texture.generateMipmaps = false;
+      texture.colorSpace = SRGBColorSpace;
+      texture.needsUpdate = true;
+
+      // Compute available space and fit image
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const { worldWidth, worldHeight } = this.#computeMissionSize(aspect);
+
+      const geometry = new PlaneGeometry(worldWidth, worldHeight);
+      const material = new MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: DoubleSide,
+      });
+
+      this.#missionMesh = new Mesh(geometry, material);
+      this.#missionMesh.renderOrder = 999;
+      this.#group.add(this.#missionMesh);
+      this.#positionElements();
+    };
+  }
+
+  #computeMissionSize(aspect: number) {
+    const h = this.#visibleHeight;
+    const w = this.#visibleWidth;
+    const top = h / 2 - PADDING;
+    const bottom = -h / 2 + PADDING;
+
+    const titleBottom = top - 0.22 - 0.15; // title Y minus half title height + margin
+    const buttonTop = bottom + 0.12 + 0.12; // button Y plus half button height + margin
+    const availH = titleBottom - buttonTop;
+    const availW = w - PADDING * 2;
+
+    let worldWidth = availW;
+    let worldHeight = worldWidth / aspect;
+    if (worldHeight > availH) {
+      worldHeight = availH;
+      worldWidth = worldHeight * aspect;
+    }
+    return { worldWidth, worldHeight };
+  }
+
   #createButtons() {
     const buttonOptions = {
       height: 0.18,
@@ -213,6 +294,20 @@ export class TutorialOverlayHUD implements IHUDItem {
       );
     }
 
+    // Mission image: centered between title and buttons
+    if (this.#missionMesh) {
+      const titleBottom = top - 0.22 - 0.15;
+      const buttonTop = bottom + 0.12 + 0.12;
+      const centerY = (titleBottom + buttonTop) / 2;
+      this.#missionMesh.position.set(0, centerY, 0);
+
+      // Recompute size on bounds change
+      const aspect = this.#missionMesh.geometry.parameters.width / this.#missionMesh.geometry.parameters.height;
+      const { worldWidth, worldHeight } = this.#computeMissionSize(aspect);
+      this.#missionMesh.geometry.dispose();
+      this.#missionMesh.geometry = new PlaneGeometry(worldWidth, worldHeight);
+    }
+
     // Buttons at bottom
     const buttonY = bottom + 0.12;
     const buttonSpacing = 0.4;
@@ -261,6 +356,13 @@ export class TutorialOverlayHUD implements IHUDItem {
 
     this.#titleYour?.dispose();
     this.#titleMission?.dispose();
+
+    if (this.#missionMesh) {
+      (this.#missionMesh.material as MeshBasicMaterial).map?.dispose();
+      (this.#missionMesh.material as MeshBasicMaterial).dispose();
+      this.#missionMesh.geometry.dispose();
+    }
+
     this.#backButton?.dispose();
     this.#startButton?.dispose();
   }
