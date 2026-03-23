@@ -31,6 +31,7 @@ export class ScoreScreen {
   #onResize: () => void;
 
   #visible = false;
+  #saving = false;
   #movementDebounceTime = 0;
   static readonly MOVEMENT_DEBOUNCE_MS = 150;
 
@@ -78,6 +79,7 @@ export class ScoreScreen {
 
   private show(characters: CharacterMap) {
     this.#visible = true;
+    this.#saving = false;
     this.#movementDebounceTime = 0;
     this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
@@ -171,7 +173,7 @@ export class ScoreScreen {
             this.#updatePlayerVisuals(playerId);
 
             // Check if both ready
-            if (this.#overlay.areBothReady()) {
+            if (this.#overlay.areBothReady() && !this.#saving) {
               this.#triggerSave();
             }
           } else {
@@ -199,7 +201,8 @@ export class ScoreScreen {
     }
   }
 
-  #triggerSave() {
+  async #triggerSave() {
+    this.#saving = true;
     const scoreManager = ScoreManager.getInstance();
 
     for (const playerId of [1, 2] as PlayerId[]) {
@@ -207,8 +210,24 @@ export class ScoreScreen {
       scoreManager.setPlayerName(playerId, name);
     }
 
+    this.#gamepadManager.lockAllInputFor(10_000);
+
     const { player1, player2 } = scoreManager.getPlayerNames();
-    this.#stageActor.send({ type: 'save', player1, player2 });
+    const token = scoreManager.getSessionToken();
+
+    await scoreManager.flushEvents();
+
+    try {
+      await fetch('/api/scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player1, player2, token }),
+      });
+    } catch {
+      // Fail silently
+    }
+
+    this.#stageActor.send({ type: 'next' });
   }
 
   public update() {

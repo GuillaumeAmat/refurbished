@@ -13,7 +13,6 @@ import { LevelScreen } from './screen/LevelScreen';
 import { LoadingScreen } from './screen/LoadingScreen';
 import { MenuScreen } from './screen/MenuScreen';
 import { PauseScreen } from './screen/PauseScreen';
-import { SavingScoreScreen } from './screen/SavingScoreScreen';
 import { ScoreScreen } from './screen/ScoreScreen';
 import { StartScreen } from './screen/StartScreen';
 import { TutorialScreen } from './screen/TutorialScreen';
@@ -515,9 +514,8 @@ export class Stage {
     const leaderboardScreen = new LeaderboardScreen(this.#actor, this.#camera.camera);
     const pauseScreen = new PauseScreen(this.#actor, this.#camera.camera);
     const scoreScreen = new ScoreScreen(this.#actor, this.#camera.camera);
-    const savingScoreScreen = new SavingScoreScreen(this.#actor, this.#camera.camera);
 
-    this.#screens = [startScreen, levelScreen, menuScreen, characterSelectScreen, tutorialScreen, leaderboardScreen, pauseScreen, scoreScreen, savingScoreScreen];
+    this.#screens = [startScreen, levelScreen, menuScreen, characterSelectScreen, tutorialScreen, leaderboardScreen, pauseScreen, scoreScreen];
 
     /**
      * Must be called after the meshes have been created,
@@ -527,7 +525,7 @@ export class Stage {
     this.#environment.updateMeshesMaterial();
 
     // Centralized audio lifecycle
-    const MENU_PHASE_STATES = ['Menu', 'Character Select', 'Tutorial', 'Score', 'Saving score', 'Leaderboard'];
+    const MENU_PHASE_STATES = ['Menu', 'Character Select', 'Tutorial', 'Score', 'Leaderboard'];
 
     let previousState = this.#actor.getSnapshot();
 
@@ -630,7 +628,6 @@ export class Stage {
       leaderboardScreen.update();
       pauseScreen.update();
       scoreScreen.update();
-      savingScoreScreen.update();
       gamepadManager.updateKeyboards();
     };
     this.#time.addEventListener('tick', this.#onTickScreens);

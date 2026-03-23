@@ -20,7 +20,6 @@ export const stageMachine = setup({
       | { type: 'next' }
       | { type: 'play'; characters?: CharacterMap }
       | { type: 'quit' }
-      | { type: 'save'; player1: string; player2: string }
       | { type: 'pause' }
       | { type: 'resume' }
       | { type: 'leaderboard' }
@@ -157,21 +156,9 @@ export const stageMachine = setup({
       on: {
         next: {
           target: 'Leaderboard',
-          description: 'Go to the leaderboard without saving',
-        },
-        save: {
-          target: 'Saving score',
         },
       },
       description: 'Display the score, and ask for a name to record',
-    },
-
-    'Saving score': {
-      on: {
-        next: {
-          target: 'Leaderboard',
-        },
-      },
     },
 
     'Loading error': {
