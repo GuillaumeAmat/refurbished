@@ -1,90 +1,234 @@
-import { Group } from 'three';
+import {
+  CanvasTexture,
+  DoubleSide,
+  Group,
+  LinearFilter,
+  Mesh,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  SRGBColorSpace,
+} from 'three';
 
+import { COLORS } from '../constants';
+import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
-import { HUDBackdrop } from './HUDBackdrop';
+import { HUDRegionManager } from './HUDRegionManager';
 import type { IHUDItem } from './IHUDItem';
 
+const PADDING = HUDRegionManager.HUD_PADDING;
+
 export class TutorialOverlayHUD implements IHUDItem {
-  static readonly OVERLAY_HEIGHT = 1.2;
-  static readonly TITLE_HEIGHT = 0.15;
-  static readonly TEXT_HEIGHT = 0.07;
-  static readonly BUTTON_HEIGHT = 0.08;
-
   #group: Group;
-  #backdrop: HUDBackdrop;
-  #titleText: TextPlaneResult | null = null;
-  #commandsText: TextPlaneResult | null = null;
-  #startText: TextPlaneResult | null = null;
-  #menuText: TextPlaneResult | null = null;
+  #visibleWidth: number;
+  #visibleHeight: number;
 
-  #selectedOption: 'start' | 'menu' = 'start';
+  // Background
+  #bgMesh: Mesh | null = null;
+  #bgGeometry: PlaneGeometry | null = null;
+  #bgMaterial: MeshBasicMaterial | null = null;
 
-  constructor() {
+  // Badge
+  #badgeMesh: Mesh | null = null;
+
+  // Titles
+  #titleYour: TextPlaneResult | null = null;
+  #titleMission: TextPlaneResult | null = null;
+
+  // Buttons
+  #backButton: PillButtonPlaneResult | null = null;
+  #startButton: PillButtonPlaneResult | null = null;
+
+  constructor({ visibleWidth, visibleHeight }: { visibleWidth: number; visibleHeight: number }) {
     this.#group = new Group();
-    this.#backdrop = new HUDBackdrop(4.5, TutorialOverlayHUD.OVERLAY_HEIGHT);
-    this.#group.add(this.#backdrop.getGroup());
-    this.#createContent();
+    this.#visibleWidth = visibleWidth;
+    this.#visibleHeight = visibleHeight;
+
+    this.#createBackground();
+    this.#createBadge();
+    this.#createTitles();
+    this.#createButtons();
+    this.#positionElements();
   }
 
-  #createContent() {
-    this.#titleText = createTextPlane('Tutorial', {
-      height: TutorialOverlayHUD.TITLE_HEIGHT,
-      fontSize: 72,
-      color: '#FBD954',
+  #createBackground() {
+    this.#bgGeometry = new PlaneGeometry(this.#visibleWidth, this.#visibleHeight);
+    this.#bgMaterial = new MeshBasicMaterial({
+      color: 0xf5f5f5,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
     });
-    this.#titleText.mesh.position.y = 0.45;
-    this.#group.add(this.#titleText.mesh);
+    this.#bgMesh = new Mesh(this.#bgGeometry, this.#bgMaterial);
+    this.#bgMesh.renderOrder = 998;
+    this.#group.add(this.#bgMesh);
+  }
 
-    this.#commandsText = createTextPlane(
-      'Use gamepad to control your vehicle\nCooperative 2-player game  •  Avoid obstacles, collect points',
-      {
-        height: TutorialOverlayHUD.TEXT_HEIGHT,
-        fontSize: 32,
-        color: '#FFFFFF',
-      },
+  #createBadge() {
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const fontSize = 28 * dpr;
+    const pad = 8 * dpr;
+    const text = 'SET?';
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
+
+    const fontString = `600 ${fontSize}px BMDupletDSP, system-ui, sans-serif`;
+    ctx.font = fontString;
+    const metrics = ctx.measureText(text);
+    const textWidth = metrics.width;
+    const ascent = metrics.actualBoundingBoxAscent;
+    const descent = metrics.actualBoundingBoxDescent;
+    const textHeight = ascent + descent;
+
+    canvas.width = Math.ceil(textWidth + pad * 2);
+    canvas.height = Math.ceil(textHeight + pad * 2);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const r = 6 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(canvas.width - r, 0);
+    ctx.quadraticCurveTo(canvas.width, 0, canvas.width, r);
+    ctx.lineTo(canvas.width, canvas.height - r);
+    ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - r, canvas.height);
+    ctx.lineTo(r, canvas.height);
+    ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fillStyle = COLORS.mindaro;
+    ctx.fill();
+
+    ctx.font = fontString;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#000000';
+    ctx.fillText(text, pad, pad + ascent);
+
+    const texture = new CanvasTexture(canvas);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.generateMipmaps = false;
+    texture.colorSpace = SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+    const worldHeight = 0.07;
+    const worldWidth = worldHeight * (width / height);
+
+    const geometry = new PlaneGeometry(worldWidth, worldHeight);
+    const material = new MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+
+    this.#badgeMesh = new Mesh(geometry, material);
+    this.#badgeMesh.renderOrder = 999;
+    this.#group.add(this.#badgeMesh);
+  }
+
+  #createTitles() {
+    this.#titleYour = createTextPlane('Your ', {
+      height: 0.25,
+      fontSize: 128,
+      fontFamily: 'IvarSoft, serif',
+      fontWeight: '600',
+      color: '#000000',
+    });
+    this.#group.add(this.#titleYour.mesh);
+
+    this.#titleMission = createTextPlane('mission.', {
+      height: 0.25,
+      fontSize: 128,
+      fontFamily: 'IvarSoft, serif',
+      fontWeight: '600',
+      fontStyle: 'italic',
+      color: '#000000',
+    });
+    this.#group.add(this.#titleMission.mesh);
+  }
+
+  #createButtons() {
+    const buttonOptions = {
+      height: 0.18,
+      fontFamily: 'BMDupletTXT, system-ui, sans-serif',
+      fontWeight: '600',
+      fontSize: 64,
+      fixedHeight: 160,
+      transparent: true,
+    };
+
+    this.#backButton = createPillButtonPlane(
+      [
+        { type: 'text', value: 'Back ' },
+        { type: 'badge', label: 'B', color: '#CC0000' },
+      ],
+      buttonOptions,
     );
-    this.#commandsText.mesh.position.y = 0.15;
-    this.#group.add(this.#commandsText.mesh);
+    this.#group.add(this.#backButton.mesh);
 
-    this.#startText = createTextPlane('> Start', {
-      height: TutorialOverlayHUD.BUTTON_HEIGHT,
-      fontSize: 40,
-      color: '#FBD954',
-    });
-    this.#startText.mesh.position.set(0, -0.3, 0);
-    this.#group.add(this.#startText.mesh);
-
-    this.#menuText = createTextPlane('  Main menu', {
-      height: TutorialOverlayHUD.BUTTON_HEIGHT,
-      fontSize: 40,
-      color: '#888888',
-    });
-    this.#menuText.mesh.position.set(0, -0.45, 0);
-    this.#group.add(this.#menuText.mesh);
+    this.#startButton = createPillButtonPlane(
+      [
+        { type: 'text', value: 'Start ' },
+        { type: 'badge', label: 'A', color: '#107C10' },
+      ],
+      { ...buttonOptions, transparent: false },
+    );
+    this.#group.add(this.#startButton.mesh);
   }
 
-  setSelectedOption(option: 'start' | 'menu') {
-    this.#selectedOption = option;
-    if (option === 'start') {
-      this.#startText?.updateText('> Start');
-      this.#startText?.updateColor('#FBD954');
-      this.#menuText?.updateText('  Main menu');
-      this.#menuText?.updateColor('#888888');
-    } else {
-      this.#startText?.updateText('  Start');
-      this.#startText?.updateColor('#888888');
-      this.#menuText?.updateText('> Main menu');
-      this.#menuText?.updateColor('#FBD954');
+  #positionElements() {
+    const h = this.#visibleHeight;
+    const w = this.#visibleWidth;
+    const top = h / 2 - PADDING;
+    const bottom = -h / 2 + PADDING;
+
+    // Background
+    if (this.#bgMesh && this.#bgGeometry) {
+      this.#bgGeometry.dispose();
+      this.#bgGeometry = new PlaneGeometry(w, h);
+      this.#bgMesh.geometry = this.#bgGeometry;
+    }
+
+    // Badge centered at top
+    if (this.#badgeMesh) {
+      this.#badgeMesh.position.set(0, top - 0.05, 0);
+    }
+
+    // Title: "Your " + "mission." side by side, centered
+    if (this.#titleYour && this.#titleMission) {
+      const totalWidth = this.#titleYour.width + this.#titleMission.width;
+      const startX = -totalWidth / 2;
+      const titleY = top - 0.22;
+      this.#titleYour.mesh.position.set(startX + this.#titleYour.width / 2, titleY, 0);
+      this.#titleMission.mesh.position.set(
+        startX + this.#titleYour.width + this.#titleMission.width / 2,
+        titleY,
+        0,
+      );
+    }
+
+    // Buttons at bottom
+    const buttonY = bottom + 0.12;
+    const buttonSpacing = 0.4;
+
+    if (this.#backButton) {
+      this.#backButton.mesh.position.set(-buttonSpacing, buttonY, 0);
+    }
+    if (this.#startButton) {
+      this.#startButton.mesh.position.set(buttonSpacing, buttonY, 0);
     }
   }
 
-  getSelectedOption(): 'start' | 'menu' {
-    return this.#selectedOption;
-  }
-
-  reset() {
-    this.#selectedOption = 'start';
-    this.setSelectedOption('start');
+  updateBounds(visibleWidth: number, visibleHeight: number) {
+    this.#visibleWidth = visibleWidth;
+    this.#visibleHeight = visibleHeight;
+    this.#positionElements();
   }
 
   getGroup(): Group {
@@ -92,12 +236,11 @@ export class TutorialOverlayHUD implements IHUDItem {
   }
 
   getHeight(): number {
-    return TutorialOverlayHUD.OVERLAY_HEIGHT;
+    return this.#visibleHeight;
   }
 
   show() {
     this.#group.visible = true;
-    this.reset();
   }
 
   hide() {
@@ -107,10 +250,18 @@ export class TutorialOverlayHUD implements IHUDItem {
   update() {}
 
   dispose() {
-    this.#backdrop.dispose();
-    this.#titleText?.dispose();
-    this.#commandsText?.dispose();
-    this.#startText?.dispose();
-    this.#menuText?.dispose();
+    this.#bgGeometry?.dispose();
+    this.#bgMaterial?.dispose();
+
+    if (this.#badgeMesh) {
+      (this.#badgeMesh.material as MeshBasicMaterial).map?.dispose();
+      (this.#badgeMesh.material as MeshBasicMaterial).dispose();
+      this.#badgeMesh.geometry.dispose();
+    }
+
+    this.#titleYour?.dispose();
+    this.#titleMission?.dispose();
+    this.#backButton?.dispose();
+    this.#startButton?.dispose();
   }
 }

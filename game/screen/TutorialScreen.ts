@@ -15,21 +15,23 @@ export class TutorialScreen {
   #hudManager: HUDRegionManager;
   #overlay: TutorialOverlayHUD;
   #sizes: Sizes;
+  #camera: PerspectiveCamera;
   #onResize: () => void;
 
   #visible = false;
   #starting = false;
   #startDelay: ReturnType<typeof setTimeout> | null = null;
-  #movementDebounceTime = 0;
-  static readonly MOVEMENT_DEBOUNCE_MS = 200;
   static readonly LEVEL_START_DELAY_MS = 1000;
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
+    this.#camera = camera;
     this.#gamepadManager = GamepadManager.getInstance();
 
     this.#hudManager = new HUDRegionManager(camera);
-    this.#overlay = new TutorialOverlayHUD();
+
+    const { visibleWidth, visibleHeight } = this.#computeFrustumBounds();
+    this.#overlay = new TutorialOverlayHUD({ visibleWidth, visibleHeight });
     this.#hudManager.add('center', this.#overlay);
     this.#hudManager.hide();
 
@@ -42,13 +44,24 @@ export class TutorialScreen {
     });
 
     this.#sizes = Sizes.getInstance();
-    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#onResize = () => {
+      this.#hudManager.updatePositions();
+      const bounds = this.#computeFrustumBounds();
+      this.#overlay.updateBounds(bounds.visibleWidth, bounds.visibleHeight);
+    };
     this.#sizes.addEventListener('resize', this.#onResize);
+  }
+
+  #computeFrustumBounds() {
+    const distance = HUDRegionManager.HUD_DISTANCE;
+    const vFov = (this.#camera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    const visibleWidth = visibleHeight * this.#camera.aspect;
+    return { visibleWidth, visibleHeight };
   }
 
   private show() {
     this.#visible = true;
-    this.#movementDebounceTime = 0;
     this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
   }
@@ -64,22 +77,11 @@ export class TutorialScreen {
   }
 
   #handleInput() {
-    const now = Date.now();
     if (this.#starting) return;
-    const canMove = now - this.#movementDebounceTime >= TutorialScreen.MOVEMENT_DEBOUNCE_MS;
 
     for (const playerId of [1, 2] as PlayerId[]) {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
-
-      if (canMove) {
-        const movement = input.getMovement();
-        if (Math.abs(movement.z) > 0.5) {
-          this.#movementDebounceTime = now;
-          const next = this.#overlay.getSelectedOption() === 'start' ? 'menu' : 'start';
-          this.#overlay.setSelectedOption(next);
-        }
-      }
 
       if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
         this.#stageActor.send({ type: 'back' });
@@ -87,11 +89,6 @@ export class TutorialScreen {
       }
 
       if (input.isButtonJustPressed('a')) {
-        const selected = this.#overlay.getSelectedOption();
-        if (selected === 'menu') {
-          this.#stageActor.send({ type: 'back' });
-          return;
-        }
         this.#starting = true;
         this.#startDelay = setTimeout(() => {
           this.#stageActor.send({ type: 'play' });

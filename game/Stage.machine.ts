@@ -110,13 +110,13 @@ export const stageMachine = setup({
     Tutorial: {
       on: {
         back: {
-          target: 'Menu',
+          target: 'Character Select',
         },
         play: {
           target: 'Level',
         },
       },
-      description: 'Display the commands',
+      description: 'Mission briefing before the game starts',
     },
 
     Leaderboard: {
