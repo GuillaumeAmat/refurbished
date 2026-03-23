@@ -19,7 +19,7 @@ import type { Camera } from '../world/Camera';
 import { Level } from '../world/Level';
 
 // States where level background remains visible
-const LEVEL_BACKGROUND_STATES = ['Level', 'Score', 'Saving score', 'Pause'];
+const LEVEL_BACKGROUND_STATES = ['Level', 'Pause'];
 // States where player interaction is enabled
 const INTERACTIVE_STATES = ['Level'];
 

@@ -3,13 +3,21 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { ScoreOverlayHUD } from '../hud/ScoreOverlayHUD';
+import type { CharacterMap } from '../Stage.machine';
 import { ScoreManager } from '../state/ScoreManager';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
 
-const ALLOWED_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_';
-const MAX_NAME_LENGTH = 12;
+const ALLOWED_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const PSEUDO_LENGTH = 3;
+
+interface PlayerInputState {
+  sideIndex: 0 | 1;
+  letters: string[];
+  cursorPos: number;
+  ready: boolean;
+}
 
 export class ScoreScreen {
   #stageActor: Actor<AnyActorLogic>;
@@ -17,61 +25,94 @@ export class ScoreScreen {
   #gamepadManager: GamepadManager;
 
   #hudManager: HUDRegionManager;
-  #scoreOverlay: ScoreOverlayHUD;
+  #overlay: ScoreOverlayHUD;
   #sizes: Sizes;
+  #camera: PerspectiveCamera;
   #onResize: () => void;
 
   #visible = false;
-  #charIndices: Record<PlayerId, number> = { 1: 0, 2: 0 };
   #movementDebounceTime = 0;
   static readonly MOVEMENT_DEBOUNCE_MS = 150;
 
+  #playerStates: Record<PlayerId, PlayerInputState> = {
+    1: { sideIndex: 0, letters: [], cursorPos: 0, ready: false },
+    2: { sideIndex: 1, letters: [], cursorPos: 0, ready: false },
+  };
+
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
+    this.#camera = camera;
     this.#gamepadManager = GamepadManager.getInstance();
 
     this.#hudManager = new HUDRegionManager(camera);
-    this.#scoreOverlay = new ScoreOverlayHUD();
-    this.#hudManager.add('center', this.#scoreOverlay);
+
+    const { visibleWidth, visibleHeight } = this.#computeFrustumBounds();
+    this.#overlay = new ScoreOverlayHUD({ visibleWidth, visibleHeight });
+    this.#hudManager.add('center', this.#overlay);
     this.#hudManager.hide();
-
-    this.#scoreOverlay.onSave((player1, player2) => {
-      const scoreManager = ScoreManager.getInstance();
-      const p1 = player1 || 'Anonymous';
-      const p2 = player2 || 'Anonymous';
-      scoreManager.setPlayerName(1, p1);
-      scoreManager.setPlayerName(2, p2);
-      this.#stageActor.send({ type: 'save', player1: p1, player2: p2 });
-    });
-
-    this.#scoreOverlay.onSkip(() => {
-      this.#stageActor.send({ type: 'next' });
-    });
 
     this.#subscription = this.#stageActor.subscribe((state) => {
       if (state.matches('Score')) {
-        this.show();
+        this.show(state.context.characters as CharacterMap);
       } else {
         this.hide();
       }
     });
 
     this.#sizes = Sizes.getInstance();
-    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#onResize = () => {
+      this.#hudManager.updatePositions();
+      const bounds = this.#computeFrustumBounds();
+      this.#overlay.updateBounds(bounds.visibleWidth, bounds.visibleHeight);
+    };
     this.#sizes.addEventListener('resize', this.#onResize);
   }
 
-  private show() {
+  #computeFrustumBounds() {
+    const distance = HUDRegionManager.HUD_DISTANCE;
+    const vFov = (this.#camera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    const visibleWidth = visibleHeight * this.#camera.aspect;
+    return { visibleWidth, visibleHeight };
+  }
+
+  private show(characters: CharacterMap) {
     this.#visible = true;
+    this.#movementDebounceTime = 0;
     this.#gamepadManager.lockAllInputFor(INPUT_TRANSITION_LOCKOUT_MS);
     this.#hudManager.show();
-    this.#scoreOverlay.reset();
-    this.#charIndices = { 1: 0, 2: 0 };
+
+    // Map players to sides: pig=left(0), croco=right(1)
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const sideIndex = characters[playerId] === 'pig' ? 0 : 1;
+      this.#playerStates[playerId] = {
+        sideIndex: sideIndex as 0 | 1,
+        letters: [],
+        cursorPos: 0,
+        ready: false,
+      };
+    }
   }
 
   private hide() {
     this.#visible = false;
     this.#hudManager.hide();
+  }
+
+  #formatDisplay(letters: string[]): string {
+    const display: string[] = [];
+    for (let i = 0; i < PSEUDO_LENGTH; i++) {
+      display.push(letters[i] ?? '_');
+    }
+    return display.join('');
+  }
+
+  #updatePlayerVisuals(playerId: PlayerId) {
+    const state = this.#playerStates[playerId];
+    this.#overlay.setPseudoDisplay(state.sideIndex, this.#formatDisplay(state.letters));
+    const pseudoComplete = state.letters.length === PSEUDO_LENGTH;
+    this.#overlay.setConfirmVisible(state.sideIndex, pseudoComplete);
+    this.#overlay.setSideReady(state.sideIndex, state.ready);
   }
 
   #handleInput() {
@@ -82,62 +123,88 @@ export class ScoreScreen {
       const input = this.#gamepadManager.getInputSource(playerId);
       if (!input?.connected) continue;
 
-      const movement = input.getMovement();
+      const ps = this.#playerStates[playerId];
 
-      // Up/Down to switch between save/skip (shared, debounced)
-      if (canMove && Math.abs(movement.z) > 0.5) {
-        this.#movementDebounceTime = now;
-        const current = this.#scoreOverlay.getSelectedOption();
-        this.#scoreOverlay.setSelectedOption(current === 'save' ? 'skip' : 'save');
-      }
-
-      // Left/Right to cycle through characters (per-player, debounced)
-      if (canMove && Math.abs(movement.x) > 0.5) {
-        this.#movementDebounceTime = now;
-        const name = this.#scoreOverlay.getPlayerName(playerId);
-        const charIndex = this.#charIndices[playerId];
-        const chars = name.split('');
-        const currentChar = chars[charIndex] || 'A';
-        const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
-
-        let newIdx: number;
-        if (movement.x > 0.5) {
-          newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
-        } else {
-          newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
+      if (ps.ready) {
+        // B cancels ready
+        if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
+          ps.ready = false;
+          this.#updatePlayerVisuals(playerId);
         }
-
-        chars[charIndex] = ALLOWED_CHARS[newIdx]!;
-        this.#scoreOverlay.setPlayerName(playerId, chars.join(''));
+        continue;
       }
 
-      // Primary button to confirm character / select option
+      // Left/right to cycle letter at current cursor position
+      if (canMove) {
+        const movement = input.getMovement();
+        if (Math.abs(movement.x) > 0.5) {
+          this.#movementDebounceTime = now;
+
+          // If no letter at cursor yet, start with 'A'
+          if (ps.cursorPos >= ps.letters.length) {
+            ps.letters.push('A');
+          }
+
+          const currentChar = ps.letters[ps.cursorPos]!;
+          const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
+          let newIdx: number;
+          if (movement.x > 0.5) {
+            newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
+          } else {
+            newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
+          }
+          ps.letters[ps.cursorPos] = ALLOWED_CHARS[newIdx]!;
+          this.#updatePlayerVisuals(playerId);
+        }
+      }
+
+      // A: advance cursor or confirm
       if (input.isButtonJustPressed('a')) {
-        const option = this.#scoreOverlay.getSelectedOption();
-        if (option === 'save') {
-          const name = this.#scoreOverlay.getPlayerName(playerId);
-          if (name.length < MAX_NAME_LENGTH) {
-            this.#charIndices[playerId]++;
-            if (this.#charIndices[playerId] >= name.length) {
-              this.#scoreOverlay.setPlayerName(playerId, name + 'A');
+        if (ps.cursorPos < ps.letters.length) {
+          if (ps.letters.length === PSEUDO_LENGTH && ps.cursorPos === PSEUDO_LENGTH - 1) {
+            // All 3 letters filled, A validates
+            ps.ready = true;
+            this.#updatePlayerVisuals(playerId);
+
+            // Check if both ready
+            if (this.#overlay.areBothReady()) {
+              this.#triggerSave();
             }
           } else {
-            this.#scoreOverlay.triggerSave();
+            // Advance to next slot
+            ps.cursorPos++;
+            this.#updatePlayerVisuals(playerId);
           }
-        } else {
-          this.#scoreOverlay.triggerSkip();
         }
       }
 
-      // Secondary button to delete character
-      if (input.isButtonJustPressed('b')) {
-        const name = this.#scoreOverlay.getPlayerName(playerId);
-        if (name.length > 0 && this.#charIndices[playerId] > 0) {
-          this.#charIndices[playerId]--;
-          this.#scoreOverlay.setPlayerName(playerId, name.slice(0, -1));
+      // B: undo letters or skip
+      if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
+        if (ps.letters.length > 0) {
+          // Remove last letter, move cursor back
+          ps.letters.pop();
+          ps.cursorPos = Math.min(ps.cursorPos, Math.max(0, ps.letters.length - 1));
+          if (ps.letters.length === 0) ps.cursorPos = 0;
+          this.#updatePlayerVisuals(playerId);
+        } else {
+          // Empty pseudo → skip to leaderboard
+          this.#stageActor.send({ type: 'next' });
+          return;
         }
       }
     }
+  }
+
+  #triggerSave() {
+    const scoreManager = ScoreManager.getInstance();
+
+    for (const playerId of [1, 2] as PlayerId[]) {
+      const name = this.#playerStates[playerId].letters.join('') || 'Anonymous';
+      scoreManager.setPlayerName(playerId, name);
+    }
+
+    const { player1, player2 } = scoreManager.getPlayerNames();
+    this.#stageActor.send({ type: 'save', player1, player2 });
   }
 
   public update() {
