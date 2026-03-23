@@ -87,8 +87,8 @@ export class PauseScreen {
 
       const movement = input.getMovement();
 
-      // Up/Down to switch between resume/quit (debounced for analog input)
-      if (Math.abs(movement.z) > 0.5 && now - this.#movementDebounceTime >= PauseScreen.MOVEMENT_DEBOUNCE_MS) {
+      // Left/Right to switch between resume/quit (debounced for analog input)
+      if (Math.abs(movement.x) > 0.5 && now - this.#movementDebounceTime >= PauseScreen.MOVEMENT_DEBOUNCE_MS) {
         this.#movementDebounceTime = now;
         const current = this.#pauseOverlay.getSelectedOption();
         this.#pauseOverlay.setSelectedOption(current === 'resume' ? 'quit' : 'resume');
