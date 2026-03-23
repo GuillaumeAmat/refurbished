@@ -108,7 +108,7 @@ export function createTextTexture(options: TextTextureOptions): TextTextureResul
   ctx.fillStyle = color;
 
   // Use actual glyph metrics for true vertical centering
-  const metrics = ctx.measureText(text || referenceText || 'M');
+  const metrics = ctx.measureText(referenceText || text || 'M');
   const glyphTop = metrics.actualBoundingBoxAscent;
   const glyphBottom = metrics.actualBoundingBoxDescent;
   const glyphHeight = glyphTop + glyphBottom;
