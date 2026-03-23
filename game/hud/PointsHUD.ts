@@ -9,11 +9,14 @@ import {
   SRGBColorSpace,
 } from 'three';
 
-import { COLORS } from '../constants';
+import { COLORS, ORDER_EXPIRE_PENALTY } from '../constants';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { ComboManager } from '../state/ComboManager';
+import { OrderManager } from '../state/OrderManager';
 import { ScoreManager } from '../state/ScoreManager';
+import { Time } from '../util/Time';
 import { Debug } from '../util/Debug';
+import { HUDPointsPopAnimation } from './HUDPointsPopAnimation';
 import type { IHUDItem } from './IHUDItem';
 
 export class PointsHUD implements IHUDItem {
@@ -21,8 +24,11 @@ export class PointsHUD implements IHUDItem {
   #text: TextPlaneResult | null = null;
   #scoreManager: ScoreManager;
   #comboManager: ComboManager;
+  #orderManager: OrderManager;
   #onScoreChanged: EventListener;
   #onComboChanged: EventListener;
+  #onOrderExpired: EventListener;
+  #penaltyAnims: HUDPointsPopAnimation[] = [];
   #comboBadgeMesh: Mesh | null = null;
   #comboBadgeGeometry: PlaneGeometry | null = null;
   #comboBadgeMaterial: MeshBasicMaterial | null = null;
@@ -48,6 +54,7 @@ export class PointsHUD implements IHUDItem {
     this.#group = new Group();
     this.#scoreManager = ScoreManager.getInstance();
     this.#comboManager = ComboManager.getInstance();
+    this.#orderManager = OrderManager.getInstance();
     this.#createText();
 
     this.#onScoreChanged = ((event: CustomEvent) => {
@@ -59,6 +66,13 @@ export class PointsHUD implements IHUDItem {
       this.#updateComboBadge(e.detail.multiplier);
     }) as EventListener;
     this.#comboManager.addEventListener('comboChanged', this.#onComboChanged);
+
+    this.#onOrderExpired = () => {
+      this.#penaltyAnims.push(
+        new HUDPointsPopAnimation(this.#group, ORDER_EXPIRE_PENALTY),
+      );
+    };
+    this.#orderManager.addEventListener('orderExpired', this.#onOrderExpired);
 
     this.#setupDebug();
   }
@@ -247,11 +261,19 @@ export class PointsHUD implements IHUDItem {
     this.#group.visible = false;
   }
 
-  update() {}
+  update() {
+    const dt = Time.getInstance().delta * 0.001;
+    for (let i = this.#penaltyAnims.length - 1; i >= 0; i--) {
+      if (this.#penaltyAnims[i]!.update(dt)) {
+        this.#penaltyAnims.splice(i, 1);
+      }
+    }
+  }
 
   dispose() {
     this.#scoreManager.removeEventListener('scoreChanged', this.#onScoreChanged);
     this.#comboManager.removeEventListener('comboChanged', this.#onComboChanged);
+    this.#orderManager.removeEventListener('orderExpired', this.#onOrderExpired);
     this.#text?.dispose();
     this.#comboBadgeGeometry?.dispose();
     this.#comboBadgeMaterial?.dispose();
