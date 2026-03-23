@@ -1,4 +1,6 @@
-import { Scene } from 'three';
+import { Color, Scene } from 'three';
+
+import { BACKGROUND_COLOR, OVERLAY_LAYER } from './constants';
 import { type Actor, type AnyActorLogic, type Subscription, createActor, fromPromise } from 'xstate';
 
 import { navigateTo, useRuntimeConfig } from '#app';
@@ -40,6 +42,8 @@ export class Stage {
   #time: Time;
   #sizes: Sizes;
   #renderer: Renderer;
+  #pauseBgColor = new Color(0xf5f5f5);
+  #defaultBgColor = new Color(BACKGROUND_COLOR);
   #loadingOverlay: LoadingOverlay;
   #environment: Environment | null = null;
   #levelInfo = levelsInfo[0]!;
@@ -531,10 +535,17 @@ export class Stage {
       const sm = SoundManager.getInstance();
 
       if (MENU_PHASE_STATES.some((s) => state.matches(s))) {
+        if (previousState.matches('Pause')) {
+          this.#renderer.setBloomEnabled(true);
+          this.#camera.camera.layers.set(0);
+        }
         sm.setPhase('menu');
       } else if (state.matches('Level')) {
         if (!Debug.getInstance().active) {
           if (previousState.matches('Pause')) {
+            this.#renderer.setBloomEnabled(true);
+            this.#camera.camera.layers.set(0);
+            this.#scene.background = this.#defaultBgColor;
             sm.resumePlayback();
           } else {
             sm.setPhase('game');
@@ -542,6 +553,10 @@ export class Stage {
         }
       } else if (state.matches('Pause')) {
         sm.pausePlayback();
+        this.#renderer.setBloomEnabled(false);
+        this.#camera.camera.layers.disableAll();
+        this.#camera.camera.layers.enable(OVERLAY_LAYER);
+        this.#scene.background = this.#pauseBgColor;
       } else {
         sm.setPhase('silent');
       }

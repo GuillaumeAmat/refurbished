@@ -48,6 +48,7 @@ export class Renderer {
   #sizes: Sizes;
   #bloomPass: UnrealBloomPass;
   #debug: Debug;
+  #bloomEnabled = true;
   #darkMaterial = new MeshBasicMaterial({ color: 0x000000 });
   #darkTransparentMaterial = new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
   #materialCache: Map<string, Material | Material[]> = new Map();
@@ -137,31 +138,44 @@ export class Renderer {
     this.#finalComposer.setPixelRatio(this.#sizes.pixelRatio);
   }
 
-  public update() {
-    // Bloom pass: single traverse to darken non-bloom objects, collect refs for restore.
-    // Transparent objects get an invisible material (no depth write) so they
-    // don't occlude bloom-layer meshes behind them in the depth buffer.
-    const darkened: Mesh[] = [];
-    this.#scene.traverse((obj) => {
-      if (obj instanceof Mesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
-        this.#materialCache.set(obj.uuid, obj.material);
-        const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
-        const isOverlay = obj.layers.mask & (1 << OVERLAY_LAYER);
-        obj.material = mat?.transparent && !isOverlay ? this.#darkTransparentMaterial : this.#darkMaterial;
-        darkened.push(obj);
-      }
-    });
-    const savedBackground = this.#scene.background;
-    this.#scene.background = null;
-    this.#bloomComposer.render();
-    this.#scene.background = savedBackground;
+  public setBloomEnabled(enabled: boolean) {
+    if (this.#bloomEnabled === enabled) return;
+    this.#bloomEnabled = enabled;
+    if (!enabled) {
+      // Clear bloom RT once so stale bloom doesn't bleed through
+      this.#renderer.setRenderTarget(this.#bloomComposer.renderTarget2);
+      this.#renderer.clear();
+      this.#renderer.setRenderTarget(null);
+    }
+  }
 
-    // Restore materials from collected refs (no second traverse)
-    for (const mesh of darkened) {
-      const saved = this.#materialCache.get(mesh.uuid);
-      if (saved !== undefined) {
-        mesh.material = saved as Material;
-        this.#materialCache.delete(mesh.uuid);
+  public update() {
+    if (this.#bloomEnabled) {
+      // Bloom pass: single traverse to darken non-bloom objects, collect refs for restore.
+      // Transparent objects get an invisible material (no depth write) so they
+      // don't occlude bloom-layer meshes behind them in the depth buffer.
+      const darkened: Mesh[] = [];
+      this.#scene.traverse((obj) => {
+        if (obj instanceof Mesh && !(obj.layers.mask & (1 << BLOOM_LAYER))) {
+          this.#materialCache.set(obj.uuid, obj.material);
+          const mat = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+          const isOverlay = obj.layers.mask & (1 << OVERLAY_LAYER);
+          obj.material = mat?.transparent && !isOverlay ? this.#darkTransparentMaterial : this.#darkMaterial;
+          darkened.push(obj);
+        }
+      });
+      const savedBackground = this.#scene.background;
+      this.#scene.background = null;
+      this.#bloomComposer.render();
+      this.#scene.background = savedBackground;
+
+      // Restore materials from collected refs (no second traverse)
+      for (const mesh of darkened) {
+        const saved = this.#materialCache.get(mesh.uuid);
+        if (saved !== undefined) {
+          mesh.material = saved as Material;
+          this.#materialCache.delete(mesh.uuid);
+        }
       }
     }
 
