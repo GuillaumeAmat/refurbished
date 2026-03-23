@@ -32,7 +32,7 @@ export async function recordGameEvent(token: string, delta: number): Promise<boo
 
   if (session.eventCount + 1 > maxEvents) return false;
 
-  session.score += delta;
+  session.score = Math.max(0, session.score + delta);
   session.eventCount += 1;
 
   await redis.set(sessionKey(token), session, { ex: SESSION_TTL_S });
