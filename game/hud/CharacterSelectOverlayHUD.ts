@@ -9,17 +9,26 @@ import {
   SRGBColorSpace,
 } from 'three';
 
-import { COLORS, STAR_THRESHOLDS } from '../constants';
+import { COLORS } from '../constants';
 import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
-import { ScoreManager } from '../state/ScoreManager';
 import { HUDRegionManager } from './HUDRegionManager';
 import type { IHUDItem } from './IHUDItem';
 
-const PADDING = HUDRegionManager.HUD_PADDING;
-const SQUARE_SIZE = 1.26;
+import type { PlayerId } from '../util/input/GamepadManager';
 
-export class ScoreOverlayHUD implements IHUDItem {
+const PADDING = HUDRegionManager.HUD_PADDING;
+const LERP_FACTOR = 0.15;
+const SQUARE_SIZE = 1.26;
+const GAMEPAD_SIZE = 0.25;
+const GAMEPAD_MARGIN = 0.06;
+
+interface PlayerState {
+  choice: 'left' | 'right' | null;
+  ready: boolean;
+}
+
+export class CharacterSelectOverlayHUD implements IHUDItem {
   #group: Group;
   #visibleWidth: number;
   #visibleHeight: number;
@@ -31,48 +40,47 @@ export class ScoreOverlayHUD implements IHUDItem {
 
   // Badge
   #badgeMesh: Mesh | null = null;
+  #badgeWidth = 0;
 
   // Titles
-  #titleSaveYour: TextPlaneResult | null = null;
-  #titleScore: TextPlaneResult | null = null;
+  #titlePickYour: TextPlaneResult | null = null;
+  #titleBuddy: TextPlaneResult | null = null;
 
   // Grey squares
   #leftSquare: Mesh | null = null;
   #rightSquare: Mesh | null = null;
 
-  // Center content
-  #scoreText: TextPlaneResult | null = null;
-  #starsText: TextPlaneResult | null = null;
-
-  // Pseudo inputs (0=left, 1=right)
-  #pseudoTexts: [TextPlaneResult | null, TextPlaneResult | null] = [null, null];
+  // Gamepad icons
+  #gamepadMeshes: [Mesh | null, Mesh | null] = [null, null];
+  #gamepadTargetX: [number, number] = [0, 0];
+  #gamepadLoaded = false;
 
   // Buttons (indexed per side: 0=left, 1=right)
   #confirmButtons: [PillButtonPlaneResult | null, PillButtonPlaneResult | null] = [null, null];
   #readyTexts: [TextPlaneResult | null, TextPlaneResult | null] = [null, null];
-  #skipButton: PillButtonPlaneResult | null = null;
+  #menuButton: PillButtonPlaneResult | null = null;
 
-  // Per-side ready state
-  #sideReady: [boolean, boolean] = [false, false];
+  // Player state
+  #players: [PlayerState, PlayerState] = [
+    { choice: null, ready: false },
+    { choice: null, ready: false },
+  ];
 
   // Layout reference positions
   #leftSquareX = 0;
   #rightSquareX = 0;
-
-  #scoreManager: ScoreManager;
+  #centerX = 0;
 
   constructor({ visibleWidth, visibleHeight }: { visibleWidth: number; visibleHeight: number }) {
     this.#group = new Group();
     this.#visibleWidth = visibleWidth;
     this.#visibleHeight = visibleHeight;
-    this.#scoreManager = ScoreManager.getInstance();
 
     this.#createBackground();
     this.#createBadge();
     this.#createTitles();
     this.#createSquares();
-    this.#createCenterContent();
-    this.#createPseudoInputs();
+    this.#loadGamepadIcons();
     this.#createButtons();
     this.#positionElements();
   }
@@ -94,7 +102,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     const dpr = Math.min(window.devicePixelRatio, 2);
     const fontSize = 28 * dpr;
     const pad = 8 * dpr;
-    const text = 'GAME OVER';
+    const text = 'READY?';
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { alpha: true });
@@ -156,20 +164,21 @@ export class ScoreOverlayHUD implements IHUDItem {
 
     this.#badgeMesh = new Mesh(geometry, material);
     this.#badgeMesh.renderOrder = 999;
+    this.#badgeWidth = worldWidth;
     this.#group.add(this.#badgeMesh);
   }
 
   #createTitles() {
-    this.#titleSaveYour = createTextPlane('Save your ', {
+    this.#titlePickYour = createTextPlane('Pick your ', {
       height: 0.25,
       fontSize: 128,
       fontFamily: 'IvarSoft, serif',
       fontWeight: '600',
       color: '#000000',
     });
-    this.#group.add(this.#titleSaveYour.mesh);
+    this.#group.add(this.#titlePickYour.mesh);
 
-    this.#titleScore = createTextPlane('Score.', {
+    this.#titleBuddy = createTextPlane('Buddy.', {
       height: 0.25,
       fontSize: 128,
       fontFamily: 'IvarSoft, serif',
@@ -177,7 +186,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fontStyle: 'italic',
       color: '#000000',
     });
-    this.#group.add(this.#titleScore.mesh);
+    this.#group.add(this.#titleBuddy.mesh);
   }
 
   #createRoundedRectTexture(cssWidth: number, cssHeight: number, radius: number, fillColor: string) {
@@ -208,6 +217,7 @@ export class ScoreOverlayHUD implements IHUDItem {
     ctx.fillStyle = fillColor;
     ctx.fill();
 
+    // Border
     ctx.strokeStyle = '#999999';
     ctx.lineWidth = 2 * dpr;
     ctx.stroke();
@@ -253,49 +263,47 @@ export class ScoreOverlayHUD implements IHUDItem {
     this.#group.add(this.#rightSquare);
   }
 
-  #createCenterContent() {
-    const score = this.#scoreManager.getScore();
+  #loadGamepadIcons() {
+    const img = new Image();
+    img.src = '/game/svg/gamepad.svg';
+    img.onload = () => {
+      for (let i = 0; i < 2; i++) {
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        const size = Math.ceil(256 * dpr);
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (!ctx) continue;
 
-    this.#scoreText = createTextPlane(`${score}`, {
-      height: 0.18,
-      fontSize: 96,
-      fontFamily: 'BMDupletDSP, system-ui, sans-serif',
-      fontWeight: '600',
-      color: '#000000',
-    });
-    this.#scoreText.mesh.renderOrder = 999;
-    this.#group.add(this.#scoreText.mesh);
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
 
-    this.#starsText = createTextPlane(this.#computeStars(score), {
-      height: 0.14,
-      fontSize: 72,
-      color: '#FBD954',
-    });
-    this.#starsText.mesh.renderOrder = 999;
-    this.#group.add(this.#starsText.mesh);
-  }
+        const texture = new CanvasTexture(canvas);
+        texture.minFilter = LinearFilter;
+        texture.magFilter = LinearFilter;
+        texture.generateMipmaps = false;
+        texture.colorSpace = SRGBColorSpace;
+        texture.needsUpdate = true;
 
-  #computeStars(score: number): string {
-    let count = 0;
-    for (const threshold of STAR_THRESHOLDS) {
-      if (score >= threshold) count++;
-    }
-    return '\u2605'.repeat(count) + '\u2606'.repeat(STAR_THRESHOLDS.length - count);
-  }
+        const worldSize = 0.25;
+        const geometry = new PlaneGeometry(worldSize, worldSize);
+        const material = new MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: DoubleSide,
+        });
 
-  #createPseudoInputs() {
-    for (let i = 0; i < 2; i++) {
-      const txt = createTextPlane('___', {
-        height: 0.18,
-        fontSize: 96,
-        fontFamily: 'BMDupletDSP, system-ui, sans-serif',
-        fontWeight: '600',
-        color: '#000000',
-      });
-      txt.mesh.renderOrder = 999;
-      this.#pseudoTexts[i] = txt;
-      this.#group.add(txt.mesh);
-    }
+        const mesh = new Mesh(geometry, material);
+        mesh.renderOrder = 999;
+        this.#gamepadMeshes[i] = mesh;
+        this.#group.add(mesh);
+      }
+      this.#gamepadLoaded = true;
+      this.#positionElements();
+    };
   }
 
   #createButtons() {
@@ -307,7 +315,7 @@ export class ScoreOverlayHUD implements IHUDItem {
       fixedHeight: 160,
     };
 
-    // Confirm buttons (0=left side, 1=right side) — hidden until pseudo complete
+    // Confirm buttons (0=left side, 1=right side) — hidden until a player picks that side
     for (let i = 0; i < 2; i++) {
       const btn = createPillButtonPlane(
         [
@@ -335,15 +343,15 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#group.add(txt.mesh);
     }
 
-    // Skip button (always visible, no background)
-    this.#skipButton = createPillButtonPlane(
+    // Main menu button (always visible, no background)
+    this.#menuButton = createPillButtonPlane(
       [
-        { type: 'text', value: 'Skip ' },
+        { type: 'text', value: 'Main menu ' },
         { type: 'badge', label: 'B', color: '#CC0000' },
       ],
       { ...buttonOptions, transparent: true },
     );
-    this.#group.add(this.#skipButton.mesh);
+    this.#group.add(this.#menuButton.mesh);
   }
 
   #positionElements() {
@@ -364,19 +372,20 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#badgeMesh.position.set(0, top - 0.05, 0);
     }
 
-    // Title: "Save your " + "Score." side by side, centered
-    if (this.#titleSaveYour && this.#titleScore) {
-      const totalWidth = this.#titleSaveYour.width + this.#titleScore.width;
+    // Title: "Pick your " + "Buddy." side by side, centered
+    if (this.#titlePickYour && this.#titleBuddy) {
+      const totalWidth = this.#titlePickYour.width + this.#titleBuddy.width;
       const startX = -totalWidth / 2;
       const titleY = top - 0.22;
-      this.#titleSaveYour.mesh.position.set(startX + this.#titleSaveYour.width / 2, titleY, 0);
-      this.#titleScore.mesh.position.set(startX + this.#titleSaveYour.width + this.#titleScore.width / 2, titleY, 0);
+      this.#titlePickYour.mesh.position.set(startX + this.#titlePickYour.width / 2, titleY, 0);
+      this.#titleBuddy.mesh.position.set(startX + this.#titlePickYour.width + this.#titleBuddy.width / 2, titleY, 0);
     }
 
     // Grey squares
     const squareY = 0;
     this.#leftSquareX = -w / 4;
     this.#rightSquareX = w / 4;
+    this.#centerX = 0;
 
     if (this.#leftSquare) {
       this.#leftSquare.position.set(this.#leftSquareX, squareY, 0);
@@ -385,26 +394,22 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#rightSquare.position.set(this.#rightSquareX, squareY, 0);
     }
 
-    // Center content: score + stars
-    if (this.#scoreText) {
-      this.#scoreText.mesh.position.set(0, 0.1, 0);
-    }
-    if (this.#starsText) {
-      this.#starsText.mesh.position.set(0, -0.1, 0);
-    }
-
-    // Pseudo inputs: between square and confirm button
-    const buttonY = bottom + 0.12;
-    const pseudoY = buttonY + 0.26;
-
-    if (this.#pseudoTexts[0]) {
-      this.#pseudoTexts[0].mesh.position.set(this.#leftSquareX, pseudoY, 0);
-    }
-    if (this.#pseudoTexts[1]) {
-      this.#pseudoTexts[1].mesh.position.set(this.#rightSquareX, pseudoY, 0);
+    // Gamepad icons — stacked vertically in center
+    if (this.#gamepadLoaded) {
+      const gap = 0.15;
+      for (let i = 0; i < 2; i++) {
+        const mesh = this.#gamepadMeshes[i];
+        if (!mesh) continue;
+        const targetX = this.#getGamepadTargetX(i as 0 | 1);
+        this.#gamepadTargetX[i] = targetX;
+        const y = squareY + (i === 0 ? gap : -gap);
+        mesh.position.set(targetX, y, 0);
+      }
     }
 
     // Buttons at bottom
+    const buttonY = bottom + 0.12;
+
     if (this.#confirmButtons[0]) {
       this.#confirmButtons[0].mesh.position.set(this.#leftSquareX, buttonY, 0);
     }
@@ -412,8 +417,8 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#readyTexts[0].mesh.position.set(this.#leftSquareX, buttonY, 0);
     }
 
-    if (this.#skipButton) {
-      this.#skipButton.mesh.position.set(0, buttonY, 0);
+    if (this.#menuButton) {
+      this.#menuButton.mesh.position.set(0, buttonY, 0);
     }
 
     if (this.#confirmButtons[1]) {
@@ -424,34 +429,71 @@ export class ScoreOverlayHUD implements IHUDItem {
     }
   }
 
-  setPseudoDisplay(sideIndex: 0 | 1, display: string) {
-    this.#pseudoTexts[sideIndex]?.updateText(display);
+  #getGamepadTargetX(playerIndex: 0 | 1): number {
+    const choice = this.#players[playerIndex].choice;
+    // Position gamepad at the inner edge of the square + margin
+    const offset = SQUARE_SIZE / 2 + GAMEPAD_SIZE / 2 + GAMEPAD_MARGIN;
+    if (choice === 'left') return this.#leftSquareX + offset;
+    if (choice === 'right') return this.#rightSquareX - offset;
+    return this.#centerX;
   }
 
-  setConfirmVisible(sideIndex: 0 | 1, visible: boolean) {
-    const btn = this.#confirmButtons[sideIndex];
-    if (btn) btn.mesh.visible = visible && !this.#sideReady[sideIndex];
+  #sideIndex(side: 'left' | 'right'): 0 | 1 {
+    return side === 'left' ? 0 : 1;
   }
 
-  setSideReady(sideIndex: 0 | 1, ready: boolean) {
-    this.#sideReady[sideIndex] = ready;
-    const btn = this.#confirmButtons[sideIndex];
-    const txt = this.#readyTexts[sideIndex];
-    if (btn) btn.mesh.visible = !ready && btn.mesh.visible;
-    if (txt) txt.mesh.visible = ready;
-    if (!ready && btn) {
-      // When unreadying, re-show confirm if pseudo is complete (caller manages this)
-    }
+  setPlayerChoice(playerId: PlayerId, choice: 'left' | 'right') {
+    const idx = (playerId - 1) as 0 | 1;
+    const otherIdx = (1 - idx) as 0 | 1;
+    const prevChoice = this.#players[idx].choice;
+
+    // Block if other player is already on that side
+    if (this.#players[otherIdx].choice === choice) return;
+
+    this.#players[idx].choice = choice;
+    this.#gamepadTargetX[idx] = this.#getGamepadTargetX(idx);
+
+    this.#updateSideVisuals(choice);
+    if (prevChoice && prevChoice !== choice) this.#updateSideVisuals(prevChoice);
+  }
+
+  clearPlayerChoice(playerId: PlayerId) {
+    const idx = (playerId - 1) as 0 | 1;
+    const prevChoice = this.#players[idx].choice;
+    this.#players[idx].choice = null;
+    this.#players[idx].ready = false;
+    this.#gamepadTargetX[idx] = this.#centerX;
+
+    if (prevChoice) this.#updateSideVisuals(prevChoice);
+  }
+
+  #updateSideVisuals(side: 'left' | 'right') {
+    const si = this.#sideIndex(side);
+    const btn = this.#confirmButtons[si];
+    const txt = this.#readyTexts[si];
+
+    // Find player on this side
+    const playerOnSide = this.#players.findIndex((p) => p.choice === side);
+    const hasPlayer = playerOnSide !== -1;
+    const isReady = hasPlayer && this.#players[playerOnSide]!.ready;
+
+    if (btn) btn.mesh.visible = hasPlayer && !isReady;
+    if (txt) txt.mesh.visible = isReady;
+  }
+
+  setPlayerReady(playerId: PlayerId, ready: boolean) {
+    const idx = (playerId - 1) as 0 | 1;
+    this.#players[idx].ready = ready;
+    const choice = this.#players[idx].choice;
+    if (choice) this.#updateSideVisuals(choice);
+  }
+
+  getPlayerState(playerId: PlayerId): PlayerState {
+    return this.#players[(playerId - 1) as 0 | 1];
   }
 
   areBothReady(): boolean {
-    return this.#sideReady[0] && this.#sideReady[1];
-  }
-
-  updateScore() {
-    const score = this.#scoreManager.getScore();
-    this.#scoreText?.updateText(`${score}`);
-    this.#starsText?.updateText(this.#computeStars(score));
+    return this.#players[0].ready && this.#players[1].ready;
   }
 
   updateBounds(visibleWidth: number, visibleHeight: number) {
@@ -470,20 +512,32 @@ export class ScoreOverlayHUD implements IHUDItem {
 
   show() {
     this.#group.visible = true;
-    this.#sideReady = [false, false];
+    // Reset player state
     for (let i = 0; i < 2; i++) {
-      this.#pseudoTexts[i]?.updateText('___');
-      if (this.#confirmButtons[i]) this.#confirmButtons[i]!.mesh.visible = false;
-      if (this.#readyTexts[i]) this.#readyTexts[i]!.mesh.visible = false;
+      this.#players[i] = { choice: null, ready: false };
+      this.#gamepadTargetX[i] = this.#centerX;
+      // Snap gamepad to center
+      const mesh = this.#gamepadMeshes[i];
+      if (mesh) mesh.position.x = this.#centerX;
     }
-    this.updateScore();
+    // Reset side visuals (no player on either side)
+    this.#updateSideVisuals('left');
+    this.#updateSideVisuals('right');
   }
 
   hide() {
     this.#group.visible = false;
   }
 
-  update() {}
+  update() {
+    // Lerp gamepad icons toward target
+    for (const i of [0, 1] as const) {
+      const mesh = this.#gamepadMeshes[i];
+      if (!mesh) continue;
+      const target = this.#gamepadTargetX[i];
+      mesh.position.x += (target - mesh.position.x) * LERP_FACTOR;
+    }
+  }
 
   dispose() {
     this.#bgGeometry?.dispose();
@@ -495,8 +549,8 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#badgeMesh.geometry.dispose();
     }
 
-    this.#titleSaveYour?.dispose();
-    this.#titleScore?.dispose();
+    this.#titlePickYour?.dispose();
+    this.#titleBuddy?.dispose();
 
     if (this.#leftSquare) {
       (this.#leftSquare.material as MeshBasicMaterial).map?.dispose();
@@ -509,12 +563,15 @@ export class ScoreOverlayHUD implements IHUDItem {
       this.#rightSquare.geometry.dispose();
     }
 
-    this.#scoreText?.dispose();
-    this.#starsText?.dispose();
+    for (const mesh of this.#gamepadMeshes) {
+      if (!mesh) continue;
+      (mesh.material as MeshBasicMaterial).map?.dispose();
+      (mesh.material as MeshBasicMaterial).dispose();
+      mesh.geometry.dispose();
+    }
 
-    for (const txt of this.#pseudoTexts) txt?.dispose();
     for (const btn of this.#confirmButtons) btn?.dispose();
     for (const txt of this.#readyTexts) txt?.dispose();
-    this.#skipButton?.dispose();
+    this.#menuButton?.dispose();
   }
 }
