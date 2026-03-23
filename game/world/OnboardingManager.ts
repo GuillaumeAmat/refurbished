@@ -150,6 +150,12 @@ export class OnboardingManager {
     }
   }
 
+  setVisible(visible: boolean): void {
+    for (const h of this.#highlights) {
+      h.setVisible(visible);
+    }
+  }
+
   update(): void {
     if (this.#step === Step.IDLE || this.#step === Step.DONE) return;
     const deltaMs = Time.getInstance().delta;

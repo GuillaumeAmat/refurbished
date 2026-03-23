@@ -47,6 +47,10 @@ export class OnboardingRing {
     return p >= 1;
   }
 
+  setVisible(visible: boolean): void {
+    this.#mesh.visible = visible;
+  }
+
   dispose(): void {
     this.#mesh.removeFromParent();
     this.#geometry.dispose();

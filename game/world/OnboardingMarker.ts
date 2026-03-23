@@ -176,6 +176,10 @@ export class OnboardingMarker {
     this.#group.position.y = this.#baseY - eased * AMP;
   }
 
+  setVisible(visible: boolean): void {
+    this.#group.visible = visible;
+  }
+
   dispose(): void {
     this.#group.removeFromParent();
     this.#iconGeometry.dispose();

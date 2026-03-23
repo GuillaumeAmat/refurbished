@@ -1,75 +1,147 @@
-import { Group } from 'three';
+import { DoubleSide, Group, type Mesh, MeshBasicMaterial } from 'three';
 
+import { COLORS, OVERLAY_LAYER } from '../constants';
+import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
+import { createRoundedPlaneMesh } from '../lib/createRoundedPlaneMesh';
 import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
-import { HUDBackdrop } from './HUDBackdrop';
+import { HUDRegionManager } from './HUDRegionManager';
 import type { IHUDItem } from './IHUDItem';
 
-export class PauseOverlayHUD implements IHUDItem {
-  static readonly OVERLAY_HEIGHT = 0.8;
-  static readonly TITLE_HEIGHT = 0.15;
-  static readonly BUTTON_HEIGHT = 0.08;
+const PADDING = HUDRegionManager.HUD_PADDING;
+const CARD_ASPECT = 0.6;
+const CARD_RADIUS = 0.06;
+const BG_RENDER_ORDER = 1000;
+const CONTENT_RENDER_ORDER = 1001;
 
+export class PauseOverlayHUD implements IHUDItem {
   #group: Group;
-  #backdrop: HUDBackdrop;
+
+  #visibleWidth: number;
+  #visibleHeight: number;
+
+  #bgMesh: Mesh | null = null;
+  #bgMaterial: MeshBasicMaterial | null = null;
   #titleText: TextPlaneResult | null = null;
-  #resumeText: TextPlaneResult | null = null;
-  #quitText: TextPlaneResult | null = null;
+  #resumeButton: PillButtonPlaneResult | null = null;
+  #quitButton: PillButtonPlaneResult | null = null;
 
   #selectedOption: 'resume' | 'quit' = 'resume';
   #onResume: (() => void) | null = null;
   #onQuit: (() => void) | null = null;
 
-  constructor() {
+  constructor({ visibleWidth, visibleHeight }: { visibleWidth: number; visibleHeight: number }) {
     this.#group = new Group();
+    this.#visibleWidth = visibleWidth;
+    this.#visibleHeight = visibleHeight;
 
-    this.#backdrop = new HUDBackdrop(2.5, 0.9);
-    this.#group.add(this.#backdrop.getGroup());
-
-    this.#createContent();
+    this.#createBackground();
+    this.#createTitle();
+    this.#createButtons();
+    this.#positionElements();
   }
 
-  #createContent() {
-    // Title
-    this.#titleText = createTextPlane('Paused', {
-      height: PauseOverlayHUD.TITLE_HEIGHT,
-      fontSize: 72,
-      color: '#FBD954',
+  #cardDimensions() {
+    const fullHeight = this.#visibleHeight - PADDING * 2;
+    const cardHeight = fullHeight * 0.5;
+    const cardWidth = Math.min(fullHeight * CARD_ASPECT, this.#visibleWidth - PADDING * 2);
+    return { cardWidth, cardHeight };
+  }
+
+  #createBackground() {
+    this.#bgMaterial = new MeshBasicMaterial({
+      color: COLORS.mindaro,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
     });
-    this.#titleText.mesh.position.y = 0.2;
+
+    const { cardWidth, cardHeight } = this.#cardDimensions();
+    this.#bgMesh = createRoundedPlaneMesh(cardWidth, cardHeight, CARD_RADIUS, {
+      material: this.#bgMaterial,
+    });
+    this.#bgMesh.renderOrder = BG_RENDER_ORDER;
+    this.#bgMesh.layers.enable(OVERLAY_LAYER);
+    this.#group.add(this.#bgMesh);
+  }
+
+  #createTitle() {
+    this.#titleText = createTextPlane('Pause!', {
+      height: 0.35,
+      fontSize: 256,
+      fontFamily: 'IvarSoft, serif',
+      fontStyle: 'italic',
+      fontWeight: '600',
+      color: COLORS.night,
+    });
+    this.#titleText.mesh.renderOrder = CONTENT_RENDER_ORDER;
+    this.#titleText.mesh.layers.enable(OVERLAY_LAYER);
     this.#group.add(this.#titleText.mesh);
+  }
 
-    // Resume button
-    this.#resumeText = createTextPlane('> Resume', {
-      height: PauseOverlayHUD.BUTTON_HEIGHT,
-      fontSize: 40,
-      color: '#FBD954',
-    });
-    this.#resumeText.mesh.position.set(0, 0.0, 0);
-    this.#group.add(this.#resumeText.mesh);
+  #createButtons() {
+    const buttonOptions = {
+      height: 0.22,
+      fontSize: 64,
+      fontWeight: '600',
+      fixedHeight: 160,
+    };
 
-    // Quit button
-    this.#quitText = createTextPlane('  Quit', {
-      height: PauseOverlayHUD.BUTTON_HEIGHT,
-      fontSize: 40,
-      color: '#888888',
-    });
-    this.#quitText.mesh.position.set(0, -0.15, 0);
-    this.#group.add(this.#quitText.mesh);
+    // Create Resume first to measure its natural width
+    this.#resumeButton = createPillButtonPlane('Resume', buttonOptions);
+    // Use Resume's canvas width as minimum for both buttons
+    const dpr = Math.min(window.devicePixelRatio, 2);
+    const minWidth = Math.ceil(this.#resumeButton.width * dpr);
+
+    // Recreate both with matched width
+    this.#resumeButton.dispose();
+    this.#resumeButton = createPillButtonPlane('Resume', { ...buttonOptions, minCanvasWidth: minWidth });
+    this.#resumeButton.mesh.renderOrder = CONTENT_RENDER_ORDER;
+    this.#resumeButton.mesh.layers.enable(OVERLAY_LAYER);
+    this.#group.add(this.#resumeButton.mesh);
+
+    this.#quitButton = createPillButtonPlane('Quit', { ...buttonOptions, minCanvasWidth: minWidth, transparent: true });
+    this.#quitButton.mesh.renderOrder = CONTENT_RENDER_ORDER;
+    this.#quitButton.mesh.layers.enable(OVERLAY_LAYER);
+    this.#group.add(this.#quitButton.mesh);
+  }
+
+  #positionElements() {
+    const { cardWidth, cardHeight } = this.#cardDimensions();
+    const yOffset = -cardHeight * 0.3;
+
+    // Recreate background with correct size
+    if (this.#bgMesh && this.#bgMaterial) {
+      this.#group.remove(this.#bgMesh);
+      this.#bgMesh.geometry.dispose();
+      this.#bgMesh = createRoundedPlaneMesh(cardWidth, cardHeight, CARD_RADIUS, {
+        material: this.#bgMaterial,
+      });
+      this.#bgMesh.renderOrder = BG_RENDER_ORDER;
+      this.#bgMesh.layers.enable(OVERLAY_LAYER);
+      this.#bgMesh.position.set(0, yOffset, 0);
+      this.#group.add(this.#bgMesh);
+    }
+
+    // Title — upper portion
+    if (this.#titleText) {
+      this.#titleText.mesh.position.set(0, yOffset + cardHeight * 0.25, 0);
+    }
+
+    // Resume — below title with gap
+    if (this.#resumeButton) {
+      this.#resumeButton.mesh.position.set(0, yOffset - cardHeight * 0.1, 0);
+    }
+
+    // Quit — below Resume with smaller gap
+    if (this.#quitButton) {
+      this.#quitButton.mesh.position.set(0, yOffset - cardHeight * 0.28, 0);
+    }
   }
 
   setSelectedOption(option: 'resume' | 'quit') {
     this.#selectedOption = option;
-    if (option === 'resume') {
-      this.#resumeText?.updateText('> Resume');
-      this.#resumeText?.updateColor('#FBD954');
-      this.#quitText?.updateText('  Quit');
-      this.#quitText?.updateColor('#888888');
-    } else {
-      this.#resumeText?.updateText('  Resume');
-      this.#resumeText?.updateColor('#888888');
-      this.#quitText?.updateText('> Quit');
-      this.#quitText?.updateColor('#FBD954');
-    }
+    this.#resumeButton?.updateState(option === 'resume');
+    this.#quitButton?.updateState(option === 'quit');
   }
 
   getSelectedOption(): 'resume' | 'quit' {
@@ -97,12 +169,18 @@ export class PauseOverlayHUD implements IHUDItem {
     this.setSelectedOption('resume');
   }
 
+  updateBounds(visibleWidth: number, visibleHeight: number) {
+    this.#visibleWidth = visibleWidth;
+    this.#visibleHeight = visibleHeight;
+    this.#positionElements();
+  }
+
   getGroup(): Group {
     return this.#group;
   }
 
   getHeight(): number {
-    return PauseOverlayHUD.OVERLAY_HEIGHT;
+    return this.#visibleHeight;
   }
 
   show() {
@@ -117,9 +195,10 @@ export class PauseOverlayHUD implements IHUDItem {
   update() {}
 
   dispose() {
-    this.#backdrop.dispose();
+    this.#bgMesh?.geometry.dispose();
+    this.#bgMaterial?.dispose();
     this.#titleText?.dispose();
-    this.#resumeText?.dispose();
-    this.#quitText?.dispose();
+    this.#resumeButton?.dispose();
+    this.#quitButton?.dispose();
   }
 }

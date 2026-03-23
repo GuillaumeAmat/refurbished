@@ -15,6 +15,7 @@ export class PauseScreen {
   #hudManager: HUDRegionManager;
   #pauseOverlay: PauseOverlayHUD;
   #sizes: Sizes;
+  #camera: PerspectiveCamera;
   #onResize: () => void;
 
   #visible = false;
@@ -23,10 +24,12 @@ export class PauseScreen {
 
   constructor(stageActor: Actor<AnyActorLogic>, camera: PerspectiveCamera) {
     this.#stageActor = stageActor;
+    this.#camera = camera;
     this.#gamepadManager = GamepadManager.getInstance();
 
     this.#hudManager = new HUDRegionManager(camera);
-    this.#pauseOverlay = new PauseOverlayHUD();
+    const { visibleWidth, visibleHeight } = this.#computeFrustumBounds();
+    this.#pauseOverlay = new PauseOverlayHUD({ visibleWidth, visibleHeight });
     this.#hudManager.add('center', this.#pauseOverlay);
     this.#hudManager.hide();
 
@@ -47,8 +50,20 @@ export class PauseScreen {
     });
 
     this.#sizes = Sizes.getInstance();
-    this.#onResize = () => this.#hudManager.updatePositions();
+    this.#onResize = () => {
+      this.#hudManager.updatePositions();
+      const bounds = this.#computeFrustumBounds();
+      this.#pauseOverlay.updateBounds(bounds.visibleWidth, bounds.visibleHeight);
+    };
     this.#sizes.addEventListener('resize', this.#onResize);
+  }
+
+  #computeFrustumBounds() {
+    const distance = HUDRegionManager.HUD_DISTANCE;
+    const vFov = (this.#camera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    const visibleWidth = visibleHeight * this.#camera.aspect;
+    return { visibleWidth, visibleHeight };
   }
 
   private show() {

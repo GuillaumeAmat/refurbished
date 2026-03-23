@@ -15,6 +15,11 @@ export class OnboardingHighlight {
     }
   }
 
+  setVisible(visible: boolean): void {
+    for (const ring of this.#rings) ring.setVisible(visible);
+    this.#marker?.setVisible(visible);
+  }
+
   hideMarker(): void {
     this.#marker?.dispose();
     this.#marker = null;

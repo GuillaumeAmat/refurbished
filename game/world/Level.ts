@@ -1,5 +1,4 @@
-import { Group, type Scene, Vector3 } from 'three';
-
+import { Group, Mesh, type Scene, Vector3 } from 'three';
 import type { LevelInfo } from '../levels';
 import { Physics } from '../util/Physics';
 import { Time } from '../util/Time';
@@ -92,6 +91,17 @@ export class Level {
 
   public setInteractive(interactive: boolean): void {
     this.#interactive = interactive;
+    this.#onboardingManager.setVisible(interactive);
+    this.#setOverlaysVisible(interactive);
+  }
+
+  #setOverlaysVisible(visible: boolean): void {
+    // Hide/show world-space overlay meshes (BWZ slot icons, etc.)
+    this.#group.traverse((obj) => {
+      if (obj instanceof Mesh && obj.renderOrder >= 999 && !obj.userData.keepVisibleOnPause) {
+        obj.visible = visible;
+      }
+    });
   }
 
   public startOnboarding(): void {

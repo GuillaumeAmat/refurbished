@@ -455,6 +455,10 @@ export class LevelBuilder {
     folder.add(heightActions, 'dec').name('Height -0.2');
   }
 
+  getObjects(): LevelObject[] {
+    return this.#objects;
+  }
+
   getInteractables(): LevelObject[] {
     return this.#objects.filter((obj) => obj.isInteractable);
   }
