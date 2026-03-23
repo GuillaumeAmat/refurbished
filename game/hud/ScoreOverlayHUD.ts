@@ -17,7 +17,8 @@ import { HUDRegionManager } from './HUDRegionManager';
 import type { IHUDItem } from './IHUDItem';
 
 const PADDING = HUDRegionManager.HUD_PADDING;
-const SQUARE_SIZE = 1.26;
+const SQUARE_SIZE = 1.26 * 1.1;
+const SQUARE_BORDER_RADIUS = 20;
 
 export class ScoreOverlayHUD implements IHUDItem {
   #group: Group;
@@ -223,34 +224,69 @@ export class ScoreOverlayHUD implements IHUDItem {
   }
 
   #createSquares() {
-    const texture = this.#createRoundedRectTexture(512, 512, 40, '#808080');
-    if (!texture) return;
-
     const geometry = new PlaneGeometry(SQUARE_SIZE, SQUARE_SIZE);
 
-    const mat1 = new MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    this.#leftSquare = new Mesh(geometry.clone(), mat1);
-    this.#leftSquare.renderOrder = 999;
-    this.#group.add(this.#leftSquare);
+    const loadRounded = (src: string, onReady: (mesh: Mesh) => void) => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        const size = Math.ceil(512 * dpr);
+        const r = SQUARE_BORDER_RADIUS * dpr;
 
-    const texture2 = this.#createRoundedRectTexture(512, 512, 40, '#808080');
-    if (!texture2) return;
-    const mat2 = new MeshBasicMaterial({
-      map: texture2,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide,
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, size, size);
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(size - r, 0);
+        ctx.quadraticCurveTo(size, 0, size, r);
+        ctx.lineTo(size, size - r);
+        ctx.quadraticCurveTo(size, size, size - r, size);
+        ctx.lineTo(r, size);
+        ctx.quadraticCurveTo(0, size, 0, size - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.drawImage(img, 0, 0, size, size);
+
+        const texture = new CanvasTexture(canvas);
+        texture.minFilter = LinearFilter;
+        texture.magFilter = LinearFilter;
+        texture.generateMipmaps = false;
+        texture.colorSpace = SRGBColorSpace;
+        texture.needsUpdate = true;
+
+        const mat = new MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: DoubleSide,
+        });
+        const mesh = new Mesh(geometry.clone(), mat);
+        mesh.renderOrder = 999;
+        onReady(mesh);
+      };
+    };
+
+    loadRounded('/game/texture/characters/pig.webp', (mesh) => {
+      this.#leftSquare = mesh;
+      this.#group.add(mesh);
+      this.#positionElements();
     });
-    this.#rightSquare = new Mesh(geometry.clone(), mat2);
-    this.#rightSquare.renderOrder = 999;
-    this.#group.add(this.#rightSquare);
+
+    loadRounded('/game/texture/characters/croco.webp', (mesh) => {
+      this.#rightSquare = mesh;
+      this.#group.add(mesh);
+      this.#positionElements();
+    });
   }
 
   #createCenterContent() {
