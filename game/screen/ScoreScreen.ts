@@ -147,19 +147,19 @@ export class ScoreScreen {
           // If no letter at cursor yet, start with 'A'
           if (ps.cursorPos >= ps.letters.length) {
             ps.letters.push('A');
-          }
-
-          const currentChar = ps.letters[ps.cursorPos]!;
-          const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
-          let newIdx: number;
-          if (movement.z < -0.5) {
-            // Up = next letter
-            newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
           } else {
-            // Down = prev letter
-            newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
+            const currentChar = ps.letters[ps.cursorPos]!;
+            const currentIdx = ALLOWED_CHARS.indexOf(currentChar);
+            let newIdx: number;
+            if (movement.z < -0.5) {
+              // Up = next letter
+              newIdx = (currentIdx + 1) % ALLOWED_CHARS.length;
+            } else {
+              // Down = prev letter
+              newIdx = (currentIdx - 1 + ALLOWED_CHARS.length) % ALLOWED_CHARS.length;
+            }
+            ps.letters[ps.cursorPos] = ALLOWED_CHARS[newIdx]!;
           }
-          ps.letters[ps.cursorPos] = ALLOWED_CHARS[newIdx]!;
           this.#updatePlayerVisuals(playerId);
         }
       }
