@@ -1,18 +1,24 @@
 // Machine exported from https://stately.ai/registry/editor/8af147fe-cc57-4ce0-98e2-a1d80a3416f7?machineId=00ac43cb-b721-4c65-9b69-17d85be9cb29&mode=Design
 
-import { setup } from 'xstate';
+import { assign, setup } from 'xstate';
+
+import type { PlayerId } from './util/input/GamepadManager';
+
+export type CharacterId = 'pig' | 'croco';
+export type CharacterMap = Record<PlayerId, CharacterId>;
 
 export const stageMachine = setup({
   types: {
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    context: {} as {},
+    context: {} as {
+      characters: CharacterMap;
+    },
     events: {} as
       | { type: 'end'; score: number }
       | { type: 'back' }
       | { type: 'start' }
       | { type: 'menu' }
       | { type: 'next' }
-      | { type: 'play' }
+      | { type: 'play'; characters?: CharacterMap }
       | { type: 'quit' }
       | { type: 'save'; player1: string; player2: string }
       | { type: 'pause' }
@@ -35,7 +41,9 @@ export const stageMachine = setup({
   },
 }).createMachine({
   /** @xstate-layout N4IgpgJg5mDOIC5QGUAuBDGA6N6BOqAxLBgQNoAMAuoqAA4D2sAlqswwHa0gAeiALADYsAdgCsAZgBMAThHSRMgBz8AjKv4AaEAE9EqiWKz8JypYKkUxBpeIC+d7bmy4CAAgA2DdBGYcohBCcYFh+AG4MANYhzjGkqJ7evv4I4QwAxuhsnJRUudyMLNlcSLyIMhJYVhIUSjIyUlKqFBQSEtp6CAC0Evz8WNZKSjUU-LVjSg5OGC7xiT5+AWB4eAx4WHQeWQBmawC2ODNx+AleCylpmcW5+aWFrOwloHwIbcLNFCJ1qg1iMoJaXSILr8ETCVotVRDOoiIRSQRTECxLAAWTAHAAroRNugdLd6EwHpxuC8pCIKFglLVTFJTCoyWIOog3lgFBJbBQDBQpFT+IjkWjMYQPGAfMsAEbePAQfEge7FEn6VQiAZiQRKVSCAzswS1JkICwyAYyay6-iWfgmqT8o5YAAqGNQa2Y6A8hHF6HSkVl8seioQ8KUWFkgjEImagnJtSU+qkaspYNDVP+tM+NswIQdTrwLrdOLx1AKhIVpReutUAwBo3D-DEn1UjKBrwkwjZHK5ZIq6ewABlRRAJVKIIQ9uiMT7i37S4gmv0I2GKDIbJaLPqxGpjH0-mpubZBDJuyE+2EwHn0BjYGAJ0Up89EOYjHGxmJ4QCJBpVPqWW3yR3Jo4kVtY9T0IdEZULO5J2JacECXfotQkcMRBDM1AU6dcKz6WtBF6MQXx1Q8sAABXPS9CDwOAMVHa8iSeMoEHMCkyWjWk5BaGQ0JneM9yTRcLBqMFCJIi8wEIABHDFWBoks7wY+RWU1DREJUUFDH1c1+jwuNLDpRcGgRADkWQdI1lEjgwB4VBpNveitX6T4KiaelJDVfUEMpS1uQBKkaj5QzbWM0ziHQE9rOg2SOWMQRoo1RRlBadom3ECtenEaRWg0Ml-2mDMcBCxY3FgEyKMIczLLCuiXhfYRlD+BplUGUZ9WS1lQTVP5YVDHDCJ7JJFkCYJQg4CJokOXLevOKBUmGjIskeG4IIJG9wvo-ggw1Djt0sChdU+fUQQrF8lEkGROS+BKRB6vr-FAlY1g2LZUF2PADmRCbkimy45pyagKv9FsjHEByfnJAE432hsjDqaolHhclLWUBwAI4BgB3gUpYiLZbKuBVQpCwE06z4taXNOwR9vLVVbHhBHPnDQjXFQLHaP9PGjVpDVOTGKwOIMdSgx+EYOYqKkpD8nLZhOeYPuZmT6OQ1VemVdL32+fbrH6Sx92kc0zqsQjBQxWWbJeNng3ZZoNBabc+abFkrGQzlag4zsDIlzNHWdV1jZWl5udZPD5HVZovi1L8DEpWH6lqOtTpEeQev7Qd8AgH2cdeMNgz+MQqRwl3ZEbTpDVZOMdthvowTwxOTw8NP-XDSpzFhvGWzablPztlsqjDWQ1sQ2RYYkITSLAOuYPqKGwX+NvmM1cPG+GZoTXfcQhAZ4rR8g7H-TkTWGyXfeyTWtzPiwBtPjBnPELEBn8v8QqN7H2T1Xx6R2U5Jp1E7ZrrCqePVMUHUeEN9-LjWulANwyxVh4CfvRMMwgxaGH3kuSwfx1acmDA2KMVgDAvgPKA3s4DYEvEMFUPo0ckFCDGBxCGHEqiRlrAoMm74h5IyAA */
-  context: {},
+  context: {
+    characters: { 1: 'pig', 2: 'croco' } as CharacterMap,
+  },
 
   id: 'Stage',
   initial: 'Start loading',
@@ -91,6 +99,9 @@ export const stageMachine = setup({
         },
         play: {
           target: 'Tutorial',
+          actions: assign({
+            characters: ({ event }) => event.characters ?? { 1: 'pig', 2: 'croco' },
+          }),
         },
       },
       description: 'Each player picks a character',

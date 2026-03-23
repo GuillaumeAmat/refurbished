@@ -120,7 +120,8 @@ export class LevelScreen {
 
     const config = useRuntimeConfig();
 
-    this.#level = new Level(this.#group, this.#scene, this.#levelInfo);
+    const { characters } = this.#stageActor.getSnapshot().context;
+    this.#level = new Level(this.#group, this.#scene, this.#levelInfo, characters);
     await this.#level.init();
 
     if (config.public.onboardingEnabled) {

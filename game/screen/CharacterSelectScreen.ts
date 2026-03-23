@@ -3,6 +3,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { CharacterSelectOverlayHUD } from '../hud/CharacterSelectOverlayHUD';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
+import type { CharacterMap } from '../Stage.machine';
 import { INPUT_TRANSITION_LOCKOUT_MS } from '../util/input/constants';
 import { GamepadManager, type PlayerId } from '../util/input/GamepadManager';
 import { Sizes } from '../util/Sizes';
@@ -128,9 +129,15 @@ export class CharacterSelectScreen {
       return;
     }
 
-    // Both ready → proceed
+    // Both ready → proceed with character mapping
     if (this.#overlay.areBothReady()) {
-      this.#stageActor.send({ type: 'play' });
+      const p1 = this.#overlay.getPlayerState(1 as PlayerId);
+      const p2 = this.#overlay.getPlayerState(2 as PlayerId);
+      const characters: CharacterMap = {
+        1: p1.choice === 'left' ? 'pig' : 'croco',
+        2: p2.choice === 'left' ? 'pig' : 'croco',
+      };
+      this.#stageActor.send({ type: 'play', characters });
     }
   }
 

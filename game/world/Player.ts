@@ -13,10 +13,11 @@ import { Crate } from './object/Crate';
 import { RepairAnimation } from './RepairAnimation';
 import { SmokeParticleSystem } from './SmokeParticleSystem';
 
+import type { CharacterId } from '../Stage.machine';
 
-const PLAYER_COLORS: Record<PlayerId, string> = {
-  1: '#e1a3ac',
-  2: '#004200',
+const CHARACTER_COLORS: Record<CharacterId, string> = {
+  pig: '#e1a3ac',
+  croco: '#004200',
 };
 
 type GripKey = `${ResourceType}_${ResourceState}`;
@@ -127,6 +128,7 @@ export class Player {
 
   #gamepadManager: GamepadManager;
   #playerId: PlayerId;
+  #characterId: CharacterId;
   #time: Time;
 
 
@@ -159,7 +161,7 @@ export class Player {
     return this.#playerId;
   }
 
-  constructor(screenGroup: Group, scene: Scene, playerId: PlayerId, spawnPosition: Vector3) {
+  constructor(screenGroup: Group, scene: Scene, playerId: PlayerId, spawnPosition: Vector3, characterId: CharacterId) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;
     this.#resources = Resources.getInstance();
@@ -169,6 +171,7 @@ export class Player {
     this.#gamepadManager = GamepadManager.getInstance();
     this.#time = Time.getInstance();
     this.#playerId = playerId;
+    this.#characterId = characterId;
 
     this.createMesh();
     this.createPhysicsBody();
@@ -243,7 +246,7 @@ export class Player {
     const debug = Debug.getInstance();
     if (!debug?.active) return;
 
-    const characterName = this.#playerId === 1 ? 'Pig' : 'Croco';
+    const characterName = this.#characterId === 'pig' ? 'Pig' : 'Croco';
     const folder = debug.gui.addFolder(`${characterName} Animation`);
 
     const headFolder = folder.addFolder('Head');
@@ -293,7 +296,7 @@ export class Player {
     });
     buildGripSliders(gripState.resource);
 
-    const tintState = { color: PLAYER_COLORS[this.#playerId] };
+    const tintState = { color: CHARACTER_COLORS[this.#characterId] };
     folder.addColor(tintState, 'color').name('Tint').onChange((v: string) => {
       const tint = new Color(v);
       for (const { material, base } of this.#baseMaterialColors) {
@@ -324,7 +327,7 @@ export class Player {
 
 
   private createMesh() {
-    const modelName = this.#playerId === 1 ? 'pigModel' : 'crocoModel';
+    const modelName = this.#characterId === 'pig' ? 'pigModel' : 'crocoModel';
     const model = this.#resources.getGLTFAsset(modelName);
 
     if (!model) {
@@ -336,7 +339,7 @@ export class Player {
     this.#mesh.position.copy(this.#spawnPosition);
     this.#mesh.rotation.y = Math.PI / 2;
 
-    const playerColor = new Color(PLAYER_COLORS[this.#playerId]);
+    const playerColor = new Color(CHARACTER_COLORS[this.#characterId]);
     this.#baseMaterialColors = [];
 
     this.#mesh.traverse((child) => {
@@ -353,7 +356,7 @@ export class Player {
     });
 
     // Get references to body parts for procedural animation
-    if (this.#playerId === 1) {
+    if (this.#characterId === 'pig') {
       // Pig
       this.#body = this.#mesh.getObjectByName('Sphere') ?? null;
       this.#head = this.#mesh.getObjectByName('Sphere002') ?? null;

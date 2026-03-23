@@ -1,6 +1,7 @@
 import { Group, type Scene, Vector3 } from 'three';
 
 import type { LevelInfo } from '../levels';
+import type { CharacterId, CharacterMap } from '../Stage.machine';
 import { Physics } from '../util/Physics';
 import { Time } from '../util/Time';
 import { Environment } from './Environment';
@@ -24,15 +25,17 @@ export class Level {
   #interactionSystem!: InteractionSystem;
   #onboardingManager!: OnboardingManager;
   #physics: Physics;
+  #characters: CharacterMap;
 
   #interactive = true;
   #cachedMidpoint = new Vector3();
 
-  constructor(screenGroup: Group, scene: Scene, levelInfo: LevelInfo) {
+  constructor(screenGroup: Group, scene: Scene, levelInfo: LevelInfo, characters: CharacterMap) {
     this.#screenGroup = screenGroup;
     this.#scene = scene;
     this.#physics = Physics.getInstance();
     this.#levelInfo = levelInfo;
+    this.#characters = characters;
 
     this.#group = new Group();
     this.#screenGroup.add(this.#group);
@@ -47,8 +50,10 @@ export class Level {
     this.#levelBuilder = new LevelBuilder(this.#levelInfo.data);
     this.#levelBuilder.buildFromMatrix(this.#group);
 
-    this.#player1 = new Player(this.#group, this.#scene, 1, this.#levelInfo.spawnPositions[0]!);
-    this.#player2 = new Player(this.#group, this.#scene, 2, this.#levelInfo.spawnPositions[1]!);
+    // Spawn positions are fixed per character: index 0 = pig, index 1 = croco
+    const spawnFor = (c: CharacterId) => this.#levelInfo.spawnPositions[c === 'pig' ? 0 : 1]!;
+    this.#player1 = new Player(this.#group, this.#scene, 1, spawnFor(this.#characters[1]), this.#characters[1]);
+    this.#player2 = new Player(this.#group, this.#scene, 2, spawnFor(this.#characters[2]), this.#characters[2]);
     Environment.getInstance()?.registerPlayer(this.#player1);
     Environment.getInstance()?.registerPlayer(this.#player2);
 
