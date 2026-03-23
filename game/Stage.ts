@@ -538,6 +538,7 @@ export class Stage {
         if (previousState.matches('Pause')) {
           this.#renderer.setBloomEnabled(true);
           this.#camera.camera.layers.set(0);
+          this.#scene.background = this.#defaultBgColor;
         }
         sm.setPhase('menu');
       } else if (state.matches('Level')) {
