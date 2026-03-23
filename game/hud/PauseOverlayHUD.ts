@@ -1,15 +1,25 @@
-import { DoubleSide, Group, type Mesh, MeshBasicMaterial } from 'three';
+import {
+  DoubleSide,
+  Group,
+  LinearFilter,
+  Mesh,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  SRGBColorSpace,
+  TextureLoader,
+} from 'three';
 
-import { COLORS, OVERLAY_LAYER } from '../constants';
+import { OVERLAY_LAYER } from '../constants';
 import { createPillButtonPlane, type PillButtonPlaneResult } from '../lib/createPillButtonPlane';
 import { createRoundedPlaneMesh } from '../lib/createRoundedPlaneMesh';
-import { createTextPlane, type TextPlaneResult } from '../lib/createTextPlane';
 import { HUDRegionManager } from './HUDRegionManager';
 import type { IHUDItem } from './IHUDItem';
 
 const PADDING = HUDRegionManager.HUD_PADDING;
-const CARD_ASPECT = 0.6;
+const CARD_WIDTH_RATIO = 0.9;
 const CARD_RADIUS = 0.06;
+const BUTTON_Y_MARGIN = 0.08;
+const BUTTON_SPACING = 0.7;
 const BG_RENDER_ORDER = 1000;
 const CONTENT_RENDER_ORDER = 1001;
 
@@ -21,7 +31,8 @@ export class PauseOverlayHUD implements IHUDItem {
 
   #bgMesh: Mesh | null = null;
   #bgMaterial: MeshBasicMaterial | null = null;
-  #titleText: TextPlaneResult | null = null;
+  #imageMesh: Mesh | null = null;
+  #imageAspect = 1024 / 577;
   #resumeButton: PillButtonPlaneResult | null = null;
   #quitButton: PillButtonPlaneResult | null = null;
 
@@ -35,21 +46,20 @@ export class PauseOverlayHUD implements IHUDItem {
     this.#visibleHeight = visibleHeight;
 
     this.#createBackground();
-    this.#createTitle();
+    this.#createImage();
     this.#createButtons();
     this.#positionElements();
   }
 
   #cardDimensions() {
-    const fullHeight = this.#visibleHeight - PADDING * 2;
-    const cardHeight = fullHeight * 0.5;
-    const cardWidth = Math.min(fullHeight * CARD_ASPECT, this.#visibleWidth - PADDING * 2);
+    const cardWidth = this.#visibleWidth * CARD_WIDTH_RATIO;
+    const cardHeight = this.#visibleHeight - PADDING * 2;
     return { cardWidth, cardHeight };
   }
 
   #createBackground() {
     this.#bgMaterial = new MeshBasicMaterial({
-      color: COLORS.mindaro,
+      color: 0xffffff,
       depthTest: false,
       depthWrite: false,
       side: DoubleSide,
@@ -64,18 +74,45 @@ export class PauseOverlayHUD implements IHUDItem {
     this.#group.add(this.#bgMesh);
   }
 
-  #createTitle() {
-    this.#titleText = createTextPlane('Pause!', {
-      height: 0.35,
-      fontSize: 256,
-      fontFamily: 'IvarSoft, serif',
-      fontStyle: 'italic',
-      fontWeight: '600',
-      color: COLORS.night,
+  #createImage() {
+    const loader = new TextureLoader();
+    const texture = loader.load('/game/texture/characters/pause.webp', () => {
+      // Re-position once texture dimensions are known
+      this.#positionElements();
     });
-    this.#titleText.mesh.renderOrder = CONTENT_RENDER_ORDER;
-    this.#titleText.mesh.layers.enable(OVERLAY_LAYER);
-    this.#group.add(this.#titleText.mesh);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.colorSpace = SRGBColorSpace;
+
+    const { imgWidth, imgHeight } = this.#computeImageSize();
+    const geometry = new PlaneGeometry(imgWidth, imgHeight);
+    const material = new MeshBasicMaterial({
+      map: texture,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+
+    this.#imageMesh = new Mesh(geometry, material);
+    this.#imageMesh.renderOrder = CONTENT_RENDER_ORDER;
+    this.#imageMesh.layers.enable(OVERLAY_LAYER);
+    this.#group.add(this.#imageMesh);
+  }
+
+  #computeImageSize() {
+    const { cardWidth, cardHeight } = this.#cardDimensions();
+    const innerPad = PADDING * 0.5;
+    const buttonHeight = 0.22;
+    const availW = cardWidth - innerPad * 2;
+    const availH = cardHeight - innerPad * 2 - buttonHeight - BUTTON_Y_MARGIN * 2;
+
+    let imgWidth = availW;
+    let imgHeight = imgWidth / this.#imageAspect;
+    if (imgHeight > availH) {
+      imgHeight = availH;
+      imgWidth = imgHeight * this.#imageAspect;
+    }
+    return { imgWidth, imgHeight };
   }
 
   #createButtons() {
@@ -86,13 +123,10 @@ export class PauseOverlayHUD implements IHUDItem {
       fixedHeight: 160,
     };
 
-    // Create Resume first to measure its natural width
     this.#resumeButton = createPillButtonPlane('Resume', buttonOptions);
-    // Use Resume's canvas width as minimum for both buttons
     const dpr = Math.min(window.devicePixelRatio, 2);
     const minWidth = Math.ceil(this.#resumeButton.width * dpr);
 
-    // Recreate both with matched width
     this.#resumeButton.dispose();
     this.#resumeButton = createPillButtonPlane('Resume', { ...buttonOptions, minCanvasWidth: minWidth });
     this.#resumeButton.mesh.renderOrder = CONTENT_RENDER_ORDER;
@@ -107,7 +141,6 @@ export class PauseOverlayHUD implements IHUDItem {
 
   #positionElements() {
     const { cardWidth, cardHeight } = this.#cardDimensions();
-    const yOffset = -cardHeight * 0.3;
 
     // Recreate background with correct size
     if (this.#bgMesh && this.#bgMaterial) {
@@ -118,23 +151,29 @@ export class PauseOverlayHUD implements IHUDItem {
       });
       this.#bgMesh.renderOrder = BG_RENDER_ORDER;
       this.#bgMesh.layers.enable(OVERLAY_LAYER);
-      this.#bgMesh.position.set(0, yOffset, 0);
       this.#group.add(this.#bgMesh);
     }
 
-    // Title — upper portion
-    if (this.#titleText) {
-      this.#titleText.mesh.position.set(0, yOffset + cardHeight * 0.25, 0);
+    const buttonY = -cardHeight / 2 + BUTTON_Y_MARGIN + 0.11;
+
+    // Image: fill space above buttons, centered
+    if (this.#imageMesh) {
+      const { imgWidth, imgHeight } = this.#computeImageSize();
+      this.#imageMesh.geometry.dispose();
+      this.#imageMesh.geometry = new PlaneGeometry(imgWidth, imgHeight);
+
+      const imageTop = cardHeight / 2 - PADDING * 0.5;
+      const imageBottom = buttonY + 0.15;
+      const centerY = (imageTop + imageBottom) / 2;
+      this.#imageMesh.position.set(0, centerY, 0.01);
     }
 
-    // Resume — below title with gap
+    // Buttons side by side at bottom
     if (this.#resumeButton) {
-      this.#resumeButton.mesh.position.set(0, yOffset - cardHeight * 0.1, 0);
+      this.#resumeButton.mesh.position.set(-BUTTON_SPACING / 2, buttonY, 0.01);
     }
-
-    // Quit — below Resume with smaller gap
     if (this.#quitButton) {
-      this.#quitButton.mesh.position.set(0, yOffset - cardHeight * 0.28, 0);
+      this.#quitButton.mesh.position.set(BUTTON_SPACING / 2, buttonY, 0.01);
     }
   }
 
@@ -197,7 +236,13 @@ export class PauseOverlayHUD implements IHUDItem {
   dispose() {
     this.#bgMesh?.geometry.dispose();
     this.#bgMaterial?.dispose();
-    this.#titleText?.dispose();
+
+    if (this.#imageMesh) {
+      (this.#imageMesh.material as MeshBasicMaterial).map?.dispose();
+      (this.#imageMesh.material as MeshBasicMaterial).dispose();
+      this.#imageMesh.geometry.dispose();
+    }
+
     this.#resumeButton?.dispose();
     this.#quitButton?.dispose();
   }
