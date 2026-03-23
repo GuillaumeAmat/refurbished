@@ -22,7 +22,7 @@ export default defineNuxtConfig({
       keyboardFallbackEnabled: true,
       onboardingEnabled: true,
       cameraDynamicsEnabled: false,
-      leaderboardAutoRefreshEnabled: false,
+      leaderboardAutoRefreshEnabled: true,
     },
   },
 
