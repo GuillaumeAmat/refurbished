@@ -11,6 +11,7 @@ export interface TextPlaneResult {
   width: number;
   updateText: (newText: string) => void;
   updateColor: (newColor: string) => void;
+  updateBackgroundColor: (newBgColor: string) => void;
   dispose: () => void;
 }
 
@@ -59,6 +60,14 @@ export function createTextPlane(text: string, options: TextPlaneOptions): TextPl
     material.needsUpdate = true;
   };
 
+  const updateBackgroundColor = (newBgColor: string) => {
+    currentTextureOptions = { ...currentTextureOptions, backgroundColor: newBgColor };
+    currentTexture.texture.dispose();
+    currentTexture = createTextTexture({ text: currentText, ...currentTextureOptions });
+    material.map = currentTexture.texture;
+    material.needsUpdate = true;
+  };
+
   const dispose = () => {
     currentTexture.texture.dispose();
     currentGeometry.dispose();
@@ -72,6 +81,7 @@ export function createTextPlane(text: string, options: TextPlaneOptions): TextPl
     },
     updateText,
     updateColor,
+    updateBackgroundColor,
     dispose,
   };
 }

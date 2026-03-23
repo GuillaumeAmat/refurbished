@@ -42,6 +42,9 @@ export class LevelScreen {
   #orderManager: OrderManager;
   #comboManager: ComboManager;
   #isInteractive = false;
+  #frozen = false;
+  #freezeTimeout: ReturnType<typeof setTimeout> | null = null;
+  #timeHUD: TimeHUD;
 
   // Bound listener references for cleanup
   #onGamepadDisconnected: () => void;
@@ -94,10 +97,11 @@ export class LevelScreen {
     this.#group.visible = false;
     this.#scene.add(this.#group);
 
+    this.#timeHUD = new TimeHUD();
     this.#hudManager = new HUDRegionManager(this.#camera.camera);
     this.#hudManager.add('topLeft', new OrderQueueHUD());
     this.#hudManager.add('bottomLeft', new PointsHUD());
-    this.#hudManager.add('bottomRight', new TimeHUD());
+    this.#hudManager.add('bottomRight', this.#timeHUD);
     this.#hudManager.hide();
 
     this.#sizes = Sizes.getInstance();
@@ -110,7 +114,16 @@ export class LevelScreen {
     this.#comboManager = ComboManager.getInstance();
     this.#onSessionEnded = () => {
       if (!this.#group.visible) return;
-      this.#stageActor.send({ type: 'end', score: this.#scoreManager.getScore() });
+      this.#frozen = true;
+      this.#level?.setInteractive(false);
+      this.#orderManager.stop();
+      this.#sessionManager.stop();
+      this.#timeHUD.showTimesUp();
+
+      this.#freezeTimeout = setTimeout(() => {
+        this.#freezeTimeout = null;
+        this.#stageActor.send({ type: 'end', score: this.#scoreManager.getScore() });
+      }, 2000);
     };
     this.#sessionManager.addEventListener('sessionEnded', this.#onSessionEnded);
   }
@@ -147,6 +160,8 @@ export class LevelScreen {
 
     // Only reset/start session when freshly entering from hidden state
     if (wasHidden) {
+      this.#frozen = false;
+      this.#timeHUD.reset();
       this.#scoreManager.reset();
       void this.#requestSessionToken();
       this.#sessionManager.reset();
@@ -208,6 +223,12 @@ export class LevelScreen {
       return;
     }
 
+    // During freeze, only update HUD (for shake animation)
+    if (this.#frozen) {
+      this.#hudManager.update();
+      return;
+    }
+
     if (this.#isInteractive) {
       this.#checkPauseInput();
     }
@@ -223,6 +244,10 @@ export class LevelScreen {
   }
 
   public dispose() {
+    if (this.#freezeTimeout) {
+      clearTimeout(this.#freezeTimeout);
+      this.#freezeTimeout = null;
+    }
     this.#subscription.unsubscribe();
     this.#gamepadManager.removeEventListener('gamepadDisconnected', this.#onGamepadDisconnected);
     this.#gamepadManager.removeEventListener('controllersReadyChange', this.#onControllersReadyChange);
