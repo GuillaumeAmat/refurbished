@@ -186,8 +186,12 @@ export class ScoreScreen {
 
       // B: undo letters or skip
       if (input.isButtonJustPressed('b') || input.isButtonJustPressed('start')) {
-        if (ps.letters.length > 0) {
-          // Remove last letter, move cursor back
+        if (ps.cursorPos >= ps.letters.length && ps.letters.length > 0) {
+          // On underscore: go back to last letter without removing
+          ps.cursorPos = ps.letters.length - 1;
+          this.#updatePlayerVisuals(playerId);
+        } else if (ps.letters.length > 0) {
+          // On a letter: remove it and adjust cursor
           ps.letters.pop();
           ps.cursorPos = Math.min(ps.cursorPos, Math.max(0, ps.letters.length - 1));
           if (ps.letters.length === 0) ps.cursorPos = 0;
