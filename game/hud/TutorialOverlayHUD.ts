@@ -57,7 +57,7 @@ export class TutorialOverlayHUD implements IHUDItem {
   #createBackground() {
     this.#bgGeometry = new PlaneGeometry(this.#visibleWidth, this.#visibleHeight);
     this.#bgMaterial = new MeshBasicMaterial({
-      color: 0xf5f5f5,
+      color: 0xffffff,
       depthTest: false,
       depthWrite: false,
       side: DoubleSide,

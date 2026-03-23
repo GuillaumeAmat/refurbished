@@ -76,7 +76,7 @@ export class PauseOverlayHUD implements IHUDItem {
 
   #createImage() {
     const loader = new TextureLoader();
-    const texture = loader.load('/game/texture/characters/pause.webp', () => {
+    const texture = loader.load('/game/texture/characters/mission.webp', () => {
       // Re-position once texture dimensions are known
       this.#positionElements();
     });

@@ -42,7 +42,7 @@ export class Stage {
   #time: Time;
   #sizes: Sizes;
   #renderer: Renderer;
-  #pauseBgColor = new Color(0xf5f5f5);
+  #pauseBgColor = new Color(0xffffff);
   #defaultBgColor = new Color(BACKGROUND_COLOR);
   #loadingOverlay: LoadingOverlay;
   #environment: Environment | null = null;
