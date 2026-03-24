@@ -12,7 +12,6 @@ import {
 import { Time } from '../util/Time';
 import { ComboManager } from './ComboManager';
 import { ScoreManager } from './ScoreManager';
-import { SessionManager } from './SessionManager';
 
 export type OrderZone = 'green' | 'yellow' | 'red';
 
@@ -49,13 +48,11 @@ export class OrderManager extends EventTarget {
 
   #comboManager: ComboManager;
   #scoreManager: ScoreManager;
-  #sessionManager: SessionManager;
 
   private constructor() {
     super();
     this.#comboManager = ComboManager.getInstance();
     this.#scoreManager = ScoreManager.getInstance();
-    this.#sessionManager = SessionManager.getInstance();
   }
 
   public static getInstance(): OrderManager {
@@ -136,10 +133,9 @@ export class OrderManager extends EventTarget {
 
     this.dispatchEvent(new CustomEvent('orderCompleted', { detail: result }));
 
-    // Phase transition: first delivery starts session timer + burst spawn
+    // Phase transition: first delivery triggers burst spawn
     if (isFirstDelivery) {
       this.#firstOrderDelivered = true;
-      this.#sessionManager.start();
       this.#spawnTimer = 0;
       for (let i = 0; i < ORDER_INITIAL_BURST; i++) {
         this.#spawnOrder(0, ORDER_DURATION_MS + (i * ORDER_DURATION_MS) / 3);

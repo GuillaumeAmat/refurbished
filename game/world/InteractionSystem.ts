@@ -33,6 +33,7 @@ export class InteractionSystem {
   #gamepadManager: GamepadManager;
   #orderManager: OrderManager;
   #onboardingManager: OnboardingManager | null = null;
+  #onPhoneAssembled: (() => void) | null = null;
 
   #smokeSystem: SmokeParticleSystem;
   #deliveryAnims: { mesh: Object3D; timer: number; points: number }[] = [];
@@ -59,6 +60,10 @@ export class InteractionSystem {
 
   setOnboardingManager(manager: OnboardingManager): void {
     this.#onboardingManager = manager;
+  }
+
+  setOnPhoneAssembled(callback: () => void): void {
+    this.#onPhoneAssembled = callback;
   }
 
   registerPlayer(player: Player): void {
@@ -490,6 +495,7 @@ export class InteractionSystem {
           obj.setAwaitingPackaging(phone);
           obj.showPhoneIcon();
           this.#onboardingManager?.onPhoneAssembled();
+          this.#onPhoneAssembled?.();
         }
       }
     }

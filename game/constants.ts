@@ -44,6 +44,9 @@ export const DELIVERY_SMOKE_COUNT = 12; // particles spawned on vanish
 // Assembly
 export const ASSEMBLE_HOLD_DURATION = 15_000; // ms
 
+// Session timer grace period before auto-start
+export const SESSION_GRACE_MS = 45_000; // ms
+
 // Progress bars
 export const PROGRESS_BAR_FILL_COLOR = 0x00ff00;
 

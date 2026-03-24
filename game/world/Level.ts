@@ -109,6 +109,10 @@ export class Level {
     });
   }
 
+  public setOnPhoneAssembled(callback: () => void): void {
+    this.#interactionSystem.setOnPhoneAssembled(callback);
+  }
+
   public startOnboarding(): void {
     this.#onboardingManager.start();
   }

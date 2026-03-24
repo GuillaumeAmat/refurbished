@@ -3,6 +3,7 @@ import type { Actor, AnyActorLogic, Subscription } from 'xstate';
 
 import { useRuntimeConfig } from '#app';
 
+import { SESSION_GRACE_MS } from '../constants';
 import { HUDRegionManager } from '../hud/HUDRegionManager';
 import { OrderQueueHUD } from '../hud/OrderQueueHUD';
 import { PointsHUD } from '../hud/PointsHUD';
@@ -45,6 +46,10 @@ export class LevelScreen {
   #frozen = false;
   #freezeTimeout: ReturnType<typeof setTimeout> | null = null;
   #timeHUD: TimeHUD;
+  #sessionStarted = false;
+  #graceTimeout: ReturnType<typeof setTimeout> | null = null;
+  #graceRemaining = SESSION_GRACE_MS;
+  #graceStartedAt = 0;
 
   // Bound listener references for cleanup
   #onGamepadDisconnected: () => void;
@@ -136,6 +141,7 @@ export class LevelScreen {
     const { characters } = this.#stageActor.getSnapshot().context;
     this.#level = new Level(this.#group, this.#scene, this.#levelInfo, characters);
     await this.#level.init();
+    this.#level.setOnPhoneAssembled(() => this.#startSessionIfNeeded());
 
     if (config.public.onboardingEnabled) {
       this.#level.startOnboarding();
@@ -161,6 +167,7 @@ export class LevelScreen {
     // Only reset/start session when freshly entering from hidden state
     if (wasHidden) {
       this.#frozen = false;
+      this.#sessionStarted = false;
       this.#timeHUD.reset();
       this.#scoreManager.reset();
       void this.#requestSessionToken();
@@ -168,16 +175,24 @@ export class LevelScreen {
       this.#orderManager.reset();
       this.#comboManager.reset();
       this.#sessionManager.setSandbox(Debug.getInstance().active);
-      // Session timer is NOT started here — OrderManager starts it on first delivery
       this.#orderManager.start();
+      this.#startGraceTimeout();
       this.initLevel();
     } else {
       if (interactive) {
-        if (this.#orderManager.isFirstOrderDelivered()) {
+        if (this.#sessionStarted) {
           this.#sessionManager.start();
+        } else {
+          this.#startGraceTimeout(this.#graceRemaining);
         }
         this.#orderManager.start();
       } else {
+        // Pausing: track remaining grace time
+        if (this.#graceTimeout) {
+          const elapsed = performance.now() - this.#graceStartedAt;
+          this.#graceRemaining = Math.max(0, this.#graceRemaining - elapsed);
+          this.#clearGraceTimeout();
+        }
         this.#sessionManager.stop();
         this.#orderManager.stop();
       }
@@ -194,10 +209,34 @@ export class LevelScreen {
     }
   }
 
+  #startSessionIfNeeded(): void {
+    if (this.#sessionStarted) return;
+    this.#sessionStarted = true;
+    this.#clearGraceTimeout();
+    this.#sessionManager.start();
+  }
+
+  #clearGraceTimeout(): void {
+    if (this.#graceTimeout) {
+      clearTimeout(this.#graceTimeout);
+      this.#graceTimeout = null;
+    }
+  }
+
+  #startGraceTimeout(ms: number = SESSION_GRACE_MS): void {
+    this.#graceRemaining = ms;
+    this.#graceStartedAt = performance.now();
+    this.#graceTimeout = setTimeout(() => {
+      this.#graceTimeout = null;
+      this.#startSessionIfNeeded();
+    }, ms);
+  }
+
   private hide() {
     this.#group.visible = false;
     this.#isInteractive = false;
     this.#hudManager.hide();
+    this.#clearGraceTimeout();
     this.#sessionManager.stop();
     this.#orderManager.stop();
     this.#level?.dispose();
@@ -244,6 +283,7 @@ export class LevelScreen {
   }
 
   public dispose() {
+    this.#clearGraceTimeout();
     if (this.#freezeTimeout) {
       clearTimeout(this.#freezeTimeout);
       this.#freezeTimeout = null;
