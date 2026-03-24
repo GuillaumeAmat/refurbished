@@ -16,6 +16,7 @@ export class Time extends EventDispatcher<TimeEvents> {
 
   #minFrameTime: number = 1000 / 60;
   #calibrationTimestamps: DOMHighResTimeStamp[] = [];
+  #guardEnabled: boolean;
 
   #start!: number;
   #current!: number;
@@ -43,7 +44,7 @@ export class Time extends EventDispatcher<TimeEvents> {
     return Math.round(1000 / this.#minFrameTime);
   }
 
-  constructor() {
+  constructor({ guardEnabled = true }: { guardEnabled?: boolean } = {}) {
     super();
 
     // Dispose previous instance if it exists (HMR support)
@@ -52,6 +53,7 @@ export class Time extends EventDispatcher<TimeEvents> {
     }
 
     Time.#instance = this;
+    this.#guardEnabled = guardEnabled;
 
     if (!window) {
       throw new Error('"Time" can only be instanciated in a browser environment.');
@@ -93,7 +95,7 @@ export class Time extends EventDispatcher<TimeEvents> {
 
     const delta = timestamp - this.#current;
 
-    if (delta >= this.#minFrameTime) {
+    if (!this.#guardEnabled || delta >= this.#minFrameTime) {
       this.#delta = delta;
       this.#current = timestamp;
       this.#elapsed = this.#current - this.#start;

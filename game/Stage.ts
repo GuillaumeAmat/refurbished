@@ -454,7 +454,7 @@ export class Stage {
 
     this.#actor.start();
 
-    this.#time = new Time();
+    this.#time = new Time({ guardEnabled: config.public.refreshRateGuardEnabled });
     this.#onTickCore = () => {
       this.#camera.update();
       this.#loadingOverlay.update();

@@ -23,6 +23,7 @@ export default defineNuxtConfig({
       onboardingEnabled: true,
       cameraDynamicsEnabled: false,
       leaderboardAutoRefreshEnabled: true,
+      refreshRateGuardEnabled: false,
     },
   },
 
